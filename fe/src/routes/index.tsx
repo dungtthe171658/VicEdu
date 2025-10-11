@@ -1,30 +1,40 @@
-// src/routes/index.tsx
 import { Routes, Route } from 'react-router-dom';
 
 // Layouts
-import UserLayout from '../components/layout/UserLayout'; // Layout cho trang người dùng
-import DashboardLayout from '../components/layout/DashboardLayout'; // Layout chung cho admin/teacher
-import LoginPage from '../pages/LoginPage'; // <-- Import trang mới
+import UserLayout from '../components/layout/UserLayout';
+import DashboardLayout from '../components/layout/DashboardLayout';
+
 // Pages
+import LoginPage from '../pages/LoginPage';
 import HomePage from '../pages/user/HomePage';
 import OverviewPage from '../pages/dashboard/Shared/OverviewPage';
 import ManageUsersPage from '../pages/dashboard/Admin/ManageUsersPage';
 import ManageStudentsPage from '../pages/dashboard/Teacher/ManageStudentsPage';
 
-// Component bảo vệ route (quan trọng!)
+// Book pages (phần bán sách)
+import BookListPage from '../pages/books/BookListPage';
+import BookDetailPage from '../pages/books/BookDetailPage';
+import BookManagementPage from '../pages/dashboard/Admin/BookManagementPage';
+
+// Route bảo vệ
 import ProtectedRoute from './ProtectedRoute';
 
 const AppRoutes = () => {
   return (
     <Routes>
+      {/* Trang đăng nhập */}
       <Route path="/login" element={<LoginPage />} />
 
-      {/* Route cho người dùng bình thường */}
+      {/* Trang người dùng */}
       <Route path="/" element={<UserLayout />}>
         <Route index element={<HomePage />} />
+
+        {/* 📚 Trang sách (public) */}
+        <Route path="books" element={<BookListPage />} />
+        <Route path="books/:id" element={<BookDetailPage />} />
       </Route>
 
-      {/* Route cho khu vực quản lý (Dashboard) */}
+      {/* Dashboard cho Admin / Teacher */}
       <Route
         path="/dashboard"
         element={
@@ -33,10 +43,10 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       >
-        {/* Trang con dùng chung */}
+        {/* Trang chung */}
         <Route index element={<OverviewPage />} />
 
-        {/* Trang con chỉ dành cho Admin */}
+        {/* Admin quản lý người dùng */}
         <Route
           path="manage-users"
           element={
@@ -46,7 +56,7 @@ const AppRoutes = () => {
           }
         />
 
-        {/* Trang con chỉ dành cho Teacher */}
+        {/* Teacher quản lý sinh viên */}
         <Route
           path="manage-students"
           element={
@@ -55,14 +65,17 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
+
+        {/* Admin quản lý sách (phần bạn làm) */}
+        <Route
+          path="manage-books"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <BookManagementPage />
+            </ProtectedRoute>
+          }
+        />
       </Route>
-
-
-
-
-
-
-      
     </Routes>
   );
 };

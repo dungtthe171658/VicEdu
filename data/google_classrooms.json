@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "course_id": 1,
+    "google_classroom_id": "gclass12345",
+    "google_classroom_code": "xyz123",
+    "status": "ACTIVE",
+    "created_at": "2023-02-21T10:30:00Z"
+  },
+  {
+    "id": 2,
+    "course_id": 2,
+    "google_classroom_id": "gclass67890",
+    "google_classroom_code": "abc456",
+    "status": "ACTIVE",
+    "created_at": "2023-05-16T11:00:00Z"
+  },
+  {
+    "id": 3,
+    "course_id": 3,
+    "google_classroom_id": "gclass54321",
+    "google_classroom_code": "def789",
+    "status": "ACTIVE",
+    "created_at": "2023-07-02T14:00:00Z"
+  }
+]

@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "user_id": 3,
+    "action": "chat",
+    "input_text": "Làm thế nào để cài đặt Node.js trên Windows?",
+    "output_text": "Bạn có thể tải bộ cài đặt từ trang chủ nodejs.org...",
+    "meta": "{\"session_id\":\"chat-session-xyz\"}",
+    "created_at": "2023-03-25T20:00:00Z"
+  },
+  {
+    "id": 2,
+    "user_id": null,
+    "action": "recommend",
+    "input_text": "Generate recommendations for user 4",
+    "output_text": "Generated 5 course recommendations, 2 book recommendations",
+    "meta": "{\"user_id\":4,\"algorithm_version\":\"v2.1\"}",
+    "created_at": "2023-06-20T11:59:00Z"
+  }
+]

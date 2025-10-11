@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "user_id": 3,
+    "subject": "Xác nhận đơn hàng #1",
+    "content": "Cảm ơn bạn đã mua hàng tại VicEdu. Đơn hàng của bạn đã được thanh toán thành công.",
+    "type": "order",
+    "sent_at": "2023-03-22T10:06:20Z",
+    "status": "sent",
+    "meta": "{\"order_id\":1}"
+  },
+  {
+    "id": 2,
+    "user_id": 4,
+    "subject": "Đơn hàng của bạn đang chờ thanh toán",
+    "content": "Đơn hàng #2 của bạn đang chờ thanh toán. Vui lòng hoàn tất để tham gia khóa học.",
+    "type": "order",
+    "sent_at": null,
+    "status": "queued",
+    "meta": "{\"order_id\":2}"
+  },
+  {
+    "id": 3,
+    "user_id": 3,
+    "subject": "Chào mừng bạn đến với khóa học Lập trình Flutter cơ bản",
+    "content": "Bạn đã được ghi danh thành công vào khóa học. Hãy bắt đầu học ngay!",
+    "type": "system",
+    "sent_at": "2023-07-11T09:05:00Z",
+    "status": "sent",
+    "meta": "{\"course_id\":3, \"enrollment_id\": 2}"
+  }
+]

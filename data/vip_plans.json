@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "name": "VIP Tháng",
+    "description": "Truy cập không giới hạn tất cả khóa học trong 30 ngày.",
+    "price_cents": 29900000,
+    "duration_days": 30,
+    "created_at": "2023-01-01T00:00:00Z",
+    "updated_at": "2023-01-01T00:00:00Z"
+  },
+  {
+    "id": 2,
+    "name": "VIP Năm",
+    "description": "Tiết kiệm hơn với gói 1 năm truy cập không giới hạn.",
+    "price_cents": 299000000,
+    "duration_days": 365,
+    "created_at": "2023-01-01T00:00:00Z",
+    "updated_at": "2023-01-01T00:00:00Z"
+  }
+]

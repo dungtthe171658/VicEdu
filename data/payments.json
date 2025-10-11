@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "order_id": 1,
+    "provider": "Momo",
+    "provider_txn_id": "MOMO123456789",
+    "amount_cents": 145000000,
+    "status": "succeeded",
+    "paid_at": "2023-03-22T10:06:15Z",
+    "raw_payload": "{\"partnerCode\":\"MOMO\",\"orderId\":\"1\",\"requestId\":\"...\",\"amount\":1450000,\"responseTime\":...}"
+  },
+  {
+    "id": 2,
+    "order_id": 3,
+    "provider": "VNPay",
+    "provider_txn_id": "VNPAY987654321",
+    "amount_cents": 150000000,
+    "status": "succeeded",
+    "paid_at": "2023-07-11T09:01:30Z",
+    "raw_payload": "{\"vnp_Amount\":\"15000000000\",\"vnp_BankCode\":\"NCB\",\"vnp_OrderInfo\":\"Thanh toan don hang 3\",...}"
+  }
+]

@@ -1,34 +1,21 @@
-import { Sequelize } from 'sequelize';
-import { config } from './config';
-import { logger } from '../utils';
+import mongoose from "mongoose";
+import dotenv from "dotenv";
 
-export const sequelize = new Sequelize(
-    config.database_name!,
-    config.database_user!,
-    config.database_password!,
-    {
-        host: config.database_host!,
-        dialect: 'mysql',
-        logging: false,
-        timezone: '+07:00',
-    }
-);
+dotenv.config();
 
-export const connectDB = async () => {
-    try {
-        await sequelize.authenticate();
-        logger.info('Connected with MySQL database successfully!');
-    } catch (error) {
-        logger.error('Unable to connect with MySQL database:', error);
-        process.exit(1);
-    }
-};
+export const connectDB = async (): Promise<void> => {
+  try {
+    // trim() để loại bỏ khoảng trắng vô tình ở đầu/cuối
+    const uri = process.env.MONGO_URI?.trim();
 
-export const syncDB = async (force = false) => {
-    try {
-        await sequelize.sync({ force });
-        logger.info('All models synced successfully!');
-    } catch (error) {
-        logger.error('Failed to sync models:', error);
+    if (!uri) {
+      throw new Error("Missing MONGO_URI in environment variables");
     }
+
+    await mongoose.connect(uri);
+    console.log(`MongoDB connected successfully to: ${uri}`);
+  } catch (error: any) {
+    console.error("MongoDB connection failed:", error.message);
+    process.exit(1);
+  }
 };
