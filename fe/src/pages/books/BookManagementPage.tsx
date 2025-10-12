@@ -1,73 +1,113 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import bookApi from "../../api/bookApi";
 import type { BookDto } from "../../types/book";
 import BookForm from "../../components/books/BookForm";
+import "./BookManagementPage.css";
 
 const BookManagementPage = () => {
   const [books, setBooks] = useState<BookDto[]>([]);
-  const [selectedBook, setSelectedBook] = useState<BookDto | null>(null);
+  const [selectedBook, setSelectedBook] = useState<Partial<BookDto> | null>(
+    null
+  );
+  const [showModal, setShowModal] = useState(false);
 
-  const loadBooks = () => {
-    bookApi.getAll().then((res) => setBooks(res.data));
+  // Load tất cả sách
+  const loadBooks = async () => {
+    try {
+      const res = await bookApi.getAll();
+      setBooks(res.data);
+    } catch (error) {
+      console.error("Error loading books:", error);
+    }
   };
 
   useEffect(() => {
     loadBooks();
   }, []);
 
+  // Thêm hoặc sửa sách
   const handleSave = async (data: Partial<BookDto>) => {
-    if (selectedBook) {
-      await bookApi.update(selectedBook._id, data);
-    } else {
-      await bookApi.create(data);
+    try {
+      if (selectedBook?._id) {
+        // Edit
+        await bookApi.update(selectedBook._id, data);
+      } else {
+        // Add
+        await bookApi.create(data);
+      }
+      setShowModal(false);
+      setSelectedBook(null);
+      loadBooks();
+    } catch (error) {
+      console.error("Error saving book:", error);
+      alert("Error saving book. Please check your data.");
     }
-    setSelectedBook(null);
-    loadBooks();
   };
 
+  // Mở modal để edit
+  const handleEdit = (book: BookDto) => {
+    setSelectedBook(book);
+    setShowModal(true);
+  };
+
+  // Mở modal để add
+  const handleAdd = () => {
+    setSelectedBook(null);
+    setShowModal(true);
+  };
+
+  // Xóa sách
   const handleDelete = async (id: string) => {
-    if (confirm("Are you sure?")) {
-      await bookApi.delete(id);
-      loadBooks();
+    if (confirm("Are you sure you want to delete this book?")) {
+      try {
+        await bookApi.delete(id);
+        loadBooks();
+      } catch (error) {
+        console.error("Error deleting book:", error);
+        alert("Cannot delete book. Please try again.");
+      }
     }
   };
 
   return (
-    <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
-      <div>
-        <h2 className="text-xl font-semibold mb-3">Book List</h2>
-        <ul className="space-y-2">
-          {books.map((book) => (
-            <li
-              key={book._id}
-              className="flex justify-between items-center border p-2 rounded"
-            >
-              <span>{book.title}</span>
-              <div className="space-x-2">
-                <button
-                  onClick={() => setSelectedBook(book)}
-                  className="px-2 py-1 bg-yellow-500 text-white rounded"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(book._id)}
-                  className="px-2 py-1 bg-red-600 text-white rounded"
-                >
-                  Delete
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+    <div className="book-management-container">
+      <div className="header">
+        <h2>Book Management</h2>
+        <button className="add-btn" onClick={handleAdd}>
+          Add Book
+        </button>
       </div>
 
-      <div>
-        <h2 className="text-xl font-semibold mb-3">
-          {selectedBook ? "Edit Book" : "Add Book"}
-        </h2>
-        <BookForm initialData={selectedBook || {}} onSubmit={handleSave} />
-      </div>
+      <ul className="book-list">
+        {books.map((book) => (
+          <li key={book._id}>
+            <span>{book.title}</span>
+            <div className="actions">
+              <button className="edit-btn" onClick={() => handleEdit(book)}>
+                Edit
+              </button>
+              <button
+                className="delete-btn"
+                onClick={() => handleDelete(book._id)}
+              >
+                Delete
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      {showModal && (
+        <div className="modal">
+          <div className="modal-content">
+            <h3>{selectedBook ? "Edit Book" : "Add Book"}</h3>
+            <BookForm initialData={selectedBook || {}} onSubmit={handleSave} />
+            <button className="close-btn" onClick={() => setShowModal(false)}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

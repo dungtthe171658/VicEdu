@@ -24,14 +24,16 @@ import ProtectedRoute from "./ProtectedRoute";
 const AppRoutes: React.FC = () => {
   return (
     <Routes>
-      {/* 🟢 Trang đăng nhập */}
+      {/* Trang đăng nhập */}
       <Route path="/login" element={<LoginPage />} />
 
-      {/* 🟢 Public routes (User layout) */}
+      {/* Public routes (User layout) */}
       <Route element={<UserLayout />}>
         <Route index element={<HomePage />} />
         <Route path="books" element={<BookListPage />} />
         <Route path="books/:id" element={<BookDetailPage />} />
+        {/* Route test BookManagementPage */}
+        <Route path="test/manage-books" element={<BookManagementPage />} />
       </Route>
 
       {/* 🔒 Dashboard (Admin / Teacher) */}
@@ -74,9 +76,6 @@ const AppRoutes: React.FC = () => {
           }
         />
       </Route>
-
-      {/* ⚠️ 404 fallback */}
-      {/* <Route path="*" element={<NotFoundPage />} /> */}
     </Routes>
   );
 };

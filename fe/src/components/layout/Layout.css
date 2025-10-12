@@ -1,0 +1,85 @@
+/* Layout container */
+.user-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Header */
+.user-header {
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.user-header nav {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.user-header .logo {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1f2937; /* gray-800 */
+  text-decoration: none;
+}
+
+.user-header .menu {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.user-header .menu a {
+  color: #4b5563; /* gray-600 */
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.user-header .menu a:hover {
+  color: #1f2937; /* gray-800 */
+  background-color: rgba(59, 130, 246, 0.1); /* hover light blue */
+}
+
+.user-header .menu a.login {
+  background-color: #3b82f6; /* blue-500 */
+  color: #fff;
+}
+
+.user-header .menu a.login:hover {
+  background-color: #2563eb; /* blue-600 */
+}
+
+/* Main content */
+.user-main {
+  flex-grow: 1;
+}
+
+/* Footer */
+.user-footer {
+  background-color: #1f2937; /* gray-800 */
+  color: #fff;
+  text-align: center;
+  padding: 16px 24px;
+}
+
+.manage-books-btn {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  margin-left: 12px;
+}
+
+.manage-books-btn:hover {
+  background-color: #0056b3;
+}

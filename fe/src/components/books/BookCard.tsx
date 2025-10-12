@@ -1,40 +1,60 @@
 import type { BookDto } from "../../types/book.d";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import "./BookCard.css";
 
 interface BookCardProps {
   book: BookDto;
+  onAddToCart?: (book: BookDto) => void;
 }
 
-const BookCard = ({ book }: BookCardProps) => {
-  const price = (book.price_cents / 100).toFixed(2);
+const BookCard = ({ book, onAddToCart }: BookCardProps) => {
+  const navigate = useNavigate();
+
+  const handleCardClick = () => {
+    navigate(`/books/${book._id}`);
+  };
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onAddToCart?.(book);
+  };
+
+  const priceVND = (book.price_cents / 100).toLocaleString("vi-VN", {
+    style: "currency",
+    currency: "VND",
+  });
+
+  const isOutOfStock = !book.stock || book.stock <= 0;
 
   return (
-    <div className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100">
-      {/* Ảnh sách */}
-      <div className="relative">
+    <div
+      className={`book-card ${isOutOfStock ? "out-of-stock" : ""}`}
+      onClick={handleCardClick}
+    >
+      <div className="image-wrapper">
         <img
           src={book.images?.[0] || "/no-image.png"}
           alt={book.title}
-          className="w-full h-56 object-cover"
+          className={`book-image ${isOutOfStock ? "dimmed" : ""}`}
         />
-        <div className="absolute bottom-2 left-2 bg-blue-600 text-white text-xs px-3 py-1 rounded-full shadow">
-          ${price}
-        </div>
+        {isOutOfStock && <div className="sold-out-overlay">Hết hàng</div>}
       </div>
 
-      {/* Nội dung */}
-      <div className="p-4">
-        <h3 className="text-lg font-semibold text-gray-800 line-clamp-2">
-          {book.title}
-        </h3>
-        <p className="text-sm text-gray-500 mt-1">{book.author}</p>
+      <div className="book-content">
+        <h3 className="book-title">{book.title}</h3>
+        <p className="book-author">{book.author || "Tác giả không rõ"}</p>
+        <p className="book-price">{priceVND}</p>
+        <p className="book-stock">
+          {isOutOfStock ? "Số lượng: 0" : `Số lượng: ${book.stock}`}
+        </p>
 
-        <Link
-          to={`/books/${book._id}`}
-          className="inline-block mt-4 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
+        <button
+          className={`add-to-cart-btn ${isOutOfStock ? "disabled" : ""}`}
+          onClick={handleAddToCart}
+          disabled={isOutOfStock}
         >
-          Xem chi tiết →
-        </Link>
+          🛒 Thêm vào giỏ hàng
+        </button>
       </div>
     </div>
   );

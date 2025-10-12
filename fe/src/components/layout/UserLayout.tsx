@@ -1,39 +1,26 @@
+// src/components/layout/UserLayout.tsx
 import React from "react";
 import { Link, Outlet } from "react-router-dom";
+import "./Layout.css";
 
 const UserHeader = () => {
   return (
-    <header className="bg-white shadow-md">
-      <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
-        <Link to="/" className="text-2xl font-bold text-gray-800">
+    <header className="user-header">
+      <nav>
+        <Link to="/" className="logo">
           VicEdu
         </Link>
 
-        {/* Desktop menu */}
-        <div className="flex items-center space-x-4">
-          <Link
-            to="/courses"
-            className="text-gray-600 hover:text-gray-800 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
-          >
-            Khóa học
-          </Link>
-          <Link
-            to="/books"
-            className="text-gray-600 hover:text-gray-800 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
-          >
-            Sách
-          </Link>
-          <Link
-            to="/about"
-            className="text-gray-600 hover:text-gray-800 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
-          >
-            Giới thiệu
-          </Link>
-          <Link
-            to="/login"
-            className="bg-blue-500 text-white rounded px-4 py-2 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          >
+        <div className="menu">
+          <Link to="/courses">Khóa học</Link>
+          <Link to="/books">Sách</Link>
+          <Link to="/about">Giới thiệu</Link>
+          <Link to="/login" className="login">
             Đăng nhập
+          </Link>
+          {/* ✅ Nút Quản lý sách tạm bỏ check role */}
+          <Link to="/test/manage-books" style={{ color: "red" }}>
+            Test Quản lý sách
           </Link>
         </div>
       </nav>
@@ -42,18 +29,16 @@ const UserHeader = () => {
 };
 
 const UserFooter = () => (
-  <footer className="bg-gray-800 text-white mt-auto">
-    <div className="container mx-auto px-6 py-4 text-center">
-      <p>&copy; 2025 VicEdu. All rights reserved.</p>
-    </div>
+  <footer className="user-footer">
+    <p>&copy; 2025 VicEdu. All rights reserved.</p>
   </footer>
 );
 
 const UserLayout = () => {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="user-layout">
       <UserHeader />
-      <main className="flex-grow">
+      <main className="user-main">
         <Outlet /> {/* Nội dung các trang con hiển thị ở đây */}
       </main>
       <UserFooter />

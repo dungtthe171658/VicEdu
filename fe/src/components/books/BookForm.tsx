@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
-import type { BookDto } from "../../types/book.d";
+import type { BookDto } from "../../types/book";
+import type { CategoryDto } from "../../types/category";
+import categoryApi from "../../api/categoryApi";
+import "./BookForm.css";
 
 interface BookFormProps {
   initialData?: Partial<BookDto>;
@@ -8,25 +11,65 @@ interface BookFormProps {
 }
 
 const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
-  const [formData, setFormData] = useState<Partial<BookDto>>(initialData);
+  const [formData, setFormData] = useState<
+    Partial<BookDto> & { images?: string[] | string }
+  >({
+    ...initialData,
+    // Khi edit, chuyển category_id về string nếu là object
+    category_id:
+      typeof initialData.category_id === "object"
+        ? initialData.category_id?._id
+        : initialData.category_id,
+    images: initialData.images || [],
+  });
+  const [categories, setCategories] = useState<CategoryDto[]>([]);
+
+  useEffect(() => {
+    categoryApi.getAll().then((res) => setCategories(res.data));
+  }, []);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]:
+        name === "price_cents" || name === "stock" ? Number(value) : value,
+    }));
   };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+
+    // Chuyển images sang mảng string
+    const imagesArray: string[] =
+      typeof formData.images === "string"
+        ? formData.images
+            .split(",")
+            .map((s) => s.trim())
+            .filter((s) => s)
+        : Array.isArray(formData.images)
+        ? formData.images
+        : [];
+
+    // Chuẩn payload gửi API
+    const payload: Partial<BookDto> = {
+      ...formData,
+      category_id: formData.category_id?.toString() || "",
+      images: imagesArray,
+      price_cents: Number(formData.price_cents) || 0,
+      stock: Number(formData.stock) || 0,
+    };
+
+    onSubmit(payload);
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-4 bg-white p-4 rounded-lg shadow-md"
-    >
+    <form onSubmit={handleSubmit} className="book-form">
       <input
         type="text"
         name="title"
@@ -34,7 +77,6 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
         value={formData.title || ""}
         onChange={handleChange}
         required
-        className="border w-full p-2 rounded"
       />
 
       <input
@@ -43,7 +85,6 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
         placeholder="Author"
         value={formData.author || ""}
         onChange={handleChange}
-        className="border w-full p-2 rounded"
       />
 
       <textarea
@@ -51,7 +92,6 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
         placeholder="Description"
         value={formData.description || ""}
         onChange={handleChange}
-        className="border w-full p-2 rounded"
       />
 
       <input
@@ -61,7 +101,6 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
         value={formData.price_cents || ""}
         onChange={handleChange}
         required
-        className="border w-full p-2 rounded"
       />
 
       <input
@@ -70,15 +109,39 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
         placeholder="Stock"
         value={formData.stock || ""}
         onChange={handleChange}
-        className="border w-full p-2 rounded"
       />
 
-      <button
-        type="submit"
-        className="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
+      <select
+        name="category_id"
+        value={
+          typeof formData.category_id === "string"
+            ? formData.category_id
+            : formData.category_id?._id || ""
+        }
+        onChange={handleChange}
+        required
       >
-        Save
-      </button>
+        <option value="">Select category</option>
+        {categories.map((cat) => (
+          <option key={cat._id} value={cat._id}>
+            {cat.name}
+          </option>
+        ))}
+      </select>
+
+      <input
+        type="text"
+        name="images"
+        placeholder="Images URLs (comma separated)"
+        value={
+          Array.isArray(formData.images)
+            ? formData.images.join(", ")
+            : formData.images || ""
+        }
+        onChange={handleChange}
+      />
+
+      <button type="submit">Save</button>
     </form>
   );
 };
