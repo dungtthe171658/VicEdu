@@ -1,52 +1,88 @@
-import {AuthStatus, ErrorCode, OtpType} from "../utils";
-import {OtpCodeModel} from "../models";
+// src/controllers/otp.controller.ts
 
-const OTP_TTL_MS = 5 * 60 * 1000;
+import OtpModel, { OtpType, OtpStatus } from "../models/otp.model";
+// import { EmailService } from '../services/email.service'; // Giả sử bạn có service gửi mail
+
+const OTP_TTL_MINUTES = 5; // OTP hết hạn sau 5 phút
 
 export class OTPController {
-    static async sendOtp(otpType: OtpType | string, emailLower: string, meta?: any) {
-        const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digits
-        const key = ["code", String(otpType).toLowerCase(), "email", emailLower].join("-");
-        const expiredAt = new Date(Date.now() + OTP_TTL_MS);
+  /**
+   * Gửi mã OTP đến email.
+   * @param otpType Loại OTP (VERIFY_EMAIL, FORGOT_PASSWORD)
+   * @param email Email người nhận
+   */
+  static async sendOtp(otpType: OtpType, email: string) {
+    const emailLower = email.toLowerCase().trim();
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const key = `${otpType}-${emailLower}`;
+    const expired_at = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
 
-        await OtpCodeModel.upsert({
-            key,
-            code,
-            otp_type: String(otpType),
-            status: "PENDING",
-            attempts: 0,
-            expired_at: expiredAt,
-            metadata: meta ?? null,
-            max_attempts: 5,
-        });
+    await OtpModel.findOneAndUpdate(
+      { key },
+      {
+        key,
+        code,
+        otp_type: otpType,
+        status: OtpStatus.PENDING,
+        attempts: 0,
+        expired_at,
+      },
+      { upsert: true, new: true }
+    );
 
-        // await Mailer.send(emailLower, `Your OTP is ${code}`);
+    // TODO: Tích hợp logic gửi email thực tế ở đây
+    console.log(`[OTP SENT] to ${emailLower} | Code: ${code}`);
+    // await EmailService.send(emailLower, `Your OTP is ${code}`);
 
-        return {key, code, expiredAt};
+    return true;
+  }
+
+  /**
+   * Xác thực mã OTP.
+   * @param otpType Loại OTP
+   * @param email Email
+   * @param code Mã OTP người dùng nhập
+   */
+  static async verify_otp(
+    otpType: OtpType,
+    email: string,
+    code: string
+  ): Promise<boolean> {
+    const emailLower = email.toLowerCase().trim();
+    const key = `${otpType}-${emailLower}`;
+    const rec = await OtpModel.findOne({ key });
+
+    if (!rec) {
+      throw new Error("OTP_NOT_FOUND");
+    }
+    if (rec.status === OtpStatus.CONFIRMED) {
+      // Nếu đã confirm rồi thì coi như thành công, tránh user bị lỗi không cần thiết
+      return true;
+    }
+    if (rec.expired_at.getTime() < Date.now()) {
+      await rec.updateOne({ status: OtpStatus.EXPIRED });
+      throw new Error("OTP_EXPIRED");
+    }
+    if (rec.attempts >= rec.max_attempts) {
+      throw new Error("OTP_TOO_MANY_ATTEMPTS");
+    }
+    if (rec.code !== String(code)) {
+      await rec.updateOne({ $inc: { attempts: 1 } });
+      throw new Error("OTP_INVALID_CODE");
     }
 
-    static async verify_otp(otpType: OtpType | number | string, emailLower: string, code: string) {
-        const key = ["code", String(otpType).toLowerCase(), "email", emailLower].join("-");
-        const rec = await OtpCodeModel.findOne({where: {key}});
-        if (!rec) throw ErrorCode.OTP_NOT_FOUND;
+    // OTP hợp lệ, cập nhật trạng thái
+    // Thay vì xóa ngay, ta có thể đánh dấu là đã xác nhận
+    await rec.updateOne({ status: OtpStatus.CONFIRMED });
+    return true;
+  }
 
-        if (rec.status === "CONFIRMED") return true;
-        if (rec.expired_at.getTime() < Date.now()) {
-            await rec.update({status: "EXPIRED"});
-            throw ErrorCode.OTP_EXPIRED;
-        }
-        if (rec.attempts >= rec.max_attempts) throw ErrorCode.OTP_TOO_MANY_ATTEMPTS;
-
-        if (rec.code !== String(code)) {
-            await rec.update({attempts: rec.attempts + 1});
-            throw ErrorCode.OTP_INVALID_CODE;
-        }
-
-        await rec.update({status: "CONFIRMED"});
-        return true;
-    }
-
-    static async deleteOtpByKey(key: string) {
-        await OtpCodeModel.destroy({where: {key}});
-    }
+  /**
+   * Xóa OTP đã được sử dụng (ví dụ sau khi hoàn tất đăng ký/đổi mật khẩu).
+   */
+  static async deleteOtp(otpType: OtpType, email: string) {
+    const emailLower = email.toLowerCase().trim();
+    const key = `${otpType}-${emailLower}`;
+    await OtpModel.deleteOne({ key });
+  }
 }
