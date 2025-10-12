@@ -1,231 +1,172 @@
-import {
-    ActiveStatus,
-    AuthStatus,
-    ErrorCode,
-    HttpStatus,
-    OtpType,
-    TokenType,
-    UserStatus,
-    Utils,
-} from "../utils";
-import {OtpCodeModel, User} from "../models";
-import {Op} from "sequelize";
-import {OTPController} from "./otp.controller";
+// src/controllers/auth.controller.ts
 
-export class AuthController {
-    public static async getVerifyForgotPassword(email: string) {
-        const user = await this.getValidUserByEmail(email);
-        await OTPController.sendOtp(OtpType.FORGOT_PASSWORD, email.trim().toLowerCase());
-        const plain = user.get({plain: true});
-        const {password_hash, ...rest_user} = plain;
-        return rest_user;
+import { Response } from "express";
+import UserModel from "../models/user.model";
+import jwt from "jsonwebtoken";
+import { AuthRequest } from "../middlewares/auth";
+import { sendOtp, verifyOtp } from "./otp.controller";
+import { OtpType } from "../models/otp.model";
+
+// --- Helper Functions ---
+
+/**
+ * Tạo JWT token cho người dùng.
+ */
+const generateToken = (userId: string, role: string): string => {
+  return jwt.sign({ userId, role }, process.env.JWT_SECRET as string, {
+    expiresIn: "7d",
+  });
+};
+
+// --- Controller Functions ---
+
+/**
+ * Đăng ký tài khoản mới.
+ */
+export const register = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { fullName, email, password, phone, role } = req.body;
+
+    if (!fullName || !email || !password) {
+      res.status(400).json({ message: "Full name, email, and password are required." });
+      return;
     }
 
-    public static async finishForgotPassword(data: any) {
-        const user = await this.getValidUserByEmail(data.email);
-        const key = ["code", "forgot_password", "email", data.email.trim().toLowerCase()].join("-");
-
-        const otpRecord = await OtpCodeModel.findOne({
-            where: {key, status: "CONFIRMED"},
-        });
-        if (!otpRecord) throw ErrorCode.OTP_NOT_VERIFIED;
-
-        await OTPController.deleteOtpByKey(key);
-
-        const newHash = await Utils.hashPassword(data.password);
-        const [affected] = await User.update(
-            {password_hash: newHash},
-            {where: {id: user.id}}
-        );
-        if (affected === 0) throw ErrorCode.UPDATE_ZERO_ROW;
-
-        return {status: HttpStatus.ACCEPTED};
+    const existingUser = await UserModel.findOne({ email });
+    if (existingUser) {
+      res.status(409).json({ message: "Email is already registered." });
+      return;
     }
 
-    public static async getValidUserByEmail(email: string) {
-        const user = await User.findOne({where: {email}});
-        if (!user) throw ErrorCode.USER_NOT_FOUND;
-        return user;
+    const newUser = new UserModel({ fullName, email, password, phone, role });
+    await newUser.save();
+    
+    // TODO: Gửi email xác thực tài khoản (nếu cần)
+    // await sendOtp(OtpType.VERIFY_EMAIL, newUser.email);
+
+    const userResponse = newUser.toObject();
+    // @ts-ignore
+    delete userResponse.password;
+
+    res.status(201).json({ 
+      message: "User registered successfully. Please check your email to verify your account.", 
+      user: userResponse 
+    });
+  } catch (error: any) {
+    console.error("REGISTER_ERROR:", error);
+    res.status(500).json({ message: "An unexpected error occurred during registration." });
+  }
+};
+
+/**
+ * Đăng nhập vào hệ thống.
+ */
+export const login = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      res.status(400).json({ message: "Email and password are required." });
+      return;
     }
 
-    public static async verifyEmail(user_id: any, email: string, code: string) {
-        const user = await User.findOne({where: {manager_id: user_id}});
-        if (user?.email) throw ErrorCode.USER_EMAIL_VERIFIED;
+    const user = await UserModel.findOne({ email }).select('+password');
+    if (!user) {
+      res.status(401).json({ message: "Invalid email or password." });
+      return;
+    }
 
-        const _user = await User.findOne({where: {email}});
-        if (_user) throw ErrorCode.EMAIL_EXIST;
+    // Kiểm tra trạng thái tài khoản
+    if (!user.isActive) {
+      res.status(403).json({ message: "Your account is deactivated. Please contact support." });
+      return;
+    }
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      res.status(403).json({ 
+        message: `Your account is temporarily locked. Please try again after ${user.lockedUntil.toLocaleString()}` 
+      });
+      return;
+    }
 
-        // verify code
-        await OTPController.verify_otp(OtpType.VERIFY_EMAIL, email.trim().toLowerCase(), code);
+    // So sánh mật khẩu
+    const isPasswordMatch = await user.comparePassword(password);
+    if (!isPasswordMatch) {
+      res.status(401).json({ message: "Invalid email or password." });
+      return;
+    }
+    
+    const token = generateToken(user._id.toString(), user.role);
 
-        if (!_user) {
-            await User.update({email}, {where: {manager_id: user_id}});
-        } else {
-            // await AuthPrisma.merge_user(email, user?.username);
+    const userResponse = user.toObject();
+    // @ts-ignore
+    delete userResponse.password;
+
+    res.status(200).json({
+      message: "Login successful.",
+      token,
+      user: userResponse,
+    });
+  } catch (error: any) {
+    console.error("LOGIN_ERROR:", error);
+    res.status(500).json({ message: "An unexpected error occurred during login." });
+  }
+};
+
+/**
+ * Bắt đầu quy trình quên mật khẩu bằng cách gửi OTP.
+ */
+export const forgotPassword = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { email } = req.body;
+        if (!email) {
+          res.status(400).json({ message: "Email is required." });
+          return;
         }
 
-        const userInfo = await User.findOne({where: {manager_id: user_id}});
-        const timestamp = Date.now();
-        const auth_token = Utils.getUserToken({
-            userId: String(userInfo?.id),
-            timestamp,
-            type: TokenType.LOGIN,
-        });
-
-        return {
-            token: auth_token,
-            user_info: userInfo?.get({plain: true}),
-            expiredAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
-        };
-    }
-
-    public static async getVerifyCode(email: string) {
-        const user = await User.findOne({where: {email}});
-        if (user) throw ErrorCode.EMAIL_ACTIVATED;
-        await OTPController.sendOtp(OtpType.VERIFY_EMAIL, email.trim().toLowerCase());
-        return true;
-    }
-
-    public static async generateTokenAndInfo(user_id: any) {
-        const timestamp = Date.now();
-        return Utils.getUserToken({userId: user_id, timestamp, type: TokenType.LOGIN});
-    }
-
-    public static async changePassword(user_id: any, password: string, new_password: string) {
-        const user_auth = await User.findOne({where: {manager_id: user_id}});
-        if (!user_auth) throw ErrorCode.USER_NOT_FOUND;
-
-        if (!password) throw ErrorCode.PASSWORD_IS_INVALID;
-        if (!user_auth.password_hash) throw ErrorCode.PASSWORD_IS_INVALID;
-
-        const isValidPw = await Utils.comparePassword(password, user_auth.password_hash);
-        if (!isValidPw) throw ErrorCode.PASSWORD_IS_INVALID;
-
-        const newHash = await Utils.hashPassword(new_password);
-        await User.update({password_hash: newHash}, {where: {manager_id: user_id}});
-
-        return {status: true, message: "Change password success"};
-    }
-
-    public static async gen_auth_token(id: any) {
-        const user = await User.findOne({where: {manager_id: id}});
-        if (!user) throw ErrorCode.USER_NOT_FOUND;
-        const timestamp = Date.now();
-        return Utils.getUserToken({userId: id, timestamp, type: TokenType.LOGIN});
-    }
-
-    public static async initialRegister(data: any) {
-        const check_email = await User.findOne({
-            where: {
-                email: data.email,
-                status: {[Op.notIn]: [String(UserStatus.DEACTIVATED), String(UserStatus.PENDING)]},
-            },
-        });
-        if (check_email) throw ErrorCode.EMAIL_EXIST;
-
-        const check_username = await User.findOne({
-            where: {
-                username: data.username,
-                status: {[Op.notIn]: [String(UserStatus.DEACTIVATED), String(UserStatus.PENDING)]},
-            },
-        });
-        if (check_username) throw ErrorCode.USERNAME_EXIST;
-
-        const check_phone = await User.findOne({
-            where: {
-                phone_number: data.phone_number,
-                status: {[Op.notIn]: [String(UserStatus.DEACTIVATED), String(UserStatus.PENDING)]},
-            },
-        });
-        if (check_phone) throw ErrorCode.MOBILE_EXIST;
-
-        await OTPController.sendOtp(OtpType.VERIFY_EMAIL, data.email.trim().toLowerCase());
-
-        const data_user = {
-            username: data.username,
-            name: data.name,
-            email: data.email,
-            phone_number: data.phone_number,
-            role: "common",
-        };
-        return {status: HttpStatus.ACCEPTED, data_user};
-    }
-
-    public static async verification(data: any) {
-        try {
-            await OTPController.verify_otp(Number(data.otp_type), data.email.trim().toLowerCase(), data.code);
-            return {status: HttpStatus.ACCEPTED};
-        } catch (error) {
-            return {status: HttpStatus.BAD_REQUEST};
-        }
-    }
-
-    public static async finishRegister(payload: any) {
-        const emailLower = payload.data_user.email.trim().toLowerCase();
-        const key = ["code", "verify_email", "email", emailLower].join("-");
-
-        const otpRecord = await OtpCodeModel.findOne({
-            where: {key, status: "CONFIRMED"},
-        });
-        if (!otpRecord) throw ErrorCode.OTP_NOT_VERIFIED;
-
-        const user = await User.create({
-            username: payload.data_user.username,
-            name: payload.data_user.name,
-            email: emailLower,
-            phone_number: payload.data_user.phone_number,
-            password_hash: await Utils.hashPassword(payload.password),
-            status: String(UserStatus.PENDING),
-            role: "common",
-        });
-        if (!user) throw ErrorCode.USER_INVALID;
-
-        await OtpCodeModel.destroy({where: {key}});
-
-        return {status: HttpStatus.ACCEPTED};
-    }
-
-    public static async login(account: string, password: string) {
-        const userInfo = await User.findOne({
-            where: {
-                [Op.or]: [
-                    {email: account},
-                    {phone_number: account},
-                    {username: account},
-                ],
-            },
-        });
-
-        const statusNum = Number(userInfo?.status);
-        if (
-            !userInfo ||
-            statusNum === UserStatus.DEACTIVATED ||
-            statusNum === UserStatus.BANNED ||
-            statusNum === UserStatus.PENDING
-        ) {
-            throw ErrorCode.USER_INVALID;
+        const user = await UserModel.findOne({ email });
+        if (user) {
+            // Chỉ gửi OTP nếu người dùng tồn tại
+            await sendOtp(OtpType.FORGOT_PASSWORD, email, "Reset Your Password OTP");
         }
 
-        if (!password?.trim()) throw ErrorCode.PASSWORD_IS_INVALID;
-        if (!userInfo.password_hash) throw ErrorCode.PASSWORD_IS_INVALID;
-
-        const isValidPw = await Utils.comparePassword(password, userInfo.password_hash);
-        if (!isValidPw) throw ErrorCode.WRONG_PASSWORD;
-
-        const timestamp = Date.now();
-        const auth_token = Utils.getUserToken({
-            userId: String(userInfo.id),
-            timestamp,
-            type: TokenType.LOGIN,
-        });
-
-        const plain = userInfo.get({plain: true});
-        const {password_hash, ...user_without_password} = plain;
-
-        return {
-            token: auth_token,
-            user_info: user_without_password,
-            expired_at: timestamp + 24 * 60 * 60 * 1000,
-        };
+        // Luôn trả về thông báo thành công để bảo mật, tránh việc dò email
+        res.status(200).json({ message: "If an account with that email exists, a password reset OTP has been sent." });
+    } catch (error: any) {
+        console.error("FORGOT_PASSWORD_ERROR:", error);
+        res.status(500).json({ message: "An unexpected error occurred." });
     }
-}
+};
+
+/**
+ * Hoàn tất quy trình đặt lại mật khẩu bằng OTP.
+ */
+export const resetPassword = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { email, code, newPassword } = req.body;
+        if (!email || !code || !newPassword) {
+            res.status(400).json({ message: "Email, OTP code, and new password are required." });
+            return;
+        }
+
+        const verificationResult = await verifyOtp(OtpType.FORGOT_PASSWORD, email, code);
+        
+        if (verificationResult.status !== 'VALID') {
+            res.status(400).json({ message: verificationResult.message });
+            return;
+        }
+
+        const user = await UserModel.findOne({ email });
+        if (!user) {
+            // Trường hợp này rất hi hữu vì OTP đã được xác thực
+            res.status(404).json({ message: "User not found." });
+            return;
+        }
+
+        user.password = newPassword;
+        await user.save(); // Hook pre-save sẽ tự động hash mật khẩu mới
+
+        res.status(200).json({ message: "Your password has been reset successfully." });
+    } catch (error: any) {
+        console.error("RESET_PASSWORD_ERROR:", error);
+        res.status(500).json({ message: "An unexpected error occurred while resetting the password." });
+    }
+};

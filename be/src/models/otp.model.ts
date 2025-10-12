@@ -1,64 +1,42 @@
-import {DataTypes, Model, Optional} from "sequelize";
-import {sequelize} from "../config";
+import mongoose, { Schema, Document, Model } from "mongoose";
 
-export interface IOtpCodeAttrs {
-    id?: number;
-    key: string;
-    code: string;                // mã OTP (6 chữ số)
-    otp_type: string;            // 'VERIFY_EMAIL', 'FORGOT_PASSWORD'
-    status: string;              // PENDING | CONFIRMED | EXPIRED
-    attempts: number;            // số lần nhập sai
-    max_attempts: number;        // giới hạn số lần
-    expired_at: Date;            // thời điểm hết hạn
-    metadata?: any | null;       // thêm thông tin phụ
-    created_at?: Date;
-    updated_at?: Date;
+// Định nghĩa các loại và trạng thái OTP để dùng lại
+export enum OtpType {
+  VERIFY_EMAIL = 'VERIFY_EMAIL',
+  FORGOT_PASSWORD = 'FORGOT_PASSWORD',
 }
 
-type OtpCreation = Optional<
-    IOtpCodeAttrs,
-    "id" | "status" | "attempts" | "max_attempts" | "metadata" | "created_at" | "updated_at"
->;
-
-export class OtpCodeModel extends Model<IOtpCodeAttrs, OtpCreation> implements IOtpCodeAttrs {
-    declare id: number;
-    declare key: string;
-    declare code: string;
-    declare otp_type: string;
-    declare status: string;
-    declare attempts: number;
-    declare max_attempts: number;
-    declare expired_at: Date;
-    declare metadata: any | null;
-    declare readonly created_at: Date;
-    declare readonly updated_at: Date;
+export enum OtpStatus {
+  PENDING = 'PENDING',
+  CONFIRMED = 'CONFIRMED',
+  EXPIRED = 'EXPIRED',
 }
 
-OtpCodeModel.init(
-    {
-        id: {type: DataTypes.INTEGER.UNSIGNED, primaryKey: true, autoIncrement: true},
-        key: {type: DataTypes.STRING(255), allowNull: false, unique: true},
-        code: {type: DataTypes.STRING(32), allowNull: false},
-        otp_type: {type: DataTypes.STRING(32), allowNull: false},
-        status: {type: DataTypes.STRING(16), allowNull: false, defaultValue: "PENDING"},
-        attempts: {type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0},
-        max_attempts: {type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 5},
-        expired_at: {type: DataTypes.DATE, allowNull: false},
-        metadata: {type: DataTypes.JSON, allowNull: true},
-        created_at: {type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW},
-        updated_at: {type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW},
-    },
-    {
-        sequelize,
-        tableName: "otp_codes",
-        timestamps: true,
-        createdAt: "created_at",
-        updatedAt: "updated_at",
-        indexes: [
-            {unique: true, fields: ["key"]},
-            {fields: ["otp_type"]},
-            {fields: ["status"]},
-            {fields: ["expired_at"]},
-        ],
-    }
-);
+export interface IOtp extends Document {
+  key: string; // ví dụ: "VERIFY_EMAIL-user@example.com"
+  code: string;
+  otp_type: OtpType;
+  status: OtpStatus;
+  attempts: number;
+  max_attempts: number;
+  expired_at: Date;
+  metadata?: object | null;
+}
+
+const otpSchema = new Schema<IOtp>({
+  key: { type: String, required: true, unique: true, index: true },
+  code: { type: String, required: true },
+  otp_type: { type: String, enum: Object.values(OtpType), required: true },
+  status: { type: String, enum: Object.values(OtpStatus), default: OtpStatus.PENDING },
+  attempts: { type: Number, default: 0 },
+  max_attempts: { type: Number, default: 5 },
+  expired_at: { type: Date, required: true, expires: 0 }, // Tự động xóa document khi hết hạn
+  metadata: { type: Schema.Types.Mixed, default: null },
+}, {
+  timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
+  collection: 'otp_codes'
+});
+
+const OtpModel: Model<IOtp> = mongoose.models.OtpCode || mongoose.model<IOtp>("OtpCode", otpSchema);
+
+export default OtpModel;
