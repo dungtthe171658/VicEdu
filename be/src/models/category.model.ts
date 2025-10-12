@@ -1,4 +1,3 @@
-// models/category.model.ts
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface ICategory extends Document {
@@ -20,5 +19,4 @@ const categorySchema = new Schema<ICategory>(
   }
 );
 
-// 🔥 Đăng ký model để mongoose nhận ra tên "Category"
 export default mongoose.model<ICategory>("Category", categorySchema);

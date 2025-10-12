@@ -42,10 +42,3 @@ export const getCategoryById = async (req: Request, res: Response) => {
     res.status(500).json({ message: error.message });
   }
 };
-export const getAllCategories = async (req: Request, res: Response) => {
-  try {
-    return res.status(200).json({ message: "To do" });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
-  }
-};

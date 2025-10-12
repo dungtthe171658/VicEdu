@@ -20,6 +20,7 @@ import BookManagementPage from "../pages/books/BookManagementPage";
 
 // 🔹 Protected route
 import ProtectedRoute from "./ProtectedRoute";
+import { CoursePage } from "../pages/courses/CoursePage";
 
 const AppRoutes: React.FC = () => {
   return (
@@ -30,6 +31,12 @@ const AppRoutes: React.FC = () => {
       {/* Public routes (User layout) */}
       <Route element={<UserLayout />}>
         <Route index element={<HomePage />} />
+        <Route path="/courses" element={<CoursePage />} />
+        {/* 
+        <Route path="/courses/:slug" element={<CategoryDetail />} />
+        <Route path="/courses/:slug/:courseSlug" element={<CourseDetail />} />
+ */}
+
         <Route path="books" element={<BookListPage />} />
         <Route path="books/:id" element={<BookDetailPage />} />
         {/* Route test BookManagementPage */}

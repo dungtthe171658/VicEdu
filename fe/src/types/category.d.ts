@@ -1,8 +1,10 @@
-export interface CategoryDto {
+
+export interface Category {
   _id: string;
   name: string;
-  slug?: string;
+  slug: string;
+  parent_id: number | null;
   description?: string;
-  createdAt?: string;
-  updatedAt?: string;
+  created_at?: string;
+  updated_at?: string;
 }

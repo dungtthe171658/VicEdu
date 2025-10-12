@@ -12,17 +12,17 @@ export const createLesson = async (req: AuthRequest, res: Response) => {
     if (!course) return res.status(404).json({ message: "Course not found" });
 
     // Kiểm tra quyền sở hữu
-    if (course.teacher_id.toString() !== req.user?._id.toString()) {
-      return res.status(403).json({ message: "You are not the owner of this course" });
-    }
+    // if (course.teacher_id.toString() !== req.user?._id.toString()) {
+    //   return res.status(403).json({ message: "You are not the owner of this course" });
+    // }
 
-    const position = course.lessons.length;
-    const newLesson = await LessonModel.create({ title, video_url, duration_minutes, course_id: courseId, position });
+    // const position = course.lessons.length;
+    // const newLesson = await LessonModel.create({ title, video_url, duration_minutes, course_id: courseId, position });
 
-    course.lessons.push(newLesson._id);
-    await course.save();
+    // course.lessons.push(newLesson._id);
+    // await course.save();
 
-    res.status(201).json(newLesson);
+    //res.status(201).json(newLesson);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

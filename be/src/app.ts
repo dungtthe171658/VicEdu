@@ -3,9 +3,10 @@ import cors from "cors";
 import morgan from "morgan";
 import bodyParser from "body-parser";
 
+import courseRoutes from './routes/course.route';
 import bookRoutes from "./routes/book.route";
 import categoryRoutes from "./routes/category.routes";
-
+// import apiRoutes from "./routes/index";
 const app = express();
 
 // Middleware cơ bản
@@ -17,5 +18,7 @@ app.use(morgan("dev"));
 // Đăng ký routes
 app.use("/api/books", bookRoutes);
 app.use("/api/categories", categoryRoutes);
+app.use('/api/courses', courseRoutes);
 
+//app.use("/api", apiRoutes);
 export default app;
