@@ -1,21 +1,14 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import {config} from "./config";
+import {logger} from "../utils";
 
-dotenv.config();
-
-export const connectDB = async (): Promise<void> => {
+export const connectDB = async () => {
   try {
-    // trim() để loại bỏ khoảng trắng vô tình ở đầu/cuối
-    const uri = process.env.MONGO_URI?.trim();
-
-    if (!uri) {
-      throw new Error("Missing MONGO_URI in environment variables");
-    }
-
-    await mongoose.connect(uri);
-    console.log(`MongoDB connected successfully to: ${uri}`);
-  } catch (error: any) {
-    console.error("MongoDB connection failed:", error.message);
+    await mongoose.connect(config.database_url!);
+    logger.info('Connected with database successfully!');
+  } catch (error) {
+    logger.error( 'Unable to connect with database: ',error);
     process.exit(1);
   }
 };

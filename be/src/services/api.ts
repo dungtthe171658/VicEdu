@@ -6,7 +6,7 @@ const startServe = async (app: Application) => {
   // Start server với app được truyền từ bên ngoài
   const server = app.listen(config.serverPort, () => {
     logger.info(
-      `✅ Server started (${config.node_env}) at http://localhost:${config.serverPort}`
+      `Server started (${config.node_env}) at http://localhost:${config.serverPort}`
     );
   });
 

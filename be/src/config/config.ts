@@ -9,10 +9,7 @@ export const config = {
     production: !process.env.NODE_ENV || process.env.NODE_ENV === "production",
     direct_service: process.env.DIRECT_SERVICE === "true",
 
-    database_host: process.env.DB_HOST || 'localhost',
-    database_user: process.env.DB_USER || 'root',
-    database_password: process.env.DB_PASS || '',
-    database_name: process.env.DB_NAME || 'testdb',
+    database_url: process.env.MONGO_URI,
 
     logger: {
         level: process.env.LOGGER_LEVEL ? Number(process.env.LOGGER_LEVEL) : 6, // 0: log, 1: trace, 2: debug, 3: info, 4: warn, 5: fatal, 6: error
