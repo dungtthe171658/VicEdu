@@ -1,25 +1,18 @@
-import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { getBookById } from "../../api/bookApi";
-
-interface Book {
-  _id: string;
-  title: string;
-  author: string;
-  price: number;
-  description: string;
-}
+import { useEffect, useState } from "react";
+import bookApi from "../../api/bookApi";
+import type { BookDto } from "../../types/book.d";
 
 const BookDetailPage = () => {
   const { id } = useParams<{ id: string }>();
-  const [book, setBook] = useState<Book | null>(null);
+  const [book, setBook] = useState<BookDto | null>(null);
 
   useEffect(() => {
+    if (!id) return;
     const fetchBook = async () => {
-      if (!id) return;
       try {
-        const data = await getBookById(id);
-        setBook(data);
+        const res = await bookApi.getById(id);
+        setBook(res.data);
       } catch (error) {
         console.error("Error fetching book:", error);
       }
@@ -27,14 +20,21 @@ const BookDetailPage = () => {
     fetchBook();
   }, [id]);
 
-  if (!book) return <p>Không tìm thấy sách.</p>;
+  if (!book) return <p>Loading...</p>;
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>{book.title}</h2>
-      <p>Tác giả: {book.author}</p>
-      <p>Giá: {book.price.toLocaleString()}₫</p>
-      <p>Mô tả: {book.description}</p>
+    <div className="max-w-3xl mx-auto p-6">
+      <img
+        src={book.images?.[0] || "/no-image.png"}
+        alt={book.title}
+        className="w-full h-80 object-cover rounded-lg mb-4"
+      />
+      <h1 className="text-2xl font-bold">{book.title}</h1>
+      <p className="text-gray-500">{book.author}</p>
+      <p className="mt-4">{book.description}</p>
+      <p className="mt-4 font-semibold text-lg text-blue-600">
+        ${(book.price_cents / 100).toFixed(2)}
+      </p>
     </div>
   );
 };

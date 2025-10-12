@@ -1,55 +1,38 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { getBooks } from "../../api/bookApi";
-
-interface Book {
-  _id: string;
-  title: string;
-  author: string;
-  price: number;
-  description?: string;
-}
+import bookApi from "../../api/bookApi";
+import type { BookDto } from "../../types/book.d";
+import BookCard from "../../components/books/BookCard";
 
 const BookListPage = () => {
-  const [books, setBooks] = useState<Book[]>([]);
+  const [books, setBooks] = useState<BookDto[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchBooks = async () => {
-      try {
-        const data = await getBooks();
-        setBooks(data);
-      } catch (error) {
-        console.error("Error fetching books:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchBooks();
+    bookApi
+      .getAll()
+      .then((res) => setBooks(res.data))
+      .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <p>Đang tải danh sách sách...</p>;
+  if (loading)
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
+      </div>
+    );
+
+  if (!books.length)
+    return (
+      <div className="text-center py-10 text-gray-500">
+        Không có sách nào để hiển thị 📚
+      </div>
+    );
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>📚 Danh sách sách</h2>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "20px" }}>
-        {books.map((book) => (
-          <div
-            key={book._id}
-            style={{
-              border: "1px solid #ccc",
-              borderRadius: "8px",
-              padding: "15px",
-            }}
-          >
-            <h3>{book.title}</h3>
-            <p>Tác giả: {book.author}</p>
-            <p>Giá: {book.price.toLocaleString()}₫</p>
-            <Link to={`/books/${book._id}`}>Xem chi tiết</Link>
-          </div>
-        ))}
-      </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-6">
+      {books.map((book) => (
+        <BookCard key={book._id} book={book} />
+      ))}
     </div>
   );
 };
