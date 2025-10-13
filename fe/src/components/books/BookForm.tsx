@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
 import type { BookDto } from "../../types/book";
-import type { CategoryDto } from "../../types/category";
+import type { Category } from "../../types/category";
 import categoryApi from "../../api/categoryApi";
 import "./BookForm.css";
 
@@ -11,52 +11,48 @@ interface BookFormProps {
 }
 
 const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
-  const [formData, setFormData] = useState<
-    Partial<BookDto> & { images?: string[] | string }
-  >({
+  const [formData, setFormData] = useState<Partial<BookDto> & { images?: string[] | string }>({
     ...initialData,
-    // Khi edit, chuyển category_id về string nếu là object
     category_id:
       typeof initialData.category_id === "object"
         ? initialData.category_id?._id
         : initialData.category_id,
     images: initialData.images || [],
   });
-  const [categories, setCategories] = useState<CategoryDto[]>([]);
+
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
 
   useEffect(() => {
-    categoryApi.getAll().then((res) => setCategories(res.data));
+    categoryApi
+      .getAll()
+      .then((data) => {
+        setCategories(data || []);
+      })
+      .catch(() => setCategories([]))
+      .finally(() => setLoadingCategories(false));
   }, []);
 
   const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-
     setFormData((prev) => ({
       ...prev,
-      [name]:
-        name === "price_cents" || name === "stock" ? Number(value) : value,
+      [name]: name === "price_cents" || name === "stock" ? Number(value) : value,
     }));
   };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
 
-    // Chuyển images sang mảng string
     const imagesArray: string[] =
       typeof formData.images === "string"
-        ? formData.images
-            .split(",")
-            .map((s) => s.trim())
-            .filter((s) => s)
+        ? formData.images.split(",").map((s) => s.trim()).filter((s) => s)
         : Array.isArray(formData.images)
         ? formData.images
         : [];
 
-    // Chuẩn payload gửi API
     const payload: Partial<BookDto> = {
       ...formData,
       category_id: formData.category_id?.toString() || "",
@@ -70,78 +66,69 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
 
   return (
     <form onSubmit={handleSubmit} className="book-form">
-      <input
-        type="text"
-        name="title"
-        placeholder="Title"
-        value={formData.title || ""}
-        onChange={handleChange}
-        required
-      />
+      <div className="form-group">
+        <label htmlFor="title">Title</label>
+        <input id="title" type="text" name="title" value={formData.title || ""} onChange={handleChange} required />
+      </div>
 
-      <input
-        type="text"
-        name="author"
-        placeholder="Author"
-        value={formData.author || ""}
-        onChange={handleChange}
-      />
+      <div className="form-group">
+        <label htmlFor="author">Author</label>
+        <input id="author" type="text" name="author" value={formData.author || ""} onChange={handleChange} />
+      </div>
 
-      <textarea
-        name="description"
-        placeholder="Description"
-        value={formData.description || ""}
-        onChange={handleChange}
-      />
+      <div className="form-group">
+        <label htmlFor="description">Description</label>
+        <textarea id="description" name="description" value={formData.description || ""} onChange={handleChange} />
+      </div>
 
-      <input
-        type="number"
-        name="price_cents"
-        placeholder="Price (cents)"
-        value={formData.price_cents || ""}
-        onChange={handleChange}
-        required
-      />
+      <div className="form-group">
+        <label htmlFor="price_cents">Price (cents)</label>
+        <input id="price_cents" type="number" name="price_cents" value={formData.price_cents || ""} onChange={handleChange} required />
+      </div>
 
-      <input
-        type="number"
-        name="stock"
-        placeholder="Stock"
-        value={formData.stock || ""}
-        onChange={handleChange}
-      />
+      <div className="form-group">
+        <label htmlFor="stock">Stock</label>
+        <input id="stock" type="number" name="stock" value={formData.stock || ""} onChange={handleChange} />
+      </div>
 
-      <select
-        name="category_id"
-        value={
-          typeof formData.category_id === "string"
-            ? formData.category_id
-            : formData.category_id?._id || ""
-        }
-        onChange={handleChange}
-        required
-      >
-        <option value="">Select category</option>
-        {categories.map((cat) => (
-          <option key={cat._id} value={cat._id}>
-            {cat.name}
-          </option>
-        ))}
-      </select>
+      <div className="form-group">
+        <label htmlFor="category_id">Category</label>
+        <select
+          id="category_id"
+          name="category_id"
+          value={formData.category_id?.toString() || ""}
+          onChange={handleChange}
+          required
+        >
+          {loadingCategories ? (
+            <option value="">Loading categories...</option>
+          ) : categories.length === 0 ? (
+            <option value="">No categories found</option>
+          ) : (
+            <>
+              <option value="">Select category</option>
+              {categories.map((cat) => (
+                <option key={cat._id} value={cat._id}>
+                  {cat.name}
+                </option>
+              ))}
+            </>
+          )}
+        </select>
+      </div>
 
-      <input
-        type="text"
-        name="images"
-        placeholder="Images URLs (comma separated)"
-        value={
-          Array.isArray(formData.images)
-            ? formData.images.join(", ")
-            : formData.images || ""
-        }
-        onChange={handleChange}
-      />
+      <div className="form-group">
+        <label htmlFor="images">Images URLs (comma separated)</label>
+        <input
+          id="images"
+          type="text"
+          name="images"
+          value={Array.isArray(formData.images) ? formData.images.join(", ") : formData.images || ""}
+          onChange={handleChange}
+        />
+      </div>
 
-      <button type="submit">Save</button>
+      <button type="submit">Save Book</button>
     </form>
   );
 };

@@ -11,7 +11,7 @@ const toObjectId = (id: any): mongoose.Types.ObjectId | null => {
   return null;
 };
 
-// ✅ Lấy danh sách sách
+// Lấy danh sách sách
 export const getBooks = async (req: Request, res: Response): Promise<void> => {
   try {
     const { search, categoryId, minPrice, maxPrice, sortBy, order } = req.query;
@@ -51,7 +51,7 @@ export const getBooks = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// ✅ Thêm sách mới
+// Thêm sách mới
 export const createBook = async (req: Request, res: Response): Promise<void> => {
   try {
     let { title, price_cents, category_id, author, description, stock, is_published, images } = req.body;
@@ -87,7 +87,7 @@ export const createBook = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-// ✅ Lấy 1 sách theo ID
+// Lấy 1 sách theo ID
 export const getBookById = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
@@ -110,7 +110,7 @@ export const getBookById = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
-// ✅ Cập nhật sách
+// Cập nhật sách
 export const updateBook = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
@@ -146,7 +146,7 @@ export const updateBook = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-// ✅ Ẩn sách
+// Ẩn sách
 export const hideBook = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
@@ -169,7 +169,7 @@ export const hideBook = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// ✅ Xóa sách
+// Xóa sách
 export const deleteBook = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
