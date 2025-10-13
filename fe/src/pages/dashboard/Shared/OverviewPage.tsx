@@ -1,53 +1,97 @@
 import React from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import { FaUsers, FaBookOpen, FaChalkboardTeacher } from 'react-icons/fa';
+import { Box, Typography, Grid, Paper } from '@mui/material';
+import { styled } from '@mui/material/styles';
 
-const StatCard = ({ icon, title, value, color }) => (
-  <div className="bg-white p-6 rounded-lg shadow-md flex items-center">
-    <div className={`mr-4 p-3 rounded-full ${color}`}>
-      {icon}
-    </div>
-    <div>
-      <p className="text-sm text-gray-500">{title}</p>
-      <p className="text-2xl font-bold text-gray-800">{value}</p>
-    </div>
-  </div>
+
+const StatCardContainer = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(2),
+  display: 'flex',
+  alignItems: 'center',
+  boxShadow: theme.shadows[3],
+  height: '100%',
+}));
+
+interface StatCardProps {
+  icon: React.ReactNode;
+  title: string;
+  value: string | number;
+  colorClass: string; 
+}
+
+const StatCard: React.FC<StatCardProps> = ({ icon, title, value, colorClass }) => (
+  <Grid item xs={12} sm={6} md={4}>
+    <StatCardContainer>
+      <Box
+        sx={{
+          mr: 2,
+          p: 1,
+          borderRadius: '50%',
+          backgroundColor: colorClass,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Box sx={{ color: 'white' }}>
+            {icon}
+        </Box>
+      </Box>
+      <Box>
+        <Typography variant="body2" color="text.secondary">{title}</Typography>
+        <Typography variant="h5" fontWeight={600}>{value}</Typography>
+      </Box>
+    </StatCardContainer>
+  </Grid>
 );
 
 
-const OverviewPage = () => {
+const OverviewPage: React.FC = () =>{
   const { user } = useAuth();
 
+
+  const studentCount = "1,250";
+  const activeCourses = "42";
+  const teacherCount = "78";
+  
+
+
   return (
-    <div>
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">
-        Chào mừng trở lại, {user?.fullName}!
-      </h1>
+    <Box>
+      <Typography variant="h4" component="h1" fontWeight={600} gutterBottom>
+        Chào mừng trở lại, {user?.fullName || 'Admin'}!
+      </Typography>
 
-      {/* Grid of statistics cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <Grid container spacing={3}>
         <StatCard 
-          icon={<FaUsers size={24} className="text-white" />}
+          icon={<FaUsers size={24} />}
           title="Tổng số học sinh"
-          value="1,250"
-          color="bg-blue-500"
+          value={studentCount}
+          colorClass="rgba(59, 130, 246, 1)"
         />
         <StatCard 
-          icon={<FaBookOpen size={24} className="text-white" />}
+          icon={<FaBookOpen size={24} />}
           title="Khóa học đang hoạt động"
-          value="42"
-          color="bg-green-500"
+          value={activeCourses}
+          colorClass="rgba(16, 185, 129, 1)"
         />
         <StatCard 
-          icon={<FaChalkboardTeacher size={24} className="text-white" />}
+          icon={<FaChalkboardTeacher size={24} />}
           title="Giáo viên"
-          value="78"
-          color="bg-purple-500"
+          value={teacherCount}
+          colorClass="rgba(168, 85, 247, 1)"
         />
-      </div>
+      </Grid>
 
-      {/* Thêm các component khác ở đây, ví dụ: biểu đồ, danh sách công việc... */}
-    </div>
+
+      <Box mt={4}>
+        <Paper elevation={3} sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>Báo cáo doanh thu (UC04 - Cần API)</Typography>
+            <Typography color="text.secondary">Nội dung biểu đồ và phân tích sẽ được thêm vào đây.</Typography>
+        </Paper>
+      </Box>
+    </Box>
   );
 };
 
