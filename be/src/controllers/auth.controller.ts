@@ -78,6 +78,12 @@ export const verifyEmail = async (req: Request, res: Response) => {
 
     if (!user) return res.status(400).json({ message: "Token không hợp lệ hoặc đã hết hạn" });
 
+    if (user.verifyTokenExpiry && user.verifyTokenExpiry < new Date()) {
+      if(!user.is_verified) {
+        await User.deleteOne({ _id: user._id });
+        return res.status(400).json({ message: "Token đã hết hạn. Vui lòng đăng ký lại." });
+      }
+    }
     user.is_verified = true;
     user.verifyToken = undefined;
     user.verifyTokenExpiry = undefined;
