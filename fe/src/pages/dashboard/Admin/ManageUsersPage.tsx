@@ -1,22 +1,36 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FaPlus, FaLock, FaUnlock, FaEdit, FaTrashAlt } from 'react-icons/fa';
 import userApi from '../../../api/userApi';
 import type { UserDto, UserRole } from '../../../types/user.d'; 
-// import UserForm from "../../../components/common/UserForm"; // Tạm thời comment
+
+// --- THÊM IMPORT MUI ---
+import { 
+    Button, Table, TableBody, TableCell, TableContainer, 
+    TableHead, TableRow, Paper, Typography, Box, Dialog, 
+    DialogTitle, DialogContent, DialogActions, Chip, IconButton 
+} from '@mui/material';
+// Mới (Sử dụng LockOpen cho "Mở khóa"):
+import { Lock as LockIcon, LockOpen as UnlockIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+// import UserForm from "../../../components/common/UserForm"; // Cần import UserForm cho thao tác Create/Edit
+// -----------------------
+
 
 const ManageUsersPage: React.FC = () => {
   const [users, setUsers] = useState<UserDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // State cho Modal/Dialog
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<Partial<UserDto> | null>(null); // Dùng để lưu user đang được sửa/thêm
 
-  // --- Logic Gọi API (Read) ---
-  const loadUsers = async () => {
+  // --- Logic Gọi API (Read & Refresh) ---
+  const loadUsers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      // Gọi API để lấy danh sách người dùng
+      // userApi.getAll() phải trả về { data: UserDto[] } theo cấu trúc API HttpClient bạn đã thiết lập trước đó
       const res = await userApi.getAll(); 
-      // Giả định response.data là mảng UserDto
       if (Array.isArray(res.data)) {
         setUsers(res.data);
       }
@@ -26,105 +40,196 @@ const ManageUsersPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadUsers();
-  }, []);
+  }, [loadUsers]);
 
-  // --- Helper để định dạng UI ---
-  const getRoleBadge = (role: UserRole) => {
-    switch (role) {
-      case 'admin':
-        return <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Admin</span>;
-      case 'teacher':
-        return <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">Teacher</span>;
-      case 'customer':
-      default:
-        return <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Customer</span>;
+  // --- Thao tác Form (Create/Edit) ---
+  const handleSaveUser = async (data: Partial<UserDto>) => {
+      try {
+          if (editingUser?._id) {
+              // Edit (UC: Update User)
+              await userApi.update(editingUser._id, data);
+          } else {
+              // Create (UC01: Create New User)
+              // Lưu ý: API create user thường cần password, bạn cần đảm bảo UserForm cung cấp đủ
+              await userApi.create(data); 
+          }
+          setIsModalOpen(false);
+          setEditingUser(null);
+          loadUsers();
+      } catch (e) {
+          console.error("Lỗi khi lưu người dùng:", e);
+          setError("Lỗi khi thao tác: " + e.message);
+      }
+  }
+
+  const handleOpenCreateModal = () => {
+    setEditingUser(null); // Tạo mới
+    setIsModalOpen(true);
+  }
+
+  const handleOpenEditModal = (user: UserDto) => {
+    setEditingUser(user); // Sửa
+    setIsModalOpen(true);
+  }
+
+  // --- Thao tác Lock/Unlock (UC: Lock/Unlock Account) ---
+  const handleLockUnlock = async (userId: string, isLocked: boolean) => {
+      try {
+          if (isLocked) {
+              // Giả sử khóa 1 giờ nếu đang mở khóa
+              await userApi.lock(userId, 1); 
+              alert("User đã bị khóa.");
+          } else {
+              await userApi.unlock(userId);
+              alert("User đã được mở khóa.");
+          }
+          loadUsers();
+      } catch (err) {
+          console.error("Lỗi khóa/mở khóa:", err);
+          setError("Thao tác thất bại.");
+      }
+  }
+
+  // --- Thao tác Xóa mềm (UC: Delete User - Soft Delete) ---
+  const handleDelete = async (userId: string) => {
+    if (window.confirm("Bạn chắc chắn muốn xóa mềm người dùng này?")) {
+      try {
+        await userApi.softDelete(userId); // Dùng softDelete API đã có
+        loadUsers();
+      } catch (error) {
+        console.error("Lỗi xóa người dùng:", error);
+        setError("Không thể xóa người dùng. Vui lòng thử lại.");
+      }
     }
+  };
+
+  // --- Helper để định dạng UI (Dùng MUI Chip thay cho Span) ---
+  const getRoleBadge = (role: UserRole) => {
+    let color: "primary" | "secondary" | "error" | "warning" | "success" = 'success';
+    if (role === 'admin') color = 'error';
+    if (role === 'teacher') color = 'primary';
+    
+    return <Chip label={role.toUpperCase()} size="small" color={color} variant="filled" />;
   };
 
   const getUserStatus = (user: UserDto) => {
     if (user.deletedAt) {
-      return <span className="text-red-500">Đã xóa mềm</span>;
+      return <Chip label="Đã xóa mềm" color="error" size="small" />;
     }
     if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
-      return <span className="text-orange-500">Đã khóa</span>;
+      return <Chip label="Đã khóa" color="warning" size="small" />;
     }
-    return <span className="text-green-500">Hoạt động</span>;
+    return <Chip label="Hoạt động" color="success" size="small" />;
   };
 
 
   // --- Render UI ---
   if (loading) {
-    return <div className="p-6">Đang tải danh sách người dùng...</div>;
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h6">Đang tải danh sách người dùng...</Typography>
+      </Box>
+    );
   }
 
   if (error) {
-    return <div className="p-6 text-red-600">{error}</div>;
+    return <Box sx={{ p: 3, color: 'error.main' }}><Typography>{error}</Typography></Box>;
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Quản lý Người dùng (UC01)</h1>
-        <button className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded flex items-center">
-          <FaPlus className="mr-2" />
+    <Box sx={{ p: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4" component="h1" fontWeight={600}>Quản lý Người dùng (UC01)</Typography>
+        <Button 
+          variant="contained" 
+          color="primary" 
+          startIcon={<FaPlus />} 
+          onClick={handleOpenCreateModal}
+        >
           Thêm người dùng mới
-        </button>
-      </div>
+        </Button>
+      </Box>
 
-      <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
-        {users.length === 0 ? (
-            <p className="text-gray-600 text-center">Không có người dùng nào được tìm thấy.</p>
-        ) : (
-            <table className="min-w-full divide-y divide-gray-200">
-                <thead>
-                    <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên đầy đủ</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vai trò</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                    {users.map((user) => (
-                        <tr key={user._id}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.fullName}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">{getRoleBadge(user.role)}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">{getUserStatus(user)}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                                {/* Thao tác Sửa */}
-                                <button title="Sửa thông tin" className="text-indigo-600 hover:text-indigo-900">
-                                    <FaEdit />
-                                </button>
-                                
-                                {/* Thao tác Khóa/Mở Khóa */}
-                                {!user.deletedAt && (
-                                    <button 
-                                        title={user.lockedUntil ? "Mở khóa tài khoản" : "Khóa tài khoản"} 
-                                        className={user.lockedUntil ? "text-green-600" : "text-orange-600"}
-                                        // onClick={() => handleLockUnlock(user._id, !!user.lockedUntil)} // Logic sẽ thêm sau
-                                    >
-                                        {user.lockedUntil ? <FaUnlock /> : <FaLock />}
-                                    </button>
-                                )}
+      <Paper elevation={3} sx={{ width: '100%', overflow: 'hidden' }}>
+        <TableContainer>
+          <Table aria-label="user management table">
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 'bold' }}>Tên đầy đủ</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Email</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Vai trò</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Trạng thái</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 'bold' }}>Thao tác</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {users.map((user) => (
+                <TableRow key={user._id} hover>
+                  <TableCell>{user.fullName}</TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell>{getRoleBadge(user.role)}</TableCell>
+                  <TableCell>{getUserStatus(user)}</TableCell>
+                  <TableCell align="right">
+                    
+                    {/* Thao tác Sửa */}
+                    <IconButton title="Sửa thông tin" color="secondary" onClick={() => handleOpenEditModal(user)}>
+                        <EditIcon fontSize="small" />
+                    </IconButton>
+                    
+                    {/* Thao tác Khóa/Mở Khóa */}
+                    {!user.deletedAt && (
+                        <IconButton 
+                            title={user.lockedUntil ? "Mở khóa tài khoản" : "Khóa tài khoản"} 
+                            color={user.lockedUntil ? "success" : "warning"}
+                            onClick={() => handleLockUnlock(user._id, !!user.lockedUntil)}
+                        >
+                            {user.lockedUntil ? <UnlockIcon fontSize="small" /> : <LockIcon fontSize="small" />}
+                        </IconButton>
+                    )}
 
-                                {/* Thao tác Xóa mềm */}
-                                <button title="Xóa tài khoản" className="text-red-600 hover:text-red-900">
-                                    <FaTrashAlt />
-                                </button>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+                    {/* Thao tác Xóa mềm */}
+                    <IconButton title="Xóa tài khoản" color="error" onClick={() => handleDelete(user._id)}>
+                        <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        {users.length === 0 && (
+            <Box sx={{ p: 3, textAlign: 'center' }}>
+                <Typography color="text.secondary">Không có người dùng nào được tìm thấy.</Typography>
+            </Box>
         )}
-      </div>
-    </div>
+      </Paper>
+      
+      {/* --- Modal/Dialog cho Create/Edit (UC01) --- */}
+      <Dialog open={isModalOpen} onClose={() => setIsModalOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{editingUser ? `Chỉnh sửa: ${editingUser.fullName}` : "Tạo Người dùng Mới"}</DialogTitle>
+        <DialogContent dividers>
+          {/* 
+            ⚠️ Cần phải có UserForm.tsx để truyền vào đây.
+            <UserForm 
+                initialData={editingUser || {}} 
+                onSubmit={handleSaveUser} 
+            /> 
+          */}
+          <Typography color="text.secondary">
+              (UserForm component needs to be implemented here to handle UC01: Create User)
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+            <Button onClick={() => setIsModalOpen(false)}>Hủy</Button>
+            {/* Nút Submit sẽ được đặt bên trong UserForm */}
+        </DialogActions>
+      </Dialog>
+
+    </Box>
   );
 };
 
