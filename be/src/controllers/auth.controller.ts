@@ -1,172 +1,222 @@
-// src/controllers/auth.controller.ts
+import { Request, Response } from "express";
+import User, { IUser } from "../models/user.model";
+import bcrypt from "bcryptjs";
+import jwt, { JwtPayload } from "jsonwebtoken";
+import crypto from "crypto";
+import nodemailer from "nodemailer";
+import { JWT_SECRET } from "../middlewares/auth";
+import dotenv from "dotenv";
 
-import { Response } from "express";
-import UserModel from "../models/user.model";
-import jwt from "jsonwebtoken";
-import { AuthRequest } from "../middlewares/auth";
-import { sendOtp, verifyOtp } from "./otp.controller";
-import { OtpType } from "../models/otp.model";
+dotenv.config();
 
-// --- Helper Functions ---
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.APP_PASSWORD,
+  },
+});
 
-/**
- * Tạo JWT token cho người dùng.
- */
-const generateToken = (userId: string, role: string): string => {
-  return jwt.sign({ userId, role }, process.env.JWT_SECRET as string, {
-    expiresIn: "7d",
-  });
-};
-
-// --- Controller Functions ---
-
-/**
- * Đăng ký tài khoản mới.
- */
-export const register = async (req: AuthRequest, res: Response): Promise<void> => {
+// ====================== ĐĂNG KÝ ======================
+export const register = async (req: Request, res: Response) => {
   try {
-    const { fullName, email, password, phone, role } = req.body;
+    const { name, email, password, phone, role } = req.body;
 
-    if (!fullName || !email || !password) {
-      res.status(400).json({ message: "Full name, email, and password are required." });
-      return;
-    }
+    if (!name || !email || !password)
+      return res.status(400).json({ message: "Thiếu thông tin" });
 
-    const existingUser = await UserModel.findOne({ email });
-    if (existingUser) {
-      res.status(409).json({ message: "Email is already registered." });
-      return;
-    }
+    const existing = await User.findOne({ email });
+    if (existing)
+      return res.status(400).json({ message: "Email đã được sử dụng" });
 
-    const newUser = new UserModel({ fullName, email, password, phone, role });
+    const hashed = await bcrypt.hash(password, 10);
+    const verifyToken = crypto.randomBytes(32).toString("hex");
+
+    const newUser = new User({
+      name,
+      email,
+      password: hashed,
+      phone,
+      role,
+      verifyToken,
+      verifyTokenExpiry: new Date(Date.now() + 15 * 60 * 1000),
+    });
+
     await newUser.save();
-    
-    // TODO: Gửi email xác thực tài khoản (nếu cần)
-    // await sendOtp(OtpType.VERIFY_EMAIL, newUser.email);
 
-    const userResponse = newUser.toObject();
-    // @ts-ignore
-    delete userResponse.password;
+    const verifyUrl = `${process.env.FE_URL}/verify-email?token=${verifyToken}`;
+    await transporter.sendMail({
+      to: email,
+      subject: "Xác minh email",
+      html: `
+        <h3>Chào ${name}</h3>
+        <p>Nhấn vào liên kết sau để xác minh email của bạn:</p>
+        <a href="${verifyUrl}">${verifyUrl}</a>
+        <p>Liên kết hết hạn sau 15 phút.</p>
+      `,
+    });
 
-    res.status(201).json({ 
-      message: "User registered successfully. Please check your email to verify your account.", 
-      user: userResponse 
+    res.status(201).json({
+      message: "Đăng ký thành công. Vui lòng kiểm tra email để xác minh.",
     });
   } catch (error: any) {
-    console.error("REGISTER_ERROR:", error);
-    res.status(500).json({ message: "An unexpected error occurred during registration." });
+    console.error("Lỗi đăng ký:", error);
+    res.status(500).json({ message: "Lỗi máy chủ", error: error.message });
   }
 };
 
-/**
- * Đăng nhập vào hệ thống.
- */
-export const login = async (req: AuthRequest, res: Response): Promise<void> => {
+// ====================== XÁC MINH EMAIL ======================
+export const verifyEmail = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      res.status(400).json({ message: "Email and password are required." });
-      return;
-    }
+    const { token } = req.query;
+    if (!token) return res.status(400).json({ message: "Thiếu token" });
 
-    const user = await UserModel.findOne({ email }).select('+password');
-    if (!user) {
-      res.status(401).json({ message: "Invalid email or password." });
-      return;
-    }
-
-    // Kiểm tra trạng thái tài khoản
-    if (!user.isActive) {
-      res.status(403).json({ message: "Your account is deactivated. Please contact support." });
-      return;
-    }
-    if (user.lockedUntil && user.lockedUntil > new Date()) {
-      res.status(403).json({ 
-        message: `Your account is temporarily locked. Please try again after ${user.lockedUntil.toLocaleString()}` 
-      });
-      return;
-    }
-
-    // So sánh mật khẩu
-    const isPasswordMatch = await user.comparePassword(password);
-    if (!isPasswordMatch) {
-      res.status(401).json({ message: "Invalid email or password." });
-      return;
-    }
-    
-    const token = generateToken(user._id.toString(), user.role);
-
-    const userResponse = user.toObject();
-    // @ts-ignore
-    delete userResponse.password;
-
-    res.status(200).json({
-      message: "Login successful.",
-      token,
-      user: userResponse,
+    const user = await User.findOne({
+      verifyToken: token,
+      verifyTokenExpiry: { $gt: new Date() },
     });
+
+    if (!user) return res.status(400).json({ message: "Token không hợp lệ hoặc đã hết hạn" });
+
+    user.is_verified = true;
+    user.verifyToken = undefined;
+    user.verifyTokenExpiry = undefined;
+    await user.save();
+
+    res.json({ message: "Xác minh email thành công" });
   } catch (error: any) {
-    console.error("LOGIN_ERROR:", error);
-    res.status(500).json({ message: "An unexpected error occurred during login." });
+    console.error("Lỗi xác minh email:", error);
+    res.status(500).json({ message: "Lỗi máy chủ", error: error.message });
   }
 };
 
-/**
- * Bắt đầu quy trình quên mật khẩu bằng cách gửi OTP.
- */
-export const forgotPassword = async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-        const { email } = req.body;
-        if (!email) {
-          res.status(400).json({ message: "Email is required." });
-          return;
-        }
+// ====================== ĐĂNG NHẬP ======================
+export const login = async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body || {};
+    const user: IUser | null = await User.findOne({ email });
+    console.log("User tìm thấy:", user);
+    if (!user)
+      return res.status(400).json({ message: "Tài khoản không tồn tại" });
 
-        const user = await UserModel.findOne({ email });
-        if (user) {
-            // Chỉ gửi OTP nếu người dùng tồn tại
-            await sendOtp(OtpType.FORGOT_PASSWORD, email, "Reset Your Password OTP");
-        }
-
-        // Luôn trả về thông báo thành công để bảo mật, tránh việc dò email
-        res.status(200).json({ message: "If an account with that email exists, a password reset OTP has been sent." });
-    } catch (error: any) {
-        console.error("FORGOT_PASSWORD_ERROR:", error);
-        res.status(500).json({ message: "An unexpected error occurred." });
+    if (user.password === "google_oauth") {
+      return res.status(400).json({ message: "Hãy đăng nhập bằng Google" });
     }
+    
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch)
+      return res.status(400).json({ message: "Sai mật khẩu" });
+
+    if (!user.is_verified)
+      return res.status(400).json({ message: "Email chưa xác minh" });
+
+    const token = jwt.sign(
+      { id: user._id, role: user.role, email: user.email },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.json({
+      message: "Đăng nhập thành công",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        role: user.role,
+        email: user.email,
+      },
+    });
+  } catch (error: any) {
+    console.error("Lỗi đăng nhập:", error);
+    res.status(500).json({ message: "Lỗi máy chủ", error: error.message });
+  }
 };
 
-/**
- * Hoàn tất quy trình đặt lại mật khẩu bằng OTP.
- */
-export const resetPassword = async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-        const { email, code, newPassword } = req.body;
-        if (!email || !code || !newPassword) {
-            res.status(400).json({ message: "Email, OTP code, and new password are required." });
-            return;
-        }
+// ====================== QUÊN MẬT KHẨU ======================
+export const forgotPassword = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user)
+      return res.status(400).json({ message: "Email không tồn tại" });
 
-        const verificationResult = await verifyOtp(OtpType.FORGOT_PASSWORD, email, code);
-        
-        if (verificationResult.status !== 'VALID') {
-            res.status(400).json({ message: verificationResult.message });
-            return;
-        }
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    user.resetToken = resetToken;
+    user.resetTokenExpiry = new Date(Date.now() + 15 * 60 * 1000);
+    await user.save();
 
-        const user = await UserModel.findOne({ email });
-        if (!user) {
-            // Trường hợp này rất hi hữu vì OTP đã được xác thực
-            res.status(404).json({ message: "User not found." });
-            return;
-        }
+    const resetUrl = `${process.env.FE_URL}/reset-password/${resetToken}`;
+    await transporter.sendMail({
+      to: email,
+      subject: "Đặt lại mật khẩu",
+      html: `
+        <h3>Xin chào ${user.name}</h3>
+        <p>Nhấn vào liên kết sau để đặt lại mật khẩu:</p>
+        <a href="${resetUrl}">${resetUrl}</a>
+        <p>Liên kết hết hạn sau 15 phút.</p>
+      `,
+    });
 
-        user.password = newPassword;
-        await user.save(); // Hook pre-save sẽ tự động hash mật khẩu mới
+    res.json({ message: "Email đặt lại mật khẩu đã được gửi" });
+  } catch (error: any) {
+    console.error("Lỗi forgotPassword:", error);
+    res.status(500).json({ message: "Lỗi máy chủ", error: error.message });
+  }
+};
 
-        res.status(200).json({ message: "Your password has been reset successfully." });
-    } catch (error: any) {
-        console.error("RESET_PASSWORD_ERROR:", error);
-        res.status(500).json({ message: "An unexpected error occurred while resetting the password." });
-    }
+// ====================== ĐẶT LẠI MẬT KHẨU ======================
+export const resetPassword = async (req: Request, res: Response) => {
+  try {
+    const { token } = req.params;
+    const { newPassword } = req.body;
+
+    const user = await User.findOne({
+      resetToken: token,
+      resetTokenExpiry: { $gt: new Date() },
+    });
+
+    if (!user)
+      return res.status(400).json({ message: "Token không hợp lệ hoặc hết hạn" });
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    user.password = hashed;
+    user.resetToken = undefined;
+    user.resetTokenExpiry = undefined;
+    await user.save();
+
+    res.json({ message: "Đặt lại mật khẩu thành công" });
+  } catch (error: any) {
+    console.error("Lỗi resetPassword:", error);
+    res.status(500).json({ message: "Lỗi máy chủ", error: error.message });
+  }
+};
+
+// ====================== GOOGLE LOGIN SUCCESS ======================
+export const googleSuccess = (req: Request, res: Response) => {
+  const user = req.user as IUser;
+  if (!user) return res.redirect(`${process.env.FE_URL}/login?error=google_failed`);
+
+  const token = jwt.sign(
+    { id: user._id, role: user.role, email: user.email },
+    JWT_SECRET,
+    { expiresIn: "7d" }
+  );
+
+  const redirectUrl = `${process.env.FE_URL}/google-success?token=${token}`;
+  res.redirect(redirectUrl);
+};
+
+// ====================== GOOGLE LOGIN FAILURE ======================
+export const googleFailure = (_req: Request, res: Response) => {
+  res.redirect(`${process.env.FE_URL}/login?error=google_failed`);
+};
+
+export default {
+  register,
+  verifyEmail,
+  login,
+  forgotPassword,
+  resetPassword,
+  googleSuccess,
+  googleFailure,
 };

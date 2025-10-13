@@ -6,7 +6,7 @@ import slugify from "slugify";
 export const createCourse = async (req: AuthRequest, res: Response) => {
     try {
         const { title, description, price, category_id } = req.body;
-        const teacher_id = req.user?._id;
+        const teacher_id = req.user;
         const slug = slugify(title, { lower: true, strict: true });
         
         const newCourse = await CourseModel.create({ title, slug, description, price, category_id, teacher_id });

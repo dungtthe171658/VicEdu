@@ -1,48 +1,38 @@
-[{
-  "_id": {
-    "$oid": "64a1f001111111111111aaaa"
+[
+  {
+    "_id": { "$oid": "64a1f001111111111111aaaa" },
+    "name": "Admin Test",
+    "email": "admin@example.com",
+    "password": "$2b$10$8j4CuukotAKiG13fQqVjKOe2u/MQV7EnqOG3G8rbCV8N0wGQ/XKQ6",
+    "phone": "0900000001",
+    "role": "admin",
+    "is_verified": true,
+    "verifyToken": null,
+    "verifyTokenExpiry": null,
+    "createdAt": { "$date": "2025-08-22T06:00:00.000Z" }
   },
-  "name": "Admin Test",
-  "email": "admin@example.com",
-  "password": "$2b$10$8j4CuukotAKiG13fQqVjKOe2u/MQV7EnqOG3G8rbCV8N0wGQ/XKQ6",
-  "phone": "0900000001",
-  "role": "admin",
-  "is_verified": true,
-  "verifyToken": null,
-  "verifyTokenExpiry": null,
-  "createdAt": {
-    "$date": "2025-08-22T06:00:00.000Z"
-  }
-},
-{
-  "_id": {
-    "$oid": "64a1f001111111111111bbbb"
+  {
+    "_id": { "$oid": "64a1f001111111111111bbbb" },
+    "name": "Customer Test",
+    "email": "customer@example.com",
+    "password": "$2b$10$8j4CuukotAKiG13fQqVjKOe2u/MQV7EnqOG3G8rbCV8N0wGQ/XKQ6",
+    "phone": "0900000002",
+    "role": "customer",
+    "is_verified": true,
+    "verifyToken": null,
+    "verifyTokenExpiry": null,
+    "createdAt": { "$date": "2025-08-22T06:00:00.000Z" }
   },
-  "name": "User Test",
-  "email": "user@example.com",
-  "password": "$2b$10$8j4CuukotAKiG13fQqVjKOe2u/MQV7EnqOG3G8rbCV8N0wGQ/XKQ6",
-  "phone": "0900000002",
-  "role": "user",
-  "is_verified": true,
-  "verifyToken": null,
-  "verifyTokenExpiry": null,
-  "createdAt": {
-    "$date": "2025-08-22T06:00:00.000Z"
+  {
+    "_id": { "$oid": "64a1f001111111111111cccc" },
+    "name": "Teacher Test",
+    "email": "teacher@example.com",
+    "password": "$2b$10$8j4CuukotAKiG13fQqVjKOe2u/MQV7EnqOG3G8rbCV8N0wGQ/XKQ6",
+    "phone": "0900000003",
+    "role": "teacher",
+    "is_verified": true,
+    "verifyToken": null,
+    "verifyTokenExpiry": null,
+    "createdAt": { "$date": "2025-08-22T06:00:00.000Z" }
   }
-},
-{
-  "_id": {
-    "$oid": "64a1f001111111111111cccc"
-  },
-  "name": "Organizer Test",
-  "email": "organizer@example.com",
-  "password": "$2b$10$8j4CuukotAKiG13fQqVjKOe2u/MQV7EnqOG3G8rbCV8N0wGQ/XKQ6",
-  "phone": "0900000003",
-  "role": "organizer",
-  "is_verified": true,
-  "verifyToken": null,
-  "verifyTokenExpiry": null,
-  "createdAt": {
-    "$date": "2025-08-22T06:00:00.000Z"
-  }
-}]
+]
