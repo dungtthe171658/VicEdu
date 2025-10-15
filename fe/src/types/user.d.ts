@@ -1,18 +1,16 @@
-// src/types/user.d.ts
-
 export type UserRole = 'admin' | 'teacher' | 'customer';
 
 export interface UserDto {
   _id: string;
-  fullName: string;
+  name: string;               // ✅ trùng với BE
   email: string;
   phone?: string;
-  avatarUrl?: string;
+  avatar?: string;            // ✅ trùng với BE
   role: UserRole;
-  isActive: boolean;
-  lockedUntil?: string | null; // Date object từ BE, string ở FE
-  deletedAt?: string | null; // Cho soft delete
+  is_verified: boolean;       // ✅ trùng với BE
+  lockedUntil?: string | null;
+  deletedAt?: string | null;
   
-  created_at?: string;
-  updated_at?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }

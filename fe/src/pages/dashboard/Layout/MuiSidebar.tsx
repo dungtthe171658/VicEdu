@@ -52,12 +52,12 @@ const MuiSidebar: React.FC<SidebarProps> = ({
 
   const items = [
     { label: 'Dashboard', path: '/dashboard', icon: HomeIcon },
-    { label: 'Tài khoản', path: '/manage-users', icon: PeopleIcon },
-    { label: 'Sách ', path: '/manage-books', icon: ArticleIcon },
-    { label: 'Đơn hàng', path: '/admin/orders', icon: ShoppingCartIcon },
-    { label: 'Khóa học', path: '/admin/courses', icon: ArticleIcon },
-    { label: 'Danh mục', path: '/admin/categories', icon: CategoryIcon },
-    { label: 'Đánh giá', path: '/admin/reviews', icon: ReviewsIcon },
+    { label: 'Tài khoản', path: 'manage-users', icon: PeopleIcon },
+    { label: 'Sách ', path: 'manage-books', icon: ArticleIcon },
+    { label: 'Đơn hàng', path: 'orders', icon: ShoppingCartIcon },
+    { label: 'Khóa học', path: 'courses', icon: ArticleIcon },
+    { label: 'Danh mục', path: 'categories', icon: CategoryIcon },
+    { label: 'Đánh giá', path: 'reviews', icon: ReviewsIcon },
   ] as const;
 
   return (

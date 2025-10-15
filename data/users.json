@@ -5,10 +5,14 @@
     "email": "admin@example.com",
     "password": "$2b$10$8j4CuukotAKiG13fQqVjKOe2u/MQV7EnqOG3G8rbCV8N0wGQ/XKQ6",
     "phone": "0900000001",
+    "avatar": null,
     "role": "admin",
     "is_verified": true,
     "verifyToken": null,
     "verifyTokenExpiry": null,
+    "resetToken": null,
+    "resetTokenExpiry": null,
+    "googleId": null,
     "createdAt": { "$date": "2025-08-22T06:00:00.000Z" }
   },
   {
@@ -17,10 +21,14 @@
     "email": "customer@example.com",
     "password": "$2b$10$8j4CuukotAKiG13fQqVjKOe2u/MQV7EnqOG3G8rbCV8N0wGQ/XKQ6",
     "phone": "0900000002",
+    "avatar": null,
     "role": "customer",
     "is_verified": true,
     "verifyToken": null,
     "verifyTokenExpiry": null,
+    "resetToken": null,
+    "resetTokenExpiry": null,
+    "googleId": null,
     "createdAt": { "$date": "2025-08-22T06:00:00.000Z" }
   },
   {
@@ -29,10 +37,14 @@
     "email": "teacher@example.com",
     "password": "$2b$10$8j4CuukotAKiG13fQqVjKOe2u/MQV7EnqOG3G8rbCV8N0wGQ/XKQ6",
     "phone": "0900000003",
+    "avatar": null,
     "role": "teacher",
     "is_verified": true,
     "verifyToken": null,
     "verifyTokenExpiry": null,
+    "resetToken": null,
+    "resetTokenExpiry": null,
+    "googleId": null,
     "createdAt": { "$date": "2025-08-22T06:00:00.000Z" }
   }
 ]

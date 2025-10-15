@@ -1,137 +1,367 @@
 import { Request, Response } from "express";
-import { AuthRequest } from "../middlewares/auth"; // Đảm bảo import đúng đường dẫn
+import mongoose from "mongoose";
+import { AuthRequest } from "../middlewares/auth";
 import UserModel from "../models/user.model";
-import { isValidObjectId } from "mongoose";
+
+const isValidObjectId = (id: any) => mongoose.Types.ObjectId.isValid(id);
+const toObjectId = (id: any): mongoose.Types.ObjectId | null =>
+  isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null;
+
+const parseNum = (v: any, d = 0) => (v === undefined ? d : Number(v));
+const parseBool = (v: any) =>
+  v === true || v === "true" ? true : v === false || v === "false" ? false : undefined;
+
+const SAFE_USER_PROJECTION = "-password -__v"; // ẩn trường nhạy cảm
 
 /**
- * [Admin] Lấy danh sách tất cả người dùng (bao gồm cả user đã bị xóa mềm).
+ * GET /users
+ * [Admin] Liệt kê người dùng với lọc/tìm kiếm/phân trang/sort + meta.
+ * query: search, role, isActive, includeDeleted, sortBy(fullName|email|created_at), order(asc|desc), page, limit
  */
 export const getAllUsers = async (req: Request, res: Response): Promise<void> => {
   try {
-    // @ts-ignore: Dùng withDeleted() từ plugin mongoose-delete
-    const users = await UserModel.findWithDeleted({});
-    res.status(200).json(users);
+    const {
+      search,
+      role,
+      isActive,
+      includeDeleted, // true/false
+      sortBy,
+      order,
+      page = "1",
+      limit = "20",
+    } = req.query;
+
+    const filter: Record<string, any> = {};
+
+    if (search) {
+      const s = String(search);
+      filter.$or = [
+        { fullName: { $regex: s, $options: "i" } },
+        { email: { $regex: s, $options: "i" } },
+        { phone: { $regex: s, $options: "i" } },
+      ];
+    }
+
+    if (role) filter.role = String(role);
+    const activeFlag = parseBool(isActive);
+    if (activeFlag !== undefined) filter.isActive = activeFlag;
+
+    // sort whitelist
+    const dir: 1 | -1 = order === "asc" ? 1 : -1;
+    const sortWhitelist = new Set(["fullName", "email", "created_at"]);
+    const sort: Record<string, 1 | -1> = sortWhitelist.has(String(sortBy))
+      ? { [String(sortBy)]: dir }
+      : { created_at: -1 };
+
+    // paging
+    const pageNum = Math.max(parseInt(String(page), 10) || 1, 1);
+    const limitNum = Math.min(Math.max(parseInt(String(limit), 10) || 20, 1), 100);
+    const skip = (pageNum - 1) * limitNum;
+
+    // Nếu có plugin mongoose-delete:
+    //  - includeDeleted=true => dùng findWithDeleted, countWithDeleted
+    //  - ngược lại => find bình thường (không lấy deleted)
+    const useWithDeleted = parseBool(includeDeleted) === true;
+
+    const queryExec = async () => {
+      if ((UserModel as any).findWithDeleted && useWithDeleted) {
+        const [data, total] = await Promise.all([
+          (UserModel as any)
+            .findWithDeleted(filter)
+            .select(SAFE_USER_PROJECTION)
+            .sort(sort)
+            .skip(skip)
+            .limit(limitNum)
+            .lean(),
+          (UserModel as any).countDocumentsWithDeleted
+            ? (UserModel as any).countDocumentsWithDeleted(filter)
+            : UserModel.countDocuments(filter),
+        ]);
+        return { data, total };
+      } else {
+        const [data, total] = await Promise.all([
+          UserModel.find(filter)
+            .select(SAFE_USER_PROJECTION)
+            .sort(sort)
+            .skip(skip)
+            .limit(limitNum)
+            .lean(),
+          UserModel.countDocuments(filter),
+        ]);
+        return { data, total };
+      }
+    };
+
+    const { data, total } = await queryExec();
+
+    res.status(200).json({
+      data,
+      meta: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum),
+      },
+    });
   } catch (error: any) {
     res.status(500).json({ message: "Server error.", error: error.message });
   }
 };
 
 /**
- * Lấy thông tin cá nhân của người dùng đang đăng nhập.
+ * GET /users/me
+ * Lấy thông tin cá nhân (từ token).
  */
 export const getMyProfile = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    // req.user đã được gắn bởi middleware auth
     res.status(200).json(req.user);
+  } catch (error: any) {
+    res.status(500).json({ message: "Server error.", error: error.message });
+  }
 };
 
 /**
- * [Admin] Lấy thông tin một người dùng theo ID.
+ * GET /users/:id
+ * [Admin] Lấy user theo ID (kể cả đã xóa mềm nếu có plugin).
  */
 export const getUserById = async (req: Request, res: Response): Promise<void> => {
-    try {
-        const { id } = req.params;
-        if (!isValidObjectId(id)) {
-            return res.status(400).json({ message: "Invalid user ID format." });
-        }
-        // @ts-ignore
-        const user = await UserModel.findOneWithDeleted({ _id: id });
-        if (!user) {
-            return res.status(404).json({ message: "User not found." });
-        }
-        res.status(200).json(user);
-    } catch (error: any) {
-        res.status(500).json({ message: "Server error." });
+  try {
+    const { id } = req.params;
+    if (!isValidObjectId(id)) {
+      res.status(400).json({ message: "Invalid user ID format." });
+      return;
     }
+
+    let user: any;
+    if ((UserModel as any).findOneWithDeleted) {
+      user = await (UserModel as any)
+        .findOneWithDeleted({ _id: id })
+        .select(SAFE_USER_PROJECTION)
+        .lean();
+    } else {
+      user = await UserModel.findById(id).select(SAFE_USER_PROJECTION).lean();
+    }
+
+    if (!user) {
+      res.status(404).json({ message: "User not found." });
+      return;
+    }
+    res.status(200).json(user);
+  } catch (error: any) {
+    res.status(500).json({ message: "Server error.", error: error.message });
+  }
 };
 
 /**
- * [Admin] Cập nhật thông tin người dùng (tên, sđt, vai trò, trạng thái active).
+ * POST /users
+ * [Admin] Tạo mới user (không xử lý password ở đây – giả định có flow đăng ký/đặt mật khẩu riêng).
+ * Body: fullName, email, phone?, role, isActive?, avatarUrl?
+ */
+export const createUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { fullName, email, phone, role, isActive = true, avatarUrl } = req.body;
+
+    if (!fullName || !email || !role) {
+      res.status(400).json({ message: "fullName, email, role are required." });
+      return;
+    }
+
+    // check trùng email
+    const exists = await UserModel.exists({ email: String(email).toLowerCase() });
+    if (exists) {
+      res.status(409).json({ message: "Email already exists." });
+      return;
+    }
+
+    const user = await UserModel.create({
+      fullName,
+      email: String(email).toLowerCase(),
+      phone,
+      role,
+      isActive: Boolean(isActive),
+      avatarUrl,
+    });
+
+    const plain = await UserModel.findById(user._id).select(SAFE_USER_PROJECTION).lean();
+    res.status(201).json({ message: "User created successfully.", user: plain });
+  } catch (error: any) {
+    res.status(500).json({ message: "Server error.", error: error.message });
+  }
+};
+
+/**
+ * PUT /users/:id
+ * [Admin] Cập nhật thông tin user (không đổi password ở đây).
+ * Body: fullName?, phone?, role?, isActive?, avatarUrl?, email? (validate trùng)
  */
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
-    try {
-        const { id } = req.params;
-        const { fullName, phone, role, isActive } = req.body;
-        
-        const updatedUser = await UserModel.findByIdAndUpdate(id, 
-            { fullName, phone, role, isActive }, 
-            { new: true }
-        );
-        
-        if (!updatedUser) {
-            return res.status(404).json({ message: "User not found." });
-        }
-        res.status(200).json({ message: "User updated successfully.", user: updatedUser });
-    } catch (error: any) {
-        res.status(500).json({ message: "Server error." });
+  try {
+    const { id } = req.params;
+    if (!isValidObjectId(id)) {
+      res.status(400).json({ message: "Invalid user ID format." });
+      return;
     }
+
+    const payload: any = {};
+    const { fullName, phone, role, isActive, avatarUrl, email } = req.body;
+
+    if (fullName !== undefined) payload.fullName = fullName;
+    if (phone !== undefined) payload.phone = phone;
+    if (role !== undefined) payload.role = role;
+    if (isActive !== undefined) payload.isActive = Boolean(isActive);
+    if (avatarUrl !== undefined) payload.avatarUrl = avatarUrl;
+
+    if (email !== undefined) {
+      const emailNorm = String(email).toLowerCase();
+      const exists = await UserModel.exists({ email: emailNorm, _id: { $ne: id } });
+      if (exists) {
+        res.status(409).json({ message: "Email already exists." });
+        return;
+      }
+      payload.email = emailNorm;
+    }
+
+    const updated = await UserModel.findByIdAndUpdate(id, payload, {
+      new: true,
+      runValidators: true,
+    })
+      .select(SAFE_USER_PROJECTION)
+      .lean();
+
+    if (!updated) {
+      res.status(404).json({ message: "User not found." });
+      return;
+    }
+    res.status(200).json({ message: "User updated successfully.", user: updated });
+  } catch (error: any) {
+    res.status(500).json({ message: "Server error.", error: error.message });
+  }
 };
 
 /**
- * [Admin] Khóa tài khoản trong một khoảng thời gian.
+ * POST /users/:id/lock
+ * [Admin] Khóa tài khoản trong X giờ.
  */
 export const lockUser = async (req: Request, res: Response): Promise<void> => {
-    try {
-        const { id } = req.params;
-        const { hours } = req.body;
-        if (!hours || isNaN(hours) || hours <= 0) {
-            return res.status(400).json({ message: "Invalid lock duration in hours." });
-        }
-
-        const lockedUntil = new Date();
-        lockedUntil.setHours(lockedUntil.getHours() + Number(hours));
-
-        const user = await UserModel.findByIdAndUpdate(id, { lockedUntil }, { new: true });
-        if (!user) return res.status(404).json({ message: "User not found." });
-
-        res.status(200).json({ message: `User locked until ${lockedUntil.toLocaleString()}`, user });
-    } catch (error: any) {
-        res.status(500).json({ message: "Server error." });
+  try {
+    const { id } = req.params;
+    const hours = parseNum(req.body.hours);
+    if (!isValidObjectId(id)) {
+      res.status(400).json({ message: "Invalid user ID format." });
+      return;
     }
+    if (!hours || isNaN(hours) || hours <= 0) {
+      res.status(400).json({ message: "Invalid lock duration in hours." });
+      return;
+    }
+
+    const lockedUntil = new Date(Date.now() + hours * 3600 * 1000);
+    const user = await UserModel.findByIdAndUpdate(
+      id,
+      { lockedUntil },
+      { new: true }
+    )
+      .select(SAFE_USER_PROJECTION)
+      .lean();
+
+    if (!user) {
+      res.status(404).json({ message: "User not found." });
+      return;
+    }
+
+    res
+      .status(200)
+      .json({ message: `User locked until ${lockedUntil.toISOString()}`, user });
+  } catch (error: any) {
+    res.status(500).json({ message: "Server error.", error: error.message });
+  }
 };
 
 /**
- * [Admin] Mở khóa tài khoản ngay lập tức.
+ * POST /users/:id/unlock
+ * [Admin] Mở khóa tài khoản ngay.
  */
 export const unlockUser = async (req: Request, res: Response): Promise<void> => {
-    try {
-        const { id } = req.params;
-        const user = await UserModel.findByIdAndUpdate(id, { lockedUntil: null }, { new: true });
-        if (!user) return res.status(404).json({ message: "User not found." });
-        res.status(200).json({ message: "User unlocked successfully.", user });
-    } catch (error: any) {
-        res.status(500).json({ message: "Server error." });
+  try {
+    const { id } = req.params;
+    if (!isValidObjectId(id)) {
+      res.status(400).json({ message: "Invalid user ID format." });
+      return;
     }
+    const user = await UserModel.findByIdAndUpdate(id, { lockedUntil: null }, { new: true })
+      .select(SAFE_USER_PROJECTION)
+      .lean();
+
+    if (!user) {
+      res.status(404).json({ message: "User not found." });
+      return;
+    }
+    res.status(200).json({ message: "User unlocked successfully.", user });
+  } catch (error: any) {
+    res.status(500).json({ message: "Server error.", error: error.message });
+  }
 };
 
 /**
- * [Admin] Xóa mềm người dùng.
+ * DELETE /users/:id
+ * [Admin] Xóa mềm người dùng (mongoose-delete).
  */
 export const softDeleteUser = async (req: Request, res: Response): Promise<void> => {
-    try {
-        const { id } = req.params;
-        // @ts-ignore
-        const result = await UserModel.delete({ _id: id });
-        if (result.modifiedCount === 0) {
-            return res.status(404).json({ message: "User not found or already deleted." });
-        }
-        res.status(200).json({ message: "User soft-deleted successfully." });
-    } catch (error: any) {
-        res.status(500).json({ message: "Server error." });
+  try {
+    const { id } = req.params;
+    if (!isValidObjectId(id)) {
+      res.status(400).json({ message: "Invalid user ID format." });
+      return;
     }
+
+    if ((UserModel as any).delete) {
+      const result = await (UserModel as any).delete({ _id: id });
+      // plugin thường trả về { acknowledged, deletedCount / modifiedCount }
+      if (!result || (result.modifiedCount === 0 && result.deletedCount === 0)) {
+        res.status(404).json({ message: "User not found or already deleted." });
+        return;
+      }
+      res.status(200).json({ message: "User soft-deleted successfully." });
+    } else {
+      // fallback: hard delete (nếu không dùng plugin)
+      const deleted = await UserModel.findByIdAndDelete(id).lean();
+      if (!deleted) {
+        res.status(404).json({ message: "User not found." });
+        return;
+      }
+      res.status(200).json({ message: "User deleted permanently.", user: deleted });
+    }
+  } catch (error: any) {
+    res.status(500).json({ message: "Server error.", error: error.message });
+  }
 };
 
 /**
- * [Admin] Khôi phục người dùng đã xóa mềm.
+ * POST /users/:id/restore
+ * [Admin] Khôi phục user đã xóa mềm.
  */
 export const restoreUser = async (req: Request, res: Response): Promise<void> => {
-    try {
-        const { id } = req.params;
-        // @ts-ignore
-        const result = await UserModel.restore({ _id: id });
-        if (result.modifiedCount === 0) {
-            return res.status(404).json({ message: "User not found or not deleted." });
-        }
-        res.status(200).json({ message: "User restored successfully." });
-    } catch (error: any) {
-        res.status(500).json({ message: "Server error." });
+  try {
+    const { id } = req.params;
+    if (!isValidObjectId(id)) {
+      res.status(400).json({ message: "Invalid user ID format." });
+      return;
     }
+
+    if ((UserModel as any).restore) {
+      const result = await (UserModel as any).restore({ _id: id });
+      if (!result || result.modifiedCount === 0) {
+        res.status(404).json({ message: "User not found or not deleted." });
+        return;
+      }
+      // trả về bản ghi sau khi restore
+      const user = await UserModel.findById(id).select(SAFE_USER_PROJECTION).lean();
+      res.status(200).json({ message: "User restored successfully.", user });
+    } else {
+      res.status(400).json({ message: "Restore is not supported (plugin missing)." });
+    }
+  } catch (error: any) {
+    res.status(500).json({ message: "Server error.", error: error.message });
+  }
 };

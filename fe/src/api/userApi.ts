@@ -1,6 +1,6 @@
 import axios from "axios";
 import type { UserDto } from "../types/user.d";
-import { getAuthHeaders } from "./api.helpers"; // ✅ Import helper
+import { getAuthHeaders } from "./api.helpers"; 
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8888/api";
 const API_URL = `${BASE_URL}/users`;
