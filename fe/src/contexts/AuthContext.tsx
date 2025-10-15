@@ -1,87 +1,89 @@
-import React, { createContext, useState, useEffect, useMemo, ReactNode } from 'react';
-// Giả sử bạn có các hàm gọi API được định nghĩa riêng
-import { loginApi, verifyTokenApi } from '../api/authApi';
+import React, { createContext, useCallback, useEffect, useMemo, useState } from "react";
+import * as authApi from "../api/authApi";
+import { getAuthToken } from "../api/api.helpers";
+import type { UserDto, UserRole } from "../types/user.d";
 
-// 1. Định nghĩa kiểu dữ liệu cho User và giá trị của Context
-interface User {
-  id: string;
-  fullName: string;
-  email: string;
-  role: 'admin' | 'teacher'; // Mở rộng thêm các role khác nếu cần
-  avatarUrl?: string;
-}
-
-interface AuthContextType {
-  user: User | null;
+type AuthContextType = {
+  user: UserDto | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+};
+
+export const AuthContext = createContext<AuthContextType>({
+  user: null,
+  isLoading: true,
+  login: async () => {},
+  logout: () => {},
+});
+
+function mapBackendUserToFront(u: any): UserDto {
+  // BE: { _id, name, email, phone, avatar, role, is_verified, createdAt, ... }
+  return {
+    _id: String(u._id),
+    fullName: u.name || "",
+    email: u.email || "",
+    phone: u.phone,
+    avatarUrl: u.avatar,
+    role: (u.role as UserRole) || "customer",
+    isActive: Boolean(u.is_verified), // map tạm: verified -> active
+    lockedUntil: u.lockedUntil ? String(u.lockedUntil) : null,
+    deletedAt: u.deletedAt ? String(u.deletedAt) : null,
+    created_at: u.createdAt ? String(u.createdAt) : undefined,
+    updated_at: u.updatedAt ? String(u.updatedAt) : undefined,
+  };
 }
 
-// 2. Tạo Context với giá trị mặc định
-// Giá trị mặc định này chỉ được dùng khi một component cố gắng truy cập context bên ngoài Provider
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<UserDto | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-// 3. Tạo Provider Component
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true); // Ban đầu là true để kiểm tra token
-
-  // useEffect này chạy một lần duy nhất khi app khởi động
-  // Nhiệm vụ của nó là kiểm tra xem có token trong localStorage không
-  useEffect(() => {
-    const checkUserStatus = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          // Gửi token lên server để xác thực
-          const userData = await verifyTokenApi(token);
-          setUser(userData);
-        } catch (error) {
-          // Token không hợp lệ -> xóa token và logout
-          console.error("Token verification failed", error);
-          localStorage.removeItem('token');
-          setUser(null);
-        }
+  const bootstrap = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        setUser(null);
+        return;
       }
-      setIsLoading(false); // Hoàn tất kiểm tra, không còn loading nữa
-    };
-
-    checkUserStatus();
+      const res = await authApi.me(); // axios đã gắn Bearer từ interceptor
+      const mapped = mapBackendUserToFront(res.data);
+      setUser(mapped);
+    } catch {
+      // token hỏng → sign out
+      localStorage.removeItem("accessToken");
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  // Hàm để xử lý đăng nhập
-  const login = async (email: string, password: string) => {
-    try {
-      const { user: userData, token } = await loginApi(email, password);
-      localStorage.setItem('token', token);
-      setUser(userData);
-    } catch (error) {
-      console.error("Login failed", error);
-      // Ném lỗi ra ngoài để component Login có thể bắt và hiển thị thông báo
-      throw error;
-    }
-  };
+  useEffect(() => {
+    bootstrap();
+  }, [bootstrap]);
 
-  // Hàm để xử lý đăng xuất
-  const logout = () => {
-    localStorage.removeItem('token');
+  const login = useCallback(async (email: string, password: string) => {
+    // 1) login để lấy token + (optionally user)
+    const res = await authApi.login({ email, password });
+    const { token, user: rawUser } = res.data || {};
+    if (!token) throw new Error("No token returned");
+
+    localStorage.setItem("accessToken", token);
+
+    // 2) lấy /me để đồng bộ chuẩn
+    const meRes = await authApi.me();
+    const mapped = mapBackendUserToFront(meRes.data);
+    setUser(mapped);
+  }, []);
+
+  const logout = useCallback(() => {
+    localStorage.removeItem("accessToken");
     setUser(null);
-  };
+  }, []);
 
-  // 4. Dùng useMemo để tối ưu, tránh re-render không cần thiết
   const value = useMemo(
-    () => ({
-      user,
-      isLoading,
-      login,
-      logout,
-    }),
-    [user, isLoading]
+    () => ({ user, isLoading, login, logout }),
+    [user, isLoading, login, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

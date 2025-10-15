@@ -17,7 +17,7 @@ import OverviewPage from "../pages/dashboard/Shared/OverviewPage";
 import ManageUsersPage from "../pages/dashboard/Admin/ManageUsersPage";
 import ManageStudentsPage from "../pages/dashboard/Teacher/ManageStudentsPage";
 import BookManagementPage from "../pages/books/BookManagementPage";
-
+import RegisterPage from "../pages/RegisterPage";
 // 🔹 Protected route
 import ProtectedRoute from "./ProtectedRoute";
 import { CoursePage } from "../pages/courses/CoursePage";
@@ -27,7 +27,7 @@ const AppRoutes: React.FC = () => {
     <Routes>
       {/* Trang đăng nhập */}
       <Route path="/login" element={<LoginPage />} />
-
+<Route path="/register" element={<RegisterPage />} />
       {/* Public routes (User layout) */}
       <Route element={<UserLayout />}>
         <Route index element={<HomePage />} />
