@@ -12,27 +12,32 @@ const LoginPage = () => {
 
   const navigate = useNavigate();
   const auth = useAuth();
+// LoginPage.tsx
+const handleSubmit = async (event: React.FormEvent) => {
+  event.preventDefault();
+  if (isLoading) return;
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault(); // Ngăn form reload lại trang
-    if (!email || !password) {
-      setError('Vui lòng nhập đầy đủ email và mật khẩu.');
-      return;
-    }
+  const emailNorm = email.trim().toLowerCase();
+  if (!emailNorm || !password) {
+    setError('Vui lòng nhập đầy đủ email và mật khẩu.');
+    return;
+  }
 
-    setIsLoading(true);
-    setError(null);
+  setIsLoading(true);
+  setError(null);
 
-    try {
-      await auth.login(email, password);
-      // Nếu đăng nhập thành công, AuthProvider sẽ cập nhật user
-      // và ProtectedRoute sẽ cho phép truy cập dashboard
-      navigate('/dashboard', { replace: true });
-    } catch (err) {
-      setError('Email hoặc mật khẩu không chính xác.');
-      setIsLoading(false); // Chỉ set lại loading khi có lỗi
-    }
-  };
+  try {
+    await auth.login(emailNorm, password);
+    navigate('/dashboard', { replace: true });
+  } catch (err: any) {
+    // interceptor của bạn reject(JSON) => err.message là message từ BE (nếu có)
+    const message = err?.message || 'Đăng nhập thất bại.';
+    setError(message);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -43,9 +48,7 @@ const LoginPage = () => {
         </div>
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="email" className="text-sm font-medium text-gray-700">
-              Email
-            </label>
+            <label htmlFor="email" className="text-sm font-medium text-gray-700">Email</label>
             <input
               id="email"
               name="email"
@@ -60,12 +63,7 @@ const LoginPage = () => {
           </div>
 
           <div>
-            <label
-              htmlFor="password"
-              className="text-sm font-medium text-gray-700"
-            >
-              Mật khẩu
-            </label>
+            <label htmlFor="password" className="text-sm font-medium text-gray-700">Mật khẩu</label>
             <div className="relative">
               <input
                 id="password"
@@ -82,26 +80,26 @@ const LoginPage = () => {
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500"
+                aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
               >
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
             </div>
           </div>
-          
-          {error && (
-            <p className="text-sm text-center text-red-500">{error}</p>
-          )}
+
+          {error && <p className="text-sm text-center text-red-500">{error}</p>}
 
           <div>
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300 disabled:cursor-not-allowed"
+              className="w-full flex justify-center py-2 px-4 rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Đang xử lý...' : 'Đăng nhập'}
             </button>
           </div>
         </form>
+
         <p className="text-sm text-center text-gray-600">
           Chưa có tài khoản?{' '}
           <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500">

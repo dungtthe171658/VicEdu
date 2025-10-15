@@ -1,3 +1,5 @@
+//authApi.ts
+
 import axios from "./axios"; // axios đã setup baseURL và interceptor đọc token
 
 export type LoginPayload = { email: string; password: string };

@@ -33,6 +33,7 @@ const RegisterPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return; // chặn double submit
     setError(null);
     setSuccess(null);
 
@@ -44,17 +45,19 @@ const RegisterPage: React.FC = () => {
 
     try {
       setIsLoading(true);
+      // BE đang default role = "customer" -> không gửi role từ FE nữa
       await authApi.register({
-        name: fullName,
-        email,
-        password,
-        role: "customer", // mặc định role
+        name: fullName.trim(),
+        email: email.trim().toLowerCase(),
+        password: password,
       });
-      setSuccess('Đăng ký thành công! Vui lòng đăng nhập.');
+
+      setSuccess('Đăng ký thành công! Vui lòng kiểm tra email để xác minh tài khoản.');
+      // Điều hướng sang login sau 1s (tuỳ bạn giữ/ bỏ)
       setTimeout(() => navigate('/login', { replace: true }), 1000);
     } catch (err: any) {
       const message =
-        err?.response?.data?.message || err.message || 'Không thể đăng ký. Vui lòng thử lại.';
+        err?.response?.data?.message || err?.message || 'Không thể đăng ký. Vui lòng thử lại.';
       setError(message);
     } finally {
       setIsLoading(false);
@@ -71,9 +74,7 @@ const RegisterPage: React.FC = () => {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label htmlFor="fullName" className="text-sm font-medium text-gray-700">
-              Họ và tên
-            </label>
+            <label htmlFor="fullName" className="text-sm font-medium text-gray-700">Họ và tên</label>
             <input
               id="fullName"
               type="text"
@@ -86,9 +87,7 @@ const RegisterPage: React.FC = () => {
           </div>
 
           <div>
-            <label htmlFor="email" className="text-sm font-medium text-gray-700">
-              Email
-            </label>
+            <label htmlFor="email" className="text-sm font-medium text-gray-700">Email</label>
             <input
               id="email"
               type="email"
@@ -102,9 +101,7 @@ const RegisterPage: React.FC = () => {
           </div>
 
           <div>
-            <label htmlFor="password" className="text-sm font-medium text-gray-700">
-              Mật khẩu
-            </label>
+            <label htmlFor="password" className="text-sm font-medium text-gray-700">Mật khẩu</label>
             <div className="relative">
               <input
                 id="password"
@@ -119,6 +116,7 @@ const RegisterPage: React.FC = () => {
                 type="button"
                 onClick={() => setShowPw((s) => !s)}
                 className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500"
+                aria-label={showPw ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
               >
                 {showPw ? <FaEyeSlash /> : <FaEye />}
               </button>
@@ -126,9 +124,7 @@ const RegisterPage: React.FC = () => {
           </div>
 
           <div>
-            <label htmlFor="confirm" className="text-sm font-medium text-gray-700">
-              Xác nhận mật khẩu
-            </label>
+            <label htmlFor="confirm" className="text-sm font-medium text-gray-700">Xác nhận mật khẩu</label>
             <div className="relative">
               <input
                 id="confirm"
@@ -143,6 +139,7 @@ const RegisterPage: React.FC = () => {
                 type="button"
                 onClick={() => setShowConfirm((s) => !s)}
                 className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500"
+                aria-label={showConfirm ? 'Ẩn xác nhận mật khẩu' : 'Hiện xác nhận mật khẩu'}
               >
                 {showConfirm ? <FaEyeSlash /> : <FaEye />}
               </button>

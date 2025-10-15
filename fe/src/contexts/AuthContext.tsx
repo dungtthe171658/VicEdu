@@ -17,20 +17,34 @@ export const AuthContext = createContext<AuthContextType>({
   logout: () => {},
 });
 
-function mapBackendUserToFront(u: any): UserDto {
-  // BE: { _id, name, email, phone, avatar, role, is_verified, createdAt, ... }
+// Kiểu user trả về từ BE (có thể khác FE)
+type BackendUser = {
+  _id: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  avatar?: string;
+  role?: UserRole;
+  is_verified?: boolean;
+  lockedUntil?: string | null;
+  deletedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+function mapBackendUserToFront(u: BackendUser): UserDto {
   return {
     _id: String(u._id),
-    fullName: u.name || "",
+    name: u.name || "",
     email: u.email || "",
     phone: u.phone,
-    avatarUrl: u.avatar,
+    avatar: u.avatar,
     role: (u.role as UserRole) || "customer",
-    isActive: Boolean(u.is_verified), // map tạm: verified -> active
-    lockedUntil: u.lockedUntil ? String(u.lockedUntil) : null,
-    deletedAt: u.deletedAt ? String(u.deletedAt) : null,
-    created_at: u.createdAt ? String(u.createdAt) : undefined,
-    updated_at: u.updatedAt ? String(u.updatedAt) : undefined,
+    is_verified: Boolean(u.is_verified),
+    lockedUntil: u.lockedUntil ?? null,
+    deletedAt: u.deletedAt ?? null,
+    createdAt: u.createdAt,
+    updatedAt: u.updatedAt,
   };
 }
 
@@ -46,11 +60,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
         return;
       }
-      const res = await authApi.me(); // axios đã gắn Bearer từ interceptor
-      const mapped = mapBackendUserToFront(res.data);
+      // axios interceptor của bạn trả THẲNG data => me chính là object user
+      const me = await authApi.me();
+      const mapped = mapBackendUserToFront(me as BackendUser);
       setUser(mapped);
     } catch {
-      // token hỏng → sign out
       localStorage.removeItem("accessToken");
       setUser(null);
     } finally {
@@ -63,16 +77,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [bootstrap]);
 
   const login = useCallback(async (email: string, password: string) => {
-    // 1) login để lấy token + (optionally user)
+    // axios interceptor trả THẲNG data => res chính là { message, token, user }
     const res = await authApi.login({ email, password });
-    const { token, user: rawUser } = res.data || {};
+    const token = (res as any)?.token;
     if (!token) throw new Error("No token returned");
 
+    // Lưu token để interceptor request tự gắn Authorization cho các call sau
     localStorage.setItem("accessToken", token);
 
-    // 2) lấy /me để đồng bộ chuẩn
-    const meRes = await authApi.me();
-    const mapped = mapBackendUserToFront(meRes.data);
+    // Gọi /me để đồng bộ user
+    const me = await authApi.me(); // trả thẳng object user
+    const mapped = mapBackendUserToFront(me as BackendUser);
     setUser(mapped);
   }, []);
 
