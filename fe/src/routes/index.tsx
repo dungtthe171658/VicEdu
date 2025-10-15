@@ -4,7 +4,7 @@ import { Routes, Route } from "react-router-dom";
 
 // 🔹 Layouts
 import UserLayout from "../components/layout/UserLayout";
-import DashboardLayout from "../components/layout/DashboardLayout";
+import AdminLayout from "../pages/dashboard/Layout/AdminLayout";
 
 // 🔹 Public pages
 import HomePage from "../pages/user/HomePage";
@@ -48,7 +48,7 @@ const AppRoutes: React.FC = () => {
         path="/dashboard"
         element={
           <ProtectedRoute allowedRoles={["admin", "teacher"]}>
-            <DashboardLayout />
+            <AdminLayout />
           </ProtectedRoute>
         }
       >
