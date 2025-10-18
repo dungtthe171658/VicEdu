@@ -5,6 +5,7 @@ import { Routes, Route } from "react-router-dom";
 // 🔹 Layouts
 import UserLayout from "../components/layout/UserLayout";
 import AdminLayout from "../pages/dashboard/Layout/AdminLayout";
+import TeacherLayout from "../pages/dashboard/Layout/TeacherLayout";
 
 // 🔹 Public pages
 import HomePage from "../pages/user/HomePage";
@@ -15,7 +16,7 @@ import BookDetailPage from "../pages/books/BookDetailPage";
 // 🔹 Dashboard pages
 import OverviewPage from "../pages/dashboard/Shared/OverviewPage";
 import ManageUsersPage from "../pages/dashboard/Admin/ManageUsersPage";
-import ManageStudentsPage from "../pages/dashboard/Teacher/ManageStudentsPage";
+//import ManageStudentsPage from "../pages/dashboard/Teacher/ManageStudentsPage";
 import BookManagementPage from "../pages/books/BookManagementPage";
 import RegisterPage from "../pages/RegisterPage";
 // 🔹 Protected route
@@ -75,10 +76,10 @@ const AppRoutes: React.FC = () => {
 
         {/* 👨‍🏫 Teacher routes */}
         <Route
-          path="manage-students"
+          path="/teacher"
           element={
             <ProtectedRoute allowedRoles={["teacher"]}>
-              <ManageStudentsPage />
+              <TeacherLayout  />
             </ProtectedRoute>
           }
         />
