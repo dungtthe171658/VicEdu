@@ -6,12 +6,12 @@ import categoryApi from "../../api/categoryApi";
 import courseApi from "../../api/courseApi";
 import type {Category} from "../../types/category";
 import type {Course} from "../../types/course";
-import {SkeletonBanner} from "./Skeleton";
-import {CardImage} from "./CourseCard.tsx";
-import {SectionHeader} from "../category/SectionHeader.tsx";
+import {SkeletonBanner, SkeletonCard} from "../courses/Skeleton";
+import {CardImage, CourseCard} from "../courses/CourseCard";
+import {SectionHeader} from "./SectionHeader";
+import {CategoryCard} from "./CategoryCard.tsx";
 
 const Placeholder = "https://placehold.co/800x450?text=Banner&font=inter";
-
 
 function Chip({label, active, onClick}: { label: string; active?: boolean; onClick?: () => void }) {
     return (
@@ -29,8 +29,6 @@ function Chip({label, active, onClick}: { label: string; active?: boolean; onCli
     );
 }
 
-
-// ===== Page =====
 export default function CategoryList() {
     const [categories, setCategories] = useState<Category[]>([]);
     const [courses, setCourses] = useState<Course[]>([]);
@@ -43,17 +41,16 @@ export default function CategoryList() {
             try {
                 const [catRes, courseRes] = await Promise.all([
                     categoryApi.getAll(),
-                    courseApi.getAll({status: "approved", limit: 24}),
+                    courseApi.getAll({limit: 24}),
                 ]);
                 setCategories(catRes || []);
-                setCourses((courseRes || []).filter((c: Course) => c.status === "approved"));
+                setCourses((courseRes || []));
             } finally {
                 setLoading(false);
             }
         })();
     }, []);
 
-    // đồng bộ chip lọc với ?cat=
     useEffect(() => {
         const q = searchParams.get("cat");
         if (q) setActiveCat(q);
@@ -64,8 +61,7 @@ export default function CategoryList() {
         else setSearchParams({cat: activeCat});
     }, [activeCat, setSearchParams]);
 
-    // tách parent/child theo dữ liệu bạn gửi (parent_id: null hoặc id parent)
-    const parents = useMemo(() => categories.filter((c) => !c.parent_id), [categories]);
+    const parents = useMemo(() => categories.filter((c) => c.parent_id == null), [categories]);
     const childrenByParent = useMemo(() => {
         const map: Record<string, Category[]> = {};
         for (const c of categories) {
@@ -80,9 +76,12 @@ export default function CategoryList() {
 
     const filteredCourses = useMemo(() => {
         if (activeCat === "all") return courses;
-        const cat = categories.find((c) => c.slug === activeCat || c._id === activeCat);
+        const cat = categories.find((c) => c.slug === activeCat || String(c._id) === activeCat || String(c._id) === activeCat);
         if (!cat) return courses;
-        return courses.filter((c: Course) => c.category_id === cat._id);
+        return courses.filter((crs: Course) =>
+
+            crs.category._id === (cat as Category)._id
+        );
     }, [activeCat, courses, categories]);
 
     return (
@@ -95,6 +94,7 @@ export default function CategoryList() {
                         <School className="size-5 text-blue-600"/>
                         <h3 className="text-lg font-semibold">Các khóa học</h3>
                     </div>
+
                     <ul className="py-2 text-gray-700">
                         {loading ? (
                             Array.from({length: 8}).map((_, i) => (
@@ -103,40 +103,73 @@ export default function CategoryList() {
                                 </li>
                             ))
                         ) : (
-                            parents.map((p) => (
-                                <li key={p._id} className="">
-                                    <Link
-                                        to={`/courses/${p.slug}`}
-                                        className="flex items-center gap-2 px-4 py-3 hover:bg-blue-50 hover:text-blue-600 transition"
-                                        onClick={() => setActiveCat(p.slug)}
-                                    >
-                                        <Layers className="size-4 text-blue-500"/>
-                                        <span className="font-medium">{p.name}</span>
-                                    </Link>
-                                    {childrenByParent[String(p._id)]?.length ? (
-                                        <ul className="pl-10 pr-2 pb-2">
-                                            {childrenByParent[String(p._id)].map((c) => (
-                                                <li key={c._id}>
-                                                    <Link
-                                                        to={`/courses/${c.slug}`}
-                                                        className="flex items-center gap-2 py-2 text-sm text-gray-600 hover:text-blue-600"
-                                                        onClick={() => setActiveCat(c.slug)}
-                                                    >
-                                                        <ChevronDown className="size-4 text-gray-400 -rotate-90"/>
-                                                        {c.name}
-                                                    </Link>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    ) : null}
-                                </li>
-                            ))
+                            parents.map((p) => {
+                                const isParentActive =
+                                    activeCat === p.slug ||
+                                    String(p._id) === activeCat ||
+                                    String(p._id) === activeCat;
+
+                                return (
+                                    <li key={p._id}>
+                                        <Link
+                                            to={`/courses/${p.slug}`}
+                                            onClick={() => setActiveCat(p.slug)}
+                                            aria-current={isParentActive ? "page" : undefined}
+                                            className={[
+                                                "flex items-center gap-2 px-4 py-3 rounded-md transition border-l-2",
+                                                isParentActive
+                                                    ? "bg-blue-50 text-blue-700 font-semibold border-blue-600"
+                                                    : "hover:bg-blue-50 hover:text-blue-600 border-transparent",
+                                            ].join(" ")}
+                                        >
+                                            <Layers className="size-4 text-blue-500"/>
+                                            <span className="font-medium">{p.name}</span>
+                                        </Link>
+
+                                        {childrenByParent[String(p._id)]?.length ? (
+                                            <ul className="pl-10 pr-2 pb-2">
+                                                {childrenByParent[String(p._id)].map((c) => {
+                                                    const isChildActive =
+                                                        activeCat === c.slug ||
+                                                        String(c._id) === activeCat ||
+                                                        String(c._id) === activeCat;
+
+                                                    return (
+                                                        <li key={c._id}>
+                                                            <Link
+                                                                to={`/courses/${c.slug}`}
+                                                                onClick={() => setActiveCat(c.slug)}
+                                                                aria-current={isChildActive ? "page" : undefined}
+                                                                className={[
+                                                                    "flex items-center gap-2 py-2 text-sm transition",
+                                                                    isChildActive
+                                                                        ? "text-blue-700 font-semibold"
+                                                                        : "text-gray-600 hover:text-blue-600",
+                                                                ].join(" ")}
+                                                            >
+                                                                <ChevronDown
+                                                                    className={[
+                                                                        "size-4 -rotate-90",
+                                                                        isChildActive ? "text-blue-600" : "text-gray-400",
+                                                                    ].join(" ")}
+                                                                />
+                                                                {c.name}
+                                                            </Link>
+                                                        </li>
+                                                    );
+                                                })}
+                                            </ul>
+                                        ) : null}
+                                    </li>
+                                );
+                            })
                         )}
                     </ul>
                 </aside>
 
+
                 {/* Banner giữa */}
-                <section className="lg:col-span-6">
+                <section className="lg:col-span-9">
                     {loading ? (
                         <SkeletonBanner/>
                     ) : (
@@ -146,19 +179,6 @@ export default function CategoryList() {
                         </div>
                     )}
                 </section>
-
-                {/* Banner phụ phải */}
-                <aside className="lg:col-span-3 space-y-4">
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                        <img src={Placeholder} alt="right-1" className="w-full h-64 object-cover"/>
-                        <div className="p-4 text-center">
-                            <button
-                                className="bg-blue-600 text-white px-4 py-2 rounded-full font-semibold hover:bg-blue-700 transition">Tải
-                                ứng dụng
-                            </button>
-                        </div>
-                    </div>
-                </aside>
             </div>
 
             {/* Dải thống kê gradient */}
@@ -178,31 +198,6 @@ export default function CategoryList() {
                 </div>
             </section>
 
-            {/* Danh mục nổi bật */}
-            <section className="mt-10">
-                <SectionHeader
-                    icon={<Layers className="size-6 text-blue-600"/>}
-                    title="Danh mục"
-                    subtitle="Học theo lộ trình, chọn lĩnh vực bạn quan tâm"
-                    to={parents.length ? `/courses/${parents[0].slug}` : undefined}
-                />
-
-                {loading ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {Array.from({length: 6}).map((_, i) => (
-                            <SkeletonCard key={i}/>
-                        ))}
-                    </div>
-                ) : parents.length === 0 ? (
-                    <p className="text-gray-500">Chưa có danh mục nào.</p>
-                ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {parents.map((cat) => (
-                            <CategoryCard key={cat._id} cat={cat}/>
-                        ))}
-                    </div>
-                )}
-            </section>
 
             {/* Khóa học */}
             <section className="mt-10">
