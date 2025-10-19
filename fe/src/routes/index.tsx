@@ -76,7 +76,7 @@ const AppRoutes: React.FC = () => {
 
         {/* 👨‍🏫 Teacher routes */}
         <Route
-          path="/teacher"
+          path="teacher"
           element={
             <ProtectedRoute allowedRoles={["teacher"]}>
               <TeacherLayout  />

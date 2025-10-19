@@ -1,29 +1,32 @@
 import { useEffect, useState } from "react";
 import bookApi from "../../api/bookApi";
-import categoryApi from "../../api/categoryApi"; // ✅ tách riêng API thể loại
+import categoryApi from "../../api/categoryApi"; 
 import type { BookDto } from "../../types/book.d";
-import type { CategoryDto } from "../../types/category.d";
+import type { Category } from "../../types/category.d";
 import BookCard from "../../components/books/BookCard";
 import "./BookListPage.css";
 
 const BookListPage = () => {
   const [books, setBooks] = useState<BookDto[]>([]);
-  const [categories, setCategories] = useState<CategoryDto[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [minPrice, setMinPrice] = useState<string>("");
   const [maxPrice, setMaxPrice] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadingCategories, setLoadingCategories] = useState<boolean>(true);
 
   // --- Lấy danh sách thể loại ---
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const res = await categoryApi.getAll();
-        if (Array.isArray(res.data)) {
-          setCategories(res.data);
-        }
+        const data: Category[] = Array.isArray(res.data) ? res.data : res;
+        setCategories(data);
       } catch (err) {
-        console.error(" Không thể tải thể loại:", err);
+        console.error("Không thể tải thể loại:", err);
+        setCategories([]);
+      } finally {
+        setLoadingCategories(false);
       }
     };
     fetchCategories();
@@ -34,17 +37,15 @@ const BookListPage = () => {
     try {
       setLoading(true);
       const params: Record<string, string | number> = {};
-
       if (selectedCategory) params.categoryId = selectedCategory;
-      if (minPrice) params.minPrice = Number(minPrice) * 100; 
+      if (minPrice) params.minPrice = Number(minPrice) * 100;
       if (maxPrice) params.maxPrice = Number(maxPrice) * 100;
 
       const res = await bookApi.getAll(params);
-      if (Array.isArray(res.data)) {
-        setBooks(res.data);
-      }
+      const data: BookDto[] = Array.isArray(res.data) ? res.data : res;
+      setBooks(data);
     } catch (err) {
-      console.error("❌ Lỗi khi tải sách:", err);
+      console.error("Lỗi khi tải sách:", err);
     } finally {
       setLoading(false);
     }
@@ -53,9 +54,8 @@ const BookListPage = () => {
   useEffect(() => {
     fetchBooks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // chỉ chạy lần đầu
+  }, []);
 
-  // --- Xử lý filter ---
   const handleFilterSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     fetchBooks();
@@ -84,15 +84,21 @@ const BookListPage = () => {
             <label htmlFor="category">Thể loại</label>
             <select
               id="category"
-              value={selectedCategory}
+              value={selectedCategory || ""}
               onChange={(e) => setSelectedCategory(e.target.value)}
             >
-              <option value="">Tất cả</option>
-              {categories.map((cat) => (
-                <option key={cat._id} value={cat._id}>
-                  {cat.name}
-                </option>
-              ))}
+              <option value="">Chọn danh mục</option>
+              {loadingCategories ? (
+                <option value="">Đang tải danh mục...</option>
+              ) : categories.length === 0 ? (
+                <option value="">Không có danh mục</option>
+              ) : (
+                categories.map((cat) => (
+                  <option key={cat._id} value={cat._id}>
+                    {cat.name}
+                  </option>
+                ))
+              )}
             </select>
           </div>
 

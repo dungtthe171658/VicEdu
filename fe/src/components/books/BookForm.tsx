@@ -11,12 +11,14 @@ interface BookFormProps {
 }
 
 const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
-  const [formData, setFormData] = useState<Partial<BookDto> & { images?: string[] | string }>({
+  const [formData, setFormData] = useState<
+    Partial<BookDto> & { images?: string[] | string }
+  >({
     ...initialData,
     category_id:
       typeof initialData.category_id === "object"
         ? initialData.category_id?._id
-        : initialData.category_id,
+        : initialData.category_id || "",
     images: initialData.images || [],
   });
 
@@ -24,13 +26,17 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
   const [loadingCategories, setLoadingCategories] = useState(true);
 
   useEffect(() => {
-    categoryApi
-      .getAll()
-      .then((data) => {
+    const fetchCategories = async () => {
+      try {
+        const data: Category[] = await categoryApi.getAll(); // trực tiếp array
         setCategories(data || []);
-      })
-      .catch(() => setCategories([]))
-      .finally(() => setLoadingCategories(false));
+      } catch {
+        setCategories([]);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+    fetchCategories();
   }, []);
 
   const handleChange = (
@@ -39,7 +45,10 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "price_cents" || name === "stock" ? Number(value) : value,
+      [name]:
+        name === "price_cents" || name === "stock"
+          ? Number(value)
+          : value,
     }));
   };
 
@@ -48,7 +57,10 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
 
     const imagesArray: string[] =
       typeof formData.images === "string"
-        ? formData.images.split(",").map((s) => s.trim()).filter((s) => s)
+        ? formData.images
+            .split(",")
+            .map((s) => s.trim())
+            .filter((s) => s)
         : Array.isArray(formData.images)
         ? formData.images
         : [];
@@ -67,32 +79,63 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
   return (
     <form onSubmit={handleSubmit} className="book-form">
       <div className="form-group">
-        <label htmlFor="title">Title</label>
-        <input id="title" type="text" name="title" value={formData.title || ""} onChange={handleChange} required />
+        <label htmlFor="title">Tiêu đề</label>
+        <input
+          id="title"
+          type="text"
+          name="title"
+          value={formData.title || ""}
+          onChange={handleChange}
+          required
+        />
       </div>
 
       <div className="form-group">
-        <label htmlFor="author">Author</label>
-        <input id="author" type="text" name="author" value={formData.author || ""} onChange={handleChange} />
+        <label htmlFor="author">Tác giả</label>
+        <input
+          id="author"
+          type="text"
+          name="author"
+          value={formData.author || ""}
+          onChange={handleChange}
+        />
       </div>
 
       <div className="form-group">
-        <label htmlFor="description">Description</label>
-        <textarea id="description" name="description" value={formData.description || ""} onChange={handleChange} />
+        <label htmlFor="description">Mô tả</label>
+        <textarea
+          id="description"
+          name="description"
+          value={formData.description || ""}
+          onChange={handleChange}
+        />
       </div>
 
       <div className="form-group">
-        <label htmlFor="price_cents">Price (cents)</label>
-        <input id="price_cents" type="number" name="price_cents" value={formData.price_cents || ""} onChange={handleChange} required />
+        <label htmlFor="price_cents">Giá (VND)</label>
+        <input
+          id="price_cents"
+          type="number"
+          name="price_cents"
+          value={formData.price_cents ?? ""}
+          onChange={handleChange}
+          required
+        />
       </div>
 
       <div className="form-group">
-        <label htmlFor="stock">Stock</label>
-        <input id="stock" type="number" name="stock" value={formData.stock || ""} onChange={handleChange} />
+        <label htmlFor="stock">Số lượng</label>
+        <input
+          id="stock"
+          type="number"
+          name="stock"
+          value={formData.stock ?? ""}
+          onChange={handleChange}
+        />
       </div>
 
       <div className="form-group">
-        <label htmlFor="category_id">Category</label>
+        <label htmlFor="category_id">Danh mục</label>
         <select
           id="category_id"
           name="category_id"
@@ -101,12 +144,12 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
           required
         >
           {loadingCategories ? (
-            <option value="">Loading categories...</option>
+            <option value="">Đang tải danh mục...</option>
           ) : categories.length === 0 ? (
-            <option value="">No categories found</option>
+            <option value="">Không có danh mục</option>
           ) : (
             <>
-              <option value="">Select category</option>
+              <option value="">Chọn danh mục</option>
               {categories.map((cat) => (
                 <option key={cat._id} value={cat._id}>
                   {cat.name}
@@ -123,7 +166,11 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
           id="images"
           type="text"
           name="images"
-          value={Array.isArray(formData.images) ? formData.images.join(", ") : formData.images || ""}
+          value={
+            Array.isArray(formData.images)
+              ? formData.images.join(", ")
+              : formData.images || ""
+          }
           onChange={handleChange}
         />
       </div>

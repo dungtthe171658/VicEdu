@@ -1,26 +1,20 @@
+// src/controllers/book.controller.ts
 import { Request, Response } from "express";
 import mongoose from "mongoose";
 import slugify from "slugify";
 import Book from "../models/book.model";
 
-const isValidObjectId = (id: any) => mongoose.Types.ObjectId.isValid(id);
+const toObjectId = (id: any) =>
+  mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : null;
 
-// Helper convert ID về ObjectId nếu có thể
-const toObjectId = (id: any): mongoose.Types.ObjectId | null => {
-  if (isValidObjectId(id)) return new mongoose.Types.ObjectId(id);
-  return null;
-};
-
-// Lấy danh sách sách
-export const getBooks = async (req: Request, res: Response): Promise<void> => {
+// 📘 Lấy danh sách sách (kèm bộ lọc cơ bản)
+export const getBooks = async (req: Request, res: Response) => {
   try {
     const { search, categoryId, minPrice, maxPrice, sortBy, order } = req.query;
-
     const filter: Record<string, any> = { is_published: true };
 
     if (search) filter.title = { $regex: search, $options: "i" };
 
-    // Chỉ thêm category_id nếu là ObjectId hợp lệ
     if (categoryId) {
       const catId = toObjectId(categoryId);
       if (catId) filter.category_id = catId;
@@ -45,148 +39,80 @@ export const getBooks = async (req: Request, res: Response): Promise<void> => {
       .sort(sort)
       .lean();
 
-    res.status(200).json(books);
+    res.json(books);
   } catch (err: any) {
     res.status(500).json({ message: "Error fetching books", error: err.message });
   }
 };
 
-// Thêm sách mới
-export const createBook = async (req: Request, res: Response): Promise<void> => {
+// 📘 Lấy chi tiết 1 sách
+export const getBookById = async (req: Request, res: Response) => {
   try {
-    let { title, price_cents, category_id, author, description, stock, is_published, images } = req.body;
-
-    if (!title || !price_cents || !category_id) {
-      res.status(400).json({ message: "title, price_cents, category_id are required" });
-      return;
-    }
-
-    const catId = toObjectId(category_id);
-    if (!catId) {
-      res.status(400).json({ message: "Invalid category_id" });
-      return;
-    }
-
-    const slug = slugify(title, { lower: true, strict: true });
-
-    const newBook = await Book.create({
-      title,
-      slug,
-      author,
-      description,
-      price_cents,
-      stock,
-      category_id: catId,
-      is_published,
-      images,
-    });
-
-    res.status(201).json({ message: "Book created successfully", book: newBook });
-  } catch (err: any) {
-    res.status(500).json({ message: "Error creating book", error: err.message });
-  }
-};
-
-// Lấy 1 sách theo ID
-export const getBookById = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
-    const bookId = toObjectId(id);
-    if (!bookId) {
-      res.status(400).json({ message: "Invalid book ID" });
-      return;
-    }
+    const bookId = toObjectId(req.params.id);
+    if (!bookId) return res.status(400).json({ message: "Invalid book ID" });
 
     const book = await Book.findById(bookId).populate("category_id", "name slug");
+    if (!book) return res.status(404).json({ message: "Book not found" });
 
-    if (!book) {
-      res.status(404).json({ message: "Book not found" });
-      return;
-    }
-
-    res.status(200).json(book);
+    res.json(book);
   } catch (err: any) {
     res.status(500).json({ message: "Error fetching book", error: err.message });
   }
 };
 
-// Cập nhật sách
-export const updateBook = async (req: Request, res: Response): Promise<void> => {
+// 📘 Tạo sách mới
+export const createBook = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const bookId = toObjectId(id);
-    if (!bookId) {
-      res.status(400).json({ message: "Invalid book ID" });
-      return;
-    }
+    const { title, price_cents, category_id } = req.body;
+    if (!title || !price_cents || !category_id)
+      return res.status(400).json({ message: "title, price_cents, category_id are required" });
 
-    if (req.body.category_id) {
-      const catId = toObjectId(req.body.category_id);
-      if (!catId) {
-        res.status(400).json({ message: "Invalid category_id" });
-        return;
-      }
-      req.body.category_id = catId;
-    }
+    const catId = toObjectId(category_id);
+    if (!catId) return res.status(400).json({ message: "Invalid category_id" });
 
-    if (req.body.title) {
-      req.body.slug = slugify(req.body.title, { lower: true, strict: true });
-    }
+    const slug = slugify(title, { lower: true, strict: true });
+    const book = await Book.create({ ...req.body, slug, category_id: catId });
 
-    const updatedBook = await Book.findByIdAndUpdate(bookId, req.body, { new: true, runValidators: true }).populate("category_id", "name slug");
+    res.status(201).json(book);
+  } catch (err: any) {
+    res.status(500).json({ message: "Error creating book", error: err.message });
+  }
+};
 
-    if (!updatedBook) {
-      res.status(404).json({ message: "Book not found" });
-      return;
-    }
+// 📘 Cập nhật sách
+export const updateBook = async (req: Request, res: Response) => {
+  try {
+    const bookId = toObjectId(req.params.id);
+    if (!bookId) return res.status(400).json({ message: "Invalid book ID" });
 
-    res.status(200).json({ message: "Book updated successfully", book: updatedBook });
+    const updateData = { ...req.body };
+    if (updateData.title)
+      updateData.slug = slugify(updateData.title, { lower: true, strict: true });
+    if (updateData.category_id)
+      updateData.category_id = toObjectId(updateData.category_id);
+
+    const updated = await Book.findByIdAndUpdate(bookId, updateData, {
+      new: true,
+      runValidators: true,
+    }).populate("category_id", "name slug");
+
+    if (!updated) return res.status(404).json({ message: "Book not found" });
+    res.json(updated);
   } catch (err: any) {
     res.status(500).json({ message: "Error updating book", error: err.message });
   }
 };
 
-// Ẩn sách
-export const hideBook = async (req: Request, res: Response): Promise<void> => {
+// 📘 Xóa sách
+export const deleteBook = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const bookId = toObjectId(id);
-    if (!bookId) {
-      res.status(400).json({ message: "Invalid book ID" });
-      return;
-    }
+    const bookId = toObjectId(req.params.id);
+    if (!bookId) return res.status(400).json({ message: "Invalid book ID" });
 
-    const book = await Book.findByIdAndUpdate(bookId, { is_published: false }, { new: true }).populate("category_id", "name slug");
+    const deleted = await Book.findByIdAndDelete(bookId);
+    if (!deleted) return res.status(404).json({ message: "Book not found" });
 
-    if (!book) {
-      res.status(404).json({ message: "Book not found" });
-      return;
-    }
-
-    res.status(200).json({ message: "Book hidden successfully", book });
-  } catch (err: any) {
-    res.status(500).json({ message: "Error hiding book", error: err.message });
-  }
-};
-
-// Xóa sách
-export const deleteBook = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
-    const bookId = toObjectId(id);
-    if (!bookId) {
-      res.status(400).json({ message: "Invalid book ID" });
-      return;
-    }
-
-    const deletedBook = await Book.findByIdAndDelete(bookId).populate("category_id", "name slug");
-
-    if (!deletedBook) {
-      res.status(404).json({ message: "Book not found" });
-      return;
-    }
-
-    res.status(200).json({ message: "Book deleted permanently", book: deletedBook });
+    res.json({ message: "Book deleted successfully" });
   } catch (err: any) {
     res.status(500).json({ message: "Error deleting book", error: err.message });
   }
