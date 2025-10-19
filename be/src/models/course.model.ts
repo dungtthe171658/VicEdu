@@ -31,5 +31,5 @@ const courseSchema = new Schema<ICourse>(
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" }, collection: "courses" }
 );
 
-const CourseModel: Model<ICourse> = mongoose.models.Course || mongoose.model<ICourse>("Course", courseSchema);
-export default CourseModel;
+
+export default mongoose.model<ICourse>("Course", courseSchema);;

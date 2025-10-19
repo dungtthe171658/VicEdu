@@ -19,5 +19,5 @@ const lessonSchema = new Schema<ILesson>(
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" }, collection: "lessons" }
 );
 
-const LessonModel: Model<ILesson> = mongoose.models.Lesson || mongoose.model<ILesson>("Lesson", lessonSchema);
-export default LessonModel;
+
+export default mongoose.model<ILesson>("Lesson", lessonSchema);

@@ -19,5 +19,5 @@ const orderItemSchema = new Schema<IOrderItem>(
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" }, collection: "order_items" }
 );
 
-const OrderItemModel: Model<IOrderItem> = mongoose.models.OrderItem || mongoose.model<IOrderItem>("OrderItem", orderItemSchema);
-export default OrderItemModel;
+
+export default mongoose.model<IOrderItem>("OrderItem", orderItemSchema);

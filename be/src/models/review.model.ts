@@ -21,5 +21,4 @@ const reviewSchema = new Schema<IReview>(
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" }, collection: "reviews" }
 );
 
-const ReviewModel: Model<IReview> = mongoose.models.Review || mongoose.model<IReview>("Review", reviewSchema);
-export default ReviewModel;
+export default  mongoose.model<IReview>("Review", reviewSchema);
