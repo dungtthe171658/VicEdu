@@ -3,23 +3,49 @@ import { AuthRequest } from "../middlewares/auth";
 import CourseModel from "../models/course.model";
 import slugify from "slugify";
 
-export const createCourse = async (req: AuthRequest, res: Response) => {
+
+
+
+export const getPublicCourses = async (req: Request, res: Response) => {
     try {
-        const { title, description, price, category_id } = req.body;
-        const teacher_id = req.user;
-        const slug = slugify(title, { lower: true, strict: true });
-        
-        const newCourse = await CourseModel.create({ title, slug, description, price, category_id, teacher_id });
-        res.status(201).json(newCourse);
+        const courses = await CourseModel.find({ is_published: true }).populate('teacher', 'name -_id').populate('category', 'name slug');
+        res.status(200).json(courses);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
+export const getCourseBySlug = async (req: Request, res: Response) => {
+  try {
+    const { slug } = req.params;
+    if (!slug) {
+      return res.status(400).json({ message: "Thiếu tham số slug" });
+    }
 
-export const getPublicCourses = async (req: Request, res: Response) => {
+    const course = await CourseModel
+      .findOne({ slug, is_published: true })
+      .populate("teacher", "name -_id")
+      .populate("category", "name slug")
+      .lean();
+
+    if (!course) {
+      return res.status(404).json({ message: "Không tìm thấy khóa học" });
+    }
+
+    return res.status(200).json(course);
+  } catch (error: any) {
+    return res.status(500).json({ message: error.message || "Lỗi server" });
+  }
+};
+
+
+export const createCourse = async (req: AuthRequest, res: Response) => {
     try {
-        const courses = await CourseModel.find({ status: 'approved' }).populate('teacher_id', 'fullName avatarUrl').populate('category_id', 'name');
-        res.status(200).json(courses);
+        const { title, description, price, category } = req.body;
+        const teacher = req.user;
+        const slug = slugify(title, { lower: true, strict: true });
+        
+        const newCourse = await CourseModel.create({ title, slug, description, price, category, teacher });
+        res.status(201).json(newCourse);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
@@ -27,7 +53,7 @@ export const getPublicCourses = async (req: Request, res: Response) => {
 
 export const getAllCoursesForAdmin = async (req: Request, res: Response) => {
     try {
-        const courses = await CourseModel.find().populate('teacher_id', 'fullName').sort({ createdAt: -1 });
+        const courses = await CourseModel.find().populate('teacher', 'fullName').sort({ createdAt: -1 });
         res.status(200).json(courses);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
