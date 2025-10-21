@@ -121,7 +121,20 @@ export const getMyOrders = async (req: Request, res: Response) => {
   }
 };
 
+export const getAllOrders = async (req: Request, res: Response) => {
+  try {
+    const orders = await OrderModel.find()
+      .sort({ created_at: -1 })
+      .lean();
+    return res.status(200).json({ data: orders });
+  } catch (error: any) {
+    console.error("getAllOrders error:", error);
+    return res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
 export default {
   createOrder,
   getMyOrders,
+  getAllOrders,
 };

@@ -9,22 +9,22 @@ const ManageReviewsPage = () => {
   const [selectedReview, setSelectedReview] = useState<Partial<ReviewDto> | null>(null);
   const [showModal, setShowModal] = useState(false);
 
-  // Load tất cả đánh giá admin
+  // 🔹 Load tất cả đánh giá admin/public
+  const loadReviews = async () => {
+    try {
+      const res = await reviewApi.getAll(); // Nếu có token, reviewApi tự thêm
+      setReviews(res.data || []);
+    } catch (error) {
+      console.error("Error loading reviews:", error);
+      alert("Không thể tải danh sách đánh giá! Hãy kiểm tra token admin hoặc backend.");
+    }
+  };
+
   useEffect(() => {
-  loadReviews();
-}, []);
+    loadReviews();
+  }, []);
 
-const loadReviews = async () => {
-  try {
-    const res = await reviewApi.getAll();
-    setReviews(res.data || []);
-  } catch (error) {
-    console.error("Error loading reviews:", error);
-    alert("Không thể tải danh sách đánh giá! Hãy kiểm tra token admin.");
-  }
-};
-
-  // Xóa đánh giá
+  // 🔹 Xóa đánh giá
   const handleDelete = async (id: string) => {
     if (confirm("Bạn có chắc chắn muốn xóa đánh giá này không?")) {
       try {
@@ -37,7 +37,7 @@ const loadReviews = async () => {
     }
   };
 
-  // Phê duyệt đánh giá
+  // 🔹 Phê duyệt đánh giá
   const handleApprove = async (id: string) => {
     try {
       await reviewApi.updateStatus(id, "approved");
@@ -48,7 +48,7 @@ const loadReviews = async () => {
     }
   };
 
-  // Mở modal để sửa hoặc thêm
+  // 🔹 Mở modal để sửa hoặc thêm
   const handleEdit = (review: ReviewDto) => {
     setSelectedReview(review);
     setShowModal(true);
@@ -70,29 +70,32 @@ const loadReviews = async () => {
 
       <ul className="review-list">
         {reviews.map((r) => (
-          <li key={r._id}>
+          <li key={r.id}>
             <div className="review-info">
-              <span>
-                <strong>{r.product_type}</strong> – ID: {r.product_id}
-              </span>
+              <span>ID: {r.id}</span>
+              <span>User: {r.user_id}</span>
+              {r.course_id && <span>Course: {r.course_id}</span>}
+              {r.teacher_id && <span>Teacher: {r.teacher_id}</span>}
               <span>⭐ {r.rating}/5</span>
-              <span>{r.comment || "(Không có nhận xét)"}</span>
+              <span>{r.comment || r.content || "(Không có nhận xét)"}</span>
               <span>Trạng thái: {r.status}</span>
+              <span>Ngày tạo: {new Date(r.created_at).toLocaleDateString()}</span>
             </div>
             <div className="actions">
               {r.status !== "approved" && (
-                <button className="approve-btn" onClick={() => handleApprove(r._id)}>
+                <button className="approve-btn" onClick={() => handleApprove(r.id)}>
                   Phê duyệt
                 </button>
               )}
               <button className="edit-btn" onClick={() => handleEdit(r)}>
                 Sửa
               </button>
-              <button className="delete-btn" onClick={() => handleDelete(r._id)}>
+              <button className="delete-btn" onClick={() => handleDelete(r.id)}>
                 Xóa
               </button>
             </div>
           </li>
+
         ))}
       </ul>
 
