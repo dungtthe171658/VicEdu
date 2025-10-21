@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
+    "@payos/node": "^2.0.3",
     "@sendgrid/mail": "^7.6.0",
     "@types/bcrypt": "^3.0.0",
     "@types/body-parser": "^1.19.0",
