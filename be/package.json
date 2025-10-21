@@ -50,7 +50,7 @@
   },
   "scripts": {
     "start": "npm run dev",
-    "dev": "nodemon --watch src/**/*.ts --ignore src/**/*.spec.ts --exec ts-node src/main.ts",
+    "dev": "nodemon --watch src --ignore src/**/*.spec.ts --exec ts-node src/main.ts",
     "test": "echo \\\"Error: no src/test specified\\\" && exit 1",
     "build": "tsc",
     "serve:dev": "cross-env NODE_ENV=development node build/src/main.js",
