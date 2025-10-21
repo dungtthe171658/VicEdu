@@ -10,47 +10,51 @@ import TeacherLayout from "../pages/dashboard/Layout/TeacherLayout";
 // 🔹 Public pages
 import HomePage from "../pages/user/HomePage";
 import LoginPage from "../pages/LoginPage";
+import RegisterPage from "../pages/RegisterPage";
 import BookListPage from "../pages/books/BookListPage";
 import BookDetailPage from "../pages/books/BookDetailPage";
 
-// 🔹 Dashboard pages
-import OverviewPage from "../pages/dashboard/Shared/OverviewPage";
-import ManageUsersPage from "../pages/dashboard/Admin/ManageUsersPage";
-//import ManageStudentsPage from "../pages/dashboard/Teacher/ManageStudentsPage";
-import BookManagementPage from "../pages/books/BookManagementPage";
-import RegisterPage from "../pages/RegisterPage";
-// 🔹 Protected route
-import ProtectedRoute from "./ProtectedRoute";
-<<<<<<< Updated upstream
-import { CoursePage } from "../pages/courses/CoursePage";
-=======
-import {CategoryPage} from "../pages/category/CategoryPage.tsx";
+// 🔹 Category / Courses / Cart
+import { CategoryPage } from "../pages/category/CategoryPage.tsx";
 import CourseDetail from "../pages/courses/CourseDetail.tsx";
 import CartPage from "../pages/cart/CartPage.tsx";
+
+// 🔹 Payment pages
 import PaymentSuccessPage from "../pages/payment/PaymentSuccessPage";
 import PaymentCancelPage from "../pages/payment/PaymentCancelPage";
 import PaymentResultPage from "../pages/payment/PaymentResultPage";
 
->>>>>>> Stashed changes
+// 🔹 Dashboard pages
+import OverviewPage from "../pages/dashboard/Shared/OverviewPage";
+import ManageUsersPage from "../pages/dashboard/Admin/ManageUsersPage";
+import BookManagementPage from "../pages/books/BookManagementPage";
+
+// 🔹 Protected route
+import ProtectedRoute from "./ProtectedRoute";
 
 const AppRoutes: React.FC = () => {
   return (
     <Routes>
-      {/* Trang đăng nhập */}
+      {/* Trang đăng nhập/đăng ký */}
       <Route path="/login" element={<LoginPage />} />
-<Route path="/register" element={<RegisterPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+
       {/* Public routes (User layout) */}
       <Route element={<UserLayout />}>
         <Route index element={<HomePage />} />
-        <Route path="/courses" element={<CoursePage />} />
-        {/* 
-        <Route path="/courses/:slug" element={<CategoryDetail />} />
-        <Route path="/courses/:slug/:courseSlug" element={<CourseDetail />} />
- */}
+        <Route path="/category" element={<CategoryPage />} />
+        <Route path="/courses/:slug" element={<CourseDetail />} />
+        <Route path="/cart" element={<CartPage />} />
 
-<<<<<<< Updated upstream
+        {/* Payment callbacks */}
+        <Route path="/payment-success" element={<PaymentSuccessPage />} />
+        <Route path="/payment-cancel" element={<PaymentCancelPage />} />
+        <Route path="/payment-result" element={<PaymentResultPage />} />
+
+        {/* Books */}
         <Route path="books" element={<BookListPage />} />
         <Route path="books/:id" element={<BookDetailPage />} />
+
         {/* Route test BookManagementPage */}
         <Route path="test/manage-books" element={<BookManagementPage />} />
       </Route>
@@ -66,22 +70,6 @@ const AppRoutes: React.FC = () => {
       >
         {/* Trang tổng quan */}
         <Route index element={<OverviewPage />} />
-=======
-            {/* Public routes (User layout) */}
-            <Route element={<UserLayout/>}>
-                <Route index element={<HomePage/>}/>
-                <Route path="/category" element={<CategoryPage/>}/>
-                <Route path="/courses/:slug" element={<CourseDetail/>}/>
-                <Route path="/cart" element={<CartPage />} />
- <Route path="/payment-success" element={<PaymentSuccessPage/>} />
-  <Route path="/payment-cancel" element={<PaymentCancelPage/>} />
-  <Route path="/payment-result" element={<PaymentResultPage/>} />
-                <Route path="books" element={<BookListPage/>}/>
-                <Route path="books/:id" element={<BookDetailPage/>}/>
-                {/* Route test BookManagementPage */}
-                <Route path="test/manage-books" element={<BookManagementPage/>}/>
-            </Route>
->>>>>>> Stashed changes
 
         {/* 🧑‍💼 Admin routes */}
         <Route
@@ -106,7 +94,7 @@ const AppRoutes: React.FC = () => {
           path="teacher"
           element={
             <ProtectedRoute allowedRoles={["teacher"]}>
-              <TeacherLayout  />
+              <TeacherLayout />
             </ProtectedRoute>
           }
         />

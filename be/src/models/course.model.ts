@@ -6,8 +6,8 @@ export interface ICourse extends Document {
   description: string;
   price: number;
   thumbnail_url?: string;
-  teacher_id: mongoose.Types.ObjectId;
-  category_id: mongoose.Types.ObjectId;
+  teacher: mongoose.Types.ObjectId;
+  category: mongoose.Types.ObjectId;
   status: 'pending' | 'approved' | 'rejected';
   lessons: mongoose.Types.ObjectId[];
 }
@@ -19,8 +19,8 @@ const courseSchema = new Schema<ICourse>(
     description: { type: String, required: true },
     price: { type: Number, required: true, min: 0, default: 0 },
     thumbnail_url: { type: String },
-    teacher_id: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    category_id: { type: Schema.Types.ObjectId, ref: "Category", required: true },
+    teacher: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    category: { type: Schema.Types.ObjectId, ref: "Category", required: true },
     status: {
       type: String,
       enum: ['pending', 'approved', 'rejected'],
