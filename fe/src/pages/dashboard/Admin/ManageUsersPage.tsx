@@ -30,10 +30,26 @@ const ManageUsersPage: React.FC = () => {
       setLoading(true);
       setError(null);
       // userApi.getAll() phải trả về { data: UserDto[] } theo cấu trúc API HttpClient bạn đã thiết lập trước đó
-      const res = await userApi.getAll(); 
-      if (Array.isArray(res.data)) {
-        setUsers(res.data);
-      }
+      // const res = await userApi.getAll(); 
+      // if (Array.isArray(res.data)) {
+      //   setUsers(res.data);
+      // }
+
+
+      const res = await userApi.getAll();
+
+// 3 trường hợp phổ biến: axios chưa unwrap, đã unwrap 1 lần, hoặc custom
+const payload = res?.data ?? res;                // nếu axios trả { data: {...} }
+const items = payload?.data ?? payload?.items ?? payload;
+
+if (Array.isArray(items)) {
+  setUsers(items);
+} else {
+  setUsers([]); // hoặc throw error
+  console.warn("Unexpected users payload:", res);
+}
+
+
     } catch (err) {
       console.error("Lỗi khi tải danh sách người dùng:", err);
       setError("Không thể tải danh sách người dùng. Vui lòng kiểm tra kết nối API.");
@@ -169,7 +185,7 @@ const ManageUsersPage: React.FC = () => {
             <TableBody>
               {users.map((user) => (
                 <TableRow key={user._id} hover>
-                  <TableCell>{user.fullName}</TableCell>
+                  <TableCell>{user.name}</TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>{getRoleBadge(user.role)}</TableCell>
                   <TableCell>{getUserStatus(user)}</TableCell>
@@ -210,7 +226,7 @@ const ManageUsersPage: React.FC = () => {
       
       {/* --- Modal/Dialog cho Create/Edit (UC01) --- */}
       <Dialog open={isModalOpen} onClose={() => setIsModalOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingUser ? `Chỉnh sửa: ${editingUser.fullName}` : "Tạo Người dùng Mới"}</DialogTitle>
+        <DialogTitle>{editingUser ? `Chỉnh sửa: ${editingUser.name}` : "Tạo Người dùng Mới"}</DialogTitle>
         <DialogContent dividers>
           {/* 
             ⚠️ Cần phải có UserForm.tsx để truyền vào đây.

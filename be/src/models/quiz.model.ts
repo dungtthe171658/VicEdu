@@ -27,5 +27,5 @@ const quizSchema = new Schema<IQuiz>(
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" }, collection: "quizzes" }
 );
 
-const QuizModel: Model<IQuiz> = mongoose.models.Quiz || mongoose.model<IQuiz>("Quiz", quizSchema);
-export default QuizModel;
+
+export default mongoose.model<IQuiz>("Quiz", quizSchema);

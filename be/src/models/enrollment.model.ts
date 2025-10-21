@@ -19,5 +19,5 @@ const enrollmentSchema = new Schema<IEnrollment>(
 
 enrollmentSchema.index({ user_id: 1, course_id: 1 }, { unique: true });
 
-const EnrollmentModel: Model<IEnrollment> = mongoose.models.Enrollment || mongoose.model<IEnrollment>("Enrollment", enrollmentSchema);
-export default EnrollmentModel;
+
+export default mongoose.model<IEnrollment>("Enrollment", enrollmentSchema);

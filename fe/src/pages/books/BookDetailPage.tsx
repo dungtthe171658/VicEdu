@@ -11,7 +11,6 @@ const isCategoryPopulated = (
   return typeof category === "object" && category !== null && "name" in category;
 };
 
-// Helper lấy ảnh an toàn
 const getImageSrc = (img?: string) => {
   if (!img) return "/no-image.png";
   if (img.startsWith("data:") || img.startsWith("http") || img.startsWith("https")) {
@@ -27,11 +26,10 @@ const BookDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [added, setAdded] = useState(false);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0); // ✅ index ảnh hiện tại
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
     if (!id) return;
-
     const fetchBook = async () => {
       try {
         setLoading(true);
@@ -59,7 +57,6 @@ const BookDetailPage = () => {
         setLoading(false);
       }
     };
-
     fetchBook();
   }, [id]);
 
@@ -94,7 +91,7 @@ const BookDetailPage = () => {
   if (error) return <p className="error-text">{error}</p>;
   if (!book) return <p className="error-text">Không tìm thấy sách.</p>;
 
-  const priceVND = (book.price_cents / 100).toLocaleString("vi-VN", {
+  const priceVND = (book.price_cents).toLocaleString("vi-VN", {
     style: "currency",
     currency: "VND",
   });
@@ -102,7 +99,7 @@ const BookDetailPage = () => {
   return (
     <div className="book-detail-page">
       <div className="book-detail-container">
-        {/* --- Carousel ảnh --- */}
+        {/* --- Ảnh chính + Carousel --- */}
         <div className="book-images">
           <button className="prev-btn" onClick={handlePrevImage}>
             ◀
@@ -114,6 +111,21 @@ const BookDetailPage = () => {
           <button className="next-btn" onClick={handleNextImage}>
             ▶
           </button>
+
+          {/* --- Thumbnails nhỏ bên dưới --- */}
+          {book.images?.length > 1 && (
+            <div className="book-thumbnails">
+              {book.images.map((img, idx) => (
+                <img
+                  key={idx}
+                  src={getImageSrc(img)}
+                  alt={`Thumbnail ${idx + 1}`}
+                  className={currentImageIndex === idx ? "active" : ""}
+                  onClick={() => setCurrentImageIndex(idx)}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         <h1>{book.title}</h1>
@@ -121,17 +133,11 @@ const BookDetailPage = () => {
 
         {isCategoryPopulated(book.category_id) && (
           <p className="category">
-            Thể loại:{" "}
-            <Link to={`/categories/${book.category_id._id}`}>
-              {book.category_id.name}
-            </Link>
+            Thể loại: <span>{book.category_id.name}</span>
           </p>
         )}
 
-        {book.description && (
-          <p className="description">{book.description}</p>
-        )}
-
+        {book.description && <p className="description">{book.description}</p>}
         <p className="price">{priceVND}</p>
 
         <button
@@ -143,6 +149,7 @@ const BookDetailPage = () => {
         </button>
       </div>
 
+      {/* --- Sidebar sách cùng thể loại --- */}
       <div className="book-same-category">
         <h3>Sách cùng thể loại</h3>
         {sameCategoryBooks.length > 0 ? (

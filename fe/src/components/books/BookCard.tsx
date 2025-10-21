@@ -19,7 +19,7 @@ const BookCard = ({ book, onAddToCart }: BookCardProps) => {
     onAddToCart?.(book);
   };
 
-  const priceVND = (book.price_cents / 100).toLocaleString("vi-VN", {
+  const priceVND = (book.price_cents).toLocaleString("vi-VN", {
     style: "currency",
     currency: "VND",
   });

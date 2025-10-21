@@ -35,7 +35,6 @@ import {
   getBookById,
   createBook,
   updateBook,
-  hideBook,
   deleteBook,
 } from "../controllers/book.controller";
 
@@ -52,8 +51,6 @@ router.get("/:id", getBookById);
 router.post("/", createBook);
 router.put("/:id", updateBook);
 
-// Ẩn sách (soft delete)
-router.put("/:id/hide", hideBook);
 
 // Xóa sách hẳn (hard delete)
 router.delete("/:id", deleteBook);
