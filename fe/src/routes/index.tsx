@@ -21,7 +21,17 @@ import BookManagementPage from "../pages/books/BookManagementPage";
 import RegisterPage from "../pages/RegisterPage";
 // 🔹 Protected route
 import ProtectedRoute from "./ProtectedRoute";
+<<<<<<< Updated upstream
 import { CoursePage } from "../pages/courses/CoursePage";
+=======
+import {CategoryPage} from "../pages/category/CategoryPage.tsx";
+import CourseDetail from "../pages/courses/CourseDetail.tsx";
+import CartPage from "../pages/cart/CartPage.tsx";
+import PaymentSuccessPage from "../pages/payment/PaymentSuccessPage";
+import PaymentCancelPage from "../pages/payment/PaymentCancelPage";
+import PaymentResultPage from "../pages/payment/PaymentResultPage";
+
+>>>>>>> Stashed changes
 
 const AppRoutes: React.FC = () => {
   return (
@@ -38,6 +48,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/courses/:slug/:courseSlug" element={<CourseDetail />} />
  */}
 
+<<<<<<< Updated upstream
         <Route path="books" element={<BookListPage />} />
         <Route path="books/:id" element={<BookDetailPage />} />
         {/* Route test BookManagementPage */}
@@ -55,6 +66,22 @@ const AppRoutes: React.FC = () => {
       >
         {/* Trang tổng quan */}
         <Route index element={<OverviewPage />} />
+=======
+            {/* Public routes (User layout) */}
+            <Route element={<UserLayout/>}>
+                <Route index element={<HomePage/>}/>
+                <Route path="/category" element={<CategoryPage/>}/>
+                <Route path="/courses/:slug" element={<CourseDetail/>}/>
+                <Route path="/cart" element={<CartPage />} />
+ <Route path="/payment-success" element={<PaymentSuccessPage/>} />
+  <Route path="/payment-cancel" element={<PaymentCancelPage/>} />
+  <Route path="/payment-result" element={<PaymentResultPage/>} />
+                <Route path="books" element={<BookListPage/>}/>
+                <Route path="books/:id" element={<BookDetailPage/>}/>
+                {/* Route test BookManagementPage */}
+                <Route path="test/manage-books" element={<BookManagementPage/>}/>
+            </Route>
+>>>>>>> Stashed changes
 
         {/* 🧑‍💼 Admin routes */}
         <Route

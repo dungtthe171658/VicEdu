@@ -8,10 +8,10 @@ import bookRoutes from "./routes/book.route";
 import categoryRoutes from "./routes/category.routes";
 import authRoutes from "./routes/auth.route";
 import userRoutes from "./routes/user.route";
-import orderRoutes from "./routes/user.route";
+import orderRoutes from "./routes/order.route";
 
 import lessonRoutes from "./routes/lesson.route";
-
+import paymentRoutes from "./routes/payment.route"; // <-- THÊM
 
 // import apiRoutes from "./routes/index";
 const app = express();
@@ -21,7 +21,7 @@ app.use(cors());
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(morgan("dev"));
-
+app.use("/api/payments", paymentRoutes); 
 // Đăng ký routes
 app.use("/api/books", bookRoutes);
 app.use("/api/users", userRoutes);
