@@ -19,6 +19,7 @@ import { CategoryPage } from "../pages/category/CategoryPage.tsx";
 import CourseDetail from "../pages/courses/CourseDetail.tsx";
 import CartPage from "../pages/cart/CartPage.tsx";
 
+
 // 🔹 Payment pages
 import PaymentSuccessPage from "../pages/payment/PaymentSuccessPage";
 import PaymentCancelPage from "../pages/payment/PaymentCancelPage";
@@ -28,6 +29,10 @@ import PaymentResultPage from "../pages/payment/PaymentResultPage";
 import OverviewPage from "../pages/dashboard/Shared/OverviewPage";
 import ManageUsersPage from "../pages/dashboard/Admin/ManageUsersPage";
 import BookManagementPage from "../pages/books/BookManagementPage";
+import ManageOrdersPage from "../pages/dashboard/Admin/ManageOrdersPage.tsx";
+import ManageCategoriesPage from "../pages/dashboard/Admin/ManageCategoriesPage";
+import ManageCoursesPage from "../pages/dashboard/Admin/ManageCoursesPage";
+import ManageReviewsPage from "../pages/dashboard/Admin/ManageReviewsPage";
 
 // 🔹 Protected route
 import ProtectedRoute from "./ProtectedRoute";
@@ -85,6 +90,42 @@ const AppRoutes: React.FC = () => {
           element={
             <ProtectedRoute allowedRoles={["admin"]}>
               <BookManagementPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="manage-orders"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <ManageOrdersPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="manage-courses"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <ManageCoursesPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="manage-categories"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <ManageCategoriesPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="manage-reviews"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <ManageReviewsPage />
             </ProtectedRoute>
           }
         />
