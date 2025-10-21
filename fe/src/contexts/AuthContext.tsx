@@ -8,6 +8,7 @@ type AuthContextType = {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  loginWithGoogle: (token: String, userData: any) => Promise<void>;
 };
 
 export const AuthContext = createContext<AuthContextType>({
@@ -15,6 +16,7 @@ export const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   login: async () => {},
   logout: () => {},
+  loginWithGoogle: async () => {},
 });
 
 // Kiểu user trả về từ BE (có thể khác FE)
@@ -95,10 +97,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem("accessToken");
     setUser(null);
   }, []);
-
+  const loginWithGoogle = useCallback(async (token: String) => {
+      localStorage.setItem("accessToken", String(token));
+    try {
+      const me = await authApi.me();
+      const mapped = mapBackendUserToFront(me as BackendUser);
+      setUser(mapped);
+    } catch (error) {
+      console.error("Google login failed:", error);
+      localStorage.removeItem("accessToken");
+      setUser(null);
+      throw error;
+    }
+  }, []);
+    
   const value = useMemo(
-    () => ({ user, isLoading, login, logout }),
-    [user, isLoading, login, logout]
+    () => ({ user, isLoading, login, logout, loginWithGoogle }),
+    [user, isLoading, login, logout, loginWithGoogle]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

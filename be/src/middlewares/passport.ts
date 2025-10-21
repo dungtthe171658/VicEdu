@@ -36,7 +36,7 @@ passport.use(
           name: profile.displayName,
           email: profile.emails?.[0]?.value,
           avatar: profile.photos?.[0]?.value,
-          role: "user",
+          role: "customer",
           is_verified: true,
           password: "google_oauth",
         });

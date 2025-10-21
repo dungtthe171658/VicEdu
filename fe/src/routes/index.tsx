@@ -61,7 +61,7 @@ const AppRoutes: React.FC = () => {
                 <Route
                     path="manage-users"
                     element={
-                        <ProtectedRoute allowedRoles={["admin"]}>
+                        <ProtectedRoute allowedRoles={["customer"]}>
                             <ManageUsersPage/>
                         </ProtectedRoute>
                     }

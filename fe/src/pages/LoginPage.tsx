@@ -1,49 +1,74 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import GoogleLoginButton from '../auth/GoogleLoginButton';
 
 const LoginPage = () => {
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
+  const location = useLocation();
   const navigate = useNavigate();
   const auth = useAuth();
-// LoginPage.tsx
-const handleSubmit = async (event: React.FormEvent) => {
-  event.preventDefault();
-  if (isLoading) return;
 
-  const emailNorm = email.trim().toLowerCase();
-  if (!emailNorm || !password) {
-    setError('Vui lòng nhập đầy đủ email và mật khẩu.');
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const token = params.get("token");
+    const errorParam = params.get("error");
+
+    if (token) {
+    (async () => {
+      try {
+        localStorage.setItem("accessToken", token);
+        await auth.loginWithGoogle(token, null);
+        navigate("/", { replace: true }); // redirect ngay sau khi login thành công
+      } catch (err) {
+        console.error("Lỗi khi xử lý Google Login:", err);
+        navigate("/login?error=google_failed", { replace: true });
+      }
+    })();
     return;
   }
+    if (errorParam) {
+      setError("Đăng nhập Google thất bại. Vui lòng thử lại.");
+    }
+  }, [location, navigate, auth]);
+  // LoginPage.tsx
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (isLoading) return;
 
-  setIsLoading(true);
-  setError(null);
+    const emailNorm = email.trim().toLowerCase();
+    if (!emailNorm || !password) {
+      setError('Vui lòng nhập đầy đủ email và mật khẩu.');
+      return;
+    }
 
-  try {
-    await auth.login(emailNorm, password);
-    navigate('/dashboard', { replace: true });
-  } catch (err: any) {
-    // interceptor của bạn reject(JSON) => err.message là message từ BE (nếu có)
-    const message = err?.message || 'Đăng nhập thất bại.';
-    setError(message);
-  } finally {
-    setIsLoading(false);
-  }
-};
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await auth.login(emailNorm, password);
+      navigate('/dashboard', { replace: true });
+    } catch (err: any) {
+      // interceptor của bạn reject(JSON) => err.message là message từ BE (nếu có)
+      const message = err?.message || 'Đăng nhập thất bại.';
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-800">Đăng nhập VicEdu</h1>
+          <h1 className="text-3xl font-bold text-gray-800">Đăng nhập </h1>
           <p className="mt-2 text-sm text-gray-600">Chào mừng bạn trở lại!</p>
         </div>
         <form className="space-y-6" onSubmit={handleSubmit}>
@@ -99,7 +124,7 @@ const handleSubmit = async (event: React.FormEvent) => {
             </button>
           </div>
         </form>
-
+        <GoogleLoginButton />
         <p className="text-sm text-center text-gray-600">
           Chưa có tài khoản?{' '}
           <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500">

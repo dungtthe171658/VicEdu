@@ -21,7 +21,6 @@ const transporter = nodemailer.createTransport({
 export const register = async (req: Request, res: Response) => {
   try {
     const { name, email, password, phone, role } = req.body;
-
     if (!name || !email || !password)
       return res.status(400).json({ message: "Thiếu thông tin" });
 
@@ -41,19 +40,16 @@ export const register = async (req: Request, res: Response) => {
       verifyToken,
       verifyTokenExpiry: new Date(Date.now() + 15 * 60 * 1000),
     });
-
     await newUser.save();
 
-    const verifyUrl = `${process.env.FE_URL}/verify-email?token=${verifyToken}`;
+    const verifyUrl = `${process.env.BACKEND_URL}/api/auth/verify-email?token=${verifyToken}`;
     await transporter.sendMail({
       to: email,
       subject: "Xác minh email",
-      html: `
-        <h3>Chào ${name}</h3>
-        <p>Nhấn vào liên kết sau để xác minh email của bạn:</p>
-        <a href="${verifyUrl}">${verifyUrl}</a>
-        <p>Liên kết hết hạn sau 15 phút.</p>
-      `,
+      html: `<p>Chào ngài ${name},</p>
+                 <p>Cảm ơn ngài đã bỏ thời gian đăng ký. Click vào đường link để xác nhận ngài muốn dùng sản phẩm của chúng tôi :</p>
+                 <a href="${verifyUrl}">Nhận bánh danisa</a>
+                 <p>Link có 1 giờ thôi, ấn nhanh thì được.</p>`,
     });
 
     res.status(201).json({
@@ -76,7 +72,9 @@ export const verifyEmail = async (req: Request, res: Response) => {
       verifyTokenExpiry: { $gt: new Date() },
     });
 
-    if (!user) return res.status(400).json({ message: "Token không hợp lệ hoặc đã hết hạn" });
+    if (!user) {
+      res.redirect(`${process.env.FE_URL}/login?is_verified=false`)
+      return res.status(400).json({ message: "Token không hợp lệ hoặc đã hết hạn" });}
 
     if (user.verifyTokenExpiry && user.verifyTokenExpiry < new Date()) {
       if(!user.is_verified) {
@@ -88,7 +86,7 @@ export const verifyEmail = async (req: Request, res: Response) => {
     user.verifyToken = undefined;
     user.verifyTokenExpiry = undefined;
     await user.save();
-
+    return res.redirect(`${process.env.FE_URL}/login?is_verified=true`)
     res.json({ message: "Xác minh email thành công" });
   } catch (error: any) {
     console.error("Lỗi xác minh email:", error);
@@ -208,7 +206,7 @@ export const googleSuccess = (req: Request, res: Response) => {
     { expiresIn: "7d" }
   );
 
-  const redirectUrl = `${process.env.FE_URL}/google-success?token=${token}`;
+  const redirectUrl = `${process.env.FE_URL}/login?token=${token}`;
   res.redirect(redirectUrl);
 };
 
