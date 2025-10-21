@@ -1,0 +1,108 @@
+.review-management-container {
+  padding: 20px;
+}
+
+.review-management-container .header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.review-management-container .add-btn {
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.review-management-container .add-btn:hover {
+  background-color: #1e40af;
+}
+
+.review-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.review-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+}
+
+.review-list .review-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.review-list .actions {
+  display: flex;
+  gap: 8px;
+}
+
+.review-list .edit-btn,
+.review-list .delete-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.review-list .edit-btn {
+  background-color: #fbbf24;
+  color: #111827;
+}
+
+.review-list .delete-btn {
+  background-color: #ef4444;
+  color: white;
+}
+
+.review-list .edit-btn:hover {
+  background-color: #f59e0b;
+}
+
+.review-list .delete-btn:hover {
+  background-color: #dc2626;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background: white;
+  padding: 24px;
+  border-radius: 10px;
+  min-width: 400px;
+}
+
+.close-btn {
+  margin-top: 10px;
+  background-color: #6b7280;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
