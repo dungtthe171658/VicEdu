@@ -7,6 +7,10 @@ import UserLayout from "../components/layout/UserLayout";
 import AdminLayout from "../pages/dashboard/Layout/AdminLayout";
 import TeacherLayout from "../pages/dashboard/Layout/TeacherLayout";
 
+import ProfilePage from "../pages/my-account/ProfilePage";
+import  MyCoursesPage from "../pages/my-account/MyCoursesPage";
+import  OrderHistoryPage  from "../pages/my-account/OrderHistoryPage.tsx";
+
 // 🔹 Public pages
 import HomePage from "../pages/user/HomePage";
 import LoginPage from "../pages/LoginPage";
@@ -34,6 +38,12 @@ import ManageCategoriesPage from "../pages/dashboard/Admin/ManageCategoriesPage"
 import ManageCoursesPage from "../pages/dashboard/Admin/ManageCoursesPage";
 import ManageReviewsPage from "../pages/dashboard/Admin/ManageReviewsPage";
 
+
+
+
+
+
+
 // 🔹 Protected route
 import ProtectedRoute from "./ProtectedRoute";
 
@@ -50,6 +60,10 @@ const AppRoutes: React.FC = () => {
         <Route path="/category" element={<CategoryPage />} />
         <Route path="/courses/:slug" element={<CourseDetail />} />
         <Route path="/cart" element={<CartPage />} />
+
+      <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/my-courses" element={<MyCoursesPage />} />
+<Route path="/my-orders" element={<OrderHistoryPage />} /> 
 
         {/* Payment callbacks */}
         <Route path="/payment-success" element={<PaymentSuccessPage />} />

@@ -1,25 +1,80 @@
-import { Link, Outlet } from "react-router-dom";
+import { Link, Outlet, useNavigate } from "react-router-dom";
 import "./Layout.css";
+import { useEffect, useRef, useState } from "react";
+import { useAuth } from "../../hooks/useAuth";
+import { FaUserCircle, FaSignOutAlt, FaBook, FaIdBadge } from "react-icons/fa";
+import CartIcon from "../common/CartIcon"; // ← thêm import
 
 const UserHeader = () => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
   return (
     <header className="user-header">
       <nav>
-        <Link to="/" className="logo">
-          VicEdu
-        </Link>
+        <Link to="/" className="logo">VicEdu</Link>
 
-        <div className="menu">
-          <Link to="/courses">Khóa học</Link>
+        <div className="menu flex items-center gap-4">
+              <Link to="/courses">Khóa học</Link>
           <Link to="/books">Sách</Link>
           <Link to="/about">Giới thiệu</Link>
-          <Link to="/login" className="login">
-            Đăng nhập
-          </Link>
-          {/* ✅ Nút Quản lý sách tạm bỏ check role */}
-          <Link to="/test/manage-books" style={{ color: "red" }}>
-            Test Quản lý sách
-          </Link>
+
+          {/* 🛒 Cart icon + badge */}
+          <CartIcon />
+
+          {!user ? (
+            <Link to="/login" className="login">Đăng nhập</Link>
+          ) : (
+            <div className="relative" ref={dropdownRef}>
+              <button onClick={() => setOpen((s) => !s)} className="flex items-center gap-2 focus:outline-none">
+                {user.avatar ? (
+                  <img src={user.avatar} alt="avatar" className="h-8 w-8 rounded-full object-cover" />
+                ) : (
+                  <FaUserCircle size={26} className="text-gray-600" />
+                )}
+                <span className="hidden sm:inline text-sm font-medium text-gray-700">
+                  {user.name || "User"}
+                </span>
+              </button>
+
+              {open && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                  <div className="px-4 py-2 text-sm text-gray-700">
+                    <p className="font-semibold truncate">{user.name || "User"}</p>
+                    <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                  </div>
+                  <div className="border-t border-gray-200" />
+                  <Link to="/profile" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setOpen(false)}>
+                    <FaIdBadge className="mr-2" /> Hồ sơ
+                  </Link>
+                  <Link to="/my-courses" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setOpen(false)}>
+                    <FaBook className="mr-2" /> Khóa học của tôi
+                  </Link>
+                  <Link to="/my-orders" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setOpen(false)}>
+                    🧾 Đơn hàng của tôi
+                  </Link>
+                  <button onClick={handleLogout} className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    <FaSignOutAlt className="mr-2" /> Đăng xuất
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </nav>
     </header>
@@ -37,7 +92,7 @@ const UserLayout = () => {
     <div className="user-layout">
       <UserHeader />
       <main className="user-main">
-        <Outlet /> {/* Nội dung các trang con hiển thị ở đây */}
+        <Outlet />
       </main>
       <UserFooter />
     </div>
