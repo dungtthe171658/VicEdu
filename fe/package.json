@@ -17,6 +17,7 @@
     "@mui/material": "^5.18.0",
     "axios": "^1.12.2",
     "bootstrap": "^5.3.8",
+    "dayjs": "^1.11.18",
     "lucide-react": "^0.546.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
