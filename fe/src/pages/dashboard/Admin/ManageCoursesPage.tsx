@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import courseApi from "../../../api/courseApi";
+import courseAdminApi from "../../../api/courseAdminApi";
 import type { Course } from "../../../types/course";
 import CourseForm from "../../../components/courses/CourseForm";
 import "./ManageCoursesPage.css";
@@ -12,7 +12,7 @@ const ManageCoursesPage = () => {
   // Tải danh sách khóa học
   const loadCourses = async () => {
     try {
-      const res = await courseApi.getAll();
+      const res = await courseAdminApi.getAll();
       setCourses(res.data);
     } catch (error) {
       console.error("Error loading courses:", error);
@@ -28,9 +28,9 @@ const ManageCoursesPage = () => {
   const handleSave = async (data: Partial<Course>) => {
     try {
       if (selectedCourse?._id) {
-        await courseApi.update(selectedCourse._id, data);
+        await courseAdminApi.update(selectedCourse._id, data);
       } else {
-        await courseApi.create(data);
+        await courseAdminApi.create(data);
       }
       setShowModal(false);
       setSelectedCourse(null);
@@ -57,7 +57,7 @@ const ManageCoursesPage = () => {
   const handleDelete = async (id: string) => {
     if (confirm("Bạn có chắc chắn muốn xóa khóa học này không?")) {
       try {
-        await courseApi.delete(id);
+        await courseAdminApi.delete(id);
         loadCourses();
       } catch (error) {
         console.error("Error deleting course:", error);
