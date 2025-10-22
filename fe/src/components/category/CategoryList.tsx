@@ -1,15 +1,16 @@
 // src/pages/Courses/CategoryList.tsx
-import {useEffect, useMemo, useState} from "react";
-import {Link, useSearchParams} from "react-router-dom";
-import {Layers, Star, School, ChevronDown} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { Layers, Star, School, ChevronDown } from "lucide-react";
 import categoryApi from "../../api/categoryApi";
 import courseApi from "../../api/courseApi";
-import type {Category} from "../../types/category";
-import type {Course} from "../../types/course";
-import {SkeletonBanner, SkeletonCard} from "../courses/Skeleton";
-import {CardImage, CourseCard} from "../courses/CourseCard";
-import {SectionHeader} from "./SectionHeader";
-import {CategoryCard} from "./CategoryCard.tsx";
+import type { Category } from "../../types/category";
+import type { Course } from "../../types/course";
+import { SkeletonBanner, SkeletonCard } from "../courses/Skeleton";
+import { CardImage, CourseCard } from "../courses/CourseCard";
+import { SectionHeader } from "./SectionHeader";
+import { CategoryCard } from "./CategoryCard.tsx";
+import BookShowcase from "../books/BookShowcase.tsx";
 
 const Placeholder = "https://placehold.co/800x450?text=Banner&font=inter";
 
@@ -35,7 +36,15 @@ function toId(val: any): string {
   return String(val);
 }
 
-function Chip({label, active, onClick}: { label: string; active?: boolean; onClick?: () => void }) {
+function Chip({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active?: boolean;
+  onClick?: () => void;
+}) {
   return (
     <button
       onClick={onClick}
@@ -144,76 +153,74 @@ export default function CategoryList() {
           </div>
 
           <ul className="py-2 text-gray-700">
-            {loading ? (
-              Array.from({ length: 8 }).map((_, i) => (
-                <li key={i} className="px-4 py-3">
-                  <div className="h-4 bg-gray-200 rounded w-2/3 animate-pulse" />
-                </li>
-              ))
-            ) : (
-              parents.map((p) => {
-                const isParentActive =
-                  activeCat === p.slug || toId(p._id) === activeCat;
-
-                return (
-                  <li key={toId(p._id)}>
-                    <Link
-                      to={`/courses/${p.slug ?? toId(p._id)}`}
-                      onClick={() => setActiveCat(p.slug ?? toId(p._id))}
-                      aria-current={isParentActive ? "page" : undefined}
-                      className={[
-                        "flex items-center gap-2 px-4 py-3 rounded-md transition border-l-2",
-                        isParentActive
-                          ? "bg-blue-50 text-blue-700 font-semibold border-blue-600"
-                          : "hover:bg-blue-50 hover:text-blue-600 border-transparent",
-                      ].join(" ")}
-                    >
-                      <Layers className="size-4 text-blue-500" />
-                      <span className="font-medium">{p.name}</span>
-                    </Link>
-
-                    {childrenByParent[toId(p._id)]?.length ? (
-                      <ul className="pl-10 pr-2 pb-2">
-                        {childrenByParent[toId(p._id)].map((c) => {
-                          const isChildActive =
-                            activeCat === c.slug || toId(c._id) === activeCat;
-
-                          return (
-                            <li key={toId(c._id)}>
-                              <Link
-                                to={`/courses/${c.slug ?? toId(c._id)}`}
-                                onClick={() =>
-                                  setActiveCat(c.slug ?? toId(c._id))
-                                }
-                                aria-current={
-                                  isChildActive ? "page" : undefined
-                                }
-                                className={[
-                                  "flex items-center gap-2 py-2 text-sm transition",
-                                  isChildActive
-                                    ? "text-blue-700 font-semibold"
-                                    : "text-gray-600 hover:text-blue-600",
-                                ].join(" ")}
-                              >
-                                <ChevronDown
-                                  className={[
-                                    "size-4 -rotate-90",
-                                    isChildActive
-                                      ? "text-blue-600"
-                                      : "text-gray-400",
-                                  ].join(" ")}
-                                />
-                                {c.name}
-                              </Link>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    ) : null}
+            {loading
+              ? Array.from({ length: 8 }).map((_, i) => (
+                  <li key={i} className="px-4 py-3">
+                    <div className="h-4 bg-gray-200 rounded w-2/3 animate-pulse" />
                   </li>
-                );
-              })
-            )}
+                ))
+              : parents.map((p) => {
+                  const isParentActive =
+                    activeCat === p.slug || toId(p._id) === activeCat;
+
+                  return (
+                    <li key={toId(p._id)}>
+                      <Link
+                        to={`/courses/${p.slug ?? toId(p._id)}`}
+                        onClick={() => setActiveCat(p.slug ?? toId(p._id))}
+                        aria-current={isParentActive ? "page" : undefined}
+                        className={[
+                          "flex items-center gap-2 px-4 py-3 rounded-md transition border-l-2",
+                          isParentActive
+                            ? "bg-blue-50 text-blue-700 font-semibold border-blue-600"
+                            : "hover:bg-blue-50 hover:text-blue-600 border-transparent",
+                        ].join(" ")}
+                      >
+                        <Layers className="size-4 text-blue-500" />
+                        <span className="font-medium">{p.name}</span>
+                      </Link>
+
+                      {childrenByParent[toId(p._id)]?.length ? (
+                        <ul className="pl-10 pr-2 pb-2">
+                          {childrenByParent[toId(p._id)].map((c) => {
+                            const isChildActive =
+                              activeCat === c.slug || toId(c._id) === activeCat;
+
+                            return (
+                              <li key={toId(c._id)}>
+                                <Link
+                                  to={`/courses/${c.slug ?? toId(c._id)}`}
+                                  onClick={() =>
+                                    setActiveCat(c.slug ?? toId(c._id))
+                                  }
+                                  aria-current={
+                                    isChildActive ? "page" : undefined
+                                  }
+                                  className={[
+                                    "flex items-center gap-2 py-2 text-sm transition",
+                                    isChildActive
+                                      ? "text-blue-700 font-semibold"
+                                      : "text-gray-600 hover:text-blue-600",
+                                  ].join(" ")}
+                                >
+                                  <ChevronDown
+                                    className={[
+                                      "size-4 -rotate-90",
+                                      isChildActive
+                                        ? "text-blue-600"
+                                        : "text-gray-400",
+                                    ].join(" ")}
+                                  />
+                                  {c.name}
+                                </Link>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : null}
+                    </li>
+                  );
+                })}
           </ul>
         </aside>
 
@@ -260,7 +267,11 @@ export default function CategoryList() {
             }
           />
           <div className="ml-auto flex gap-2">
-            <Chip label="Tất cả" active={activeCat === "all"} onClick={() => setActiveCat("all")} />
+            <Chip
+              label="Tất cả"
+              active={activeCat === "all"}
+              onClick={() => setActiveCat("all")}
+            />
             {parents.slice(0, 6).map((c) => (
               <Chip
                 key={toId(c._id)}
@@ -287,6 +298,9 @@ export default function CategoryList() {
             ))}
           </div>
         )}
+      </section>
+      <section className="mt-16">
+        <BookShowcase />
       </section>
     </div>
   );
