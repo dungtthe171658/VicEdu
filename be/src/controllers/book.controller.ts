@@ -117,3 +117,28 @@ export const deleteBook = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Error deleting book", error: err.message });
   }
 };
+
+// 📘 Cập nhật stock sách
+export const updateBookStock = async (req: Request, res: Response) => {
+  try {
+    const bookId = toObjectId(req.params.id);
+    if (!bookId) return res.status(400).json({ message: "Invalid book ID" });
+
+    const { stock } = req.body;
+    if (typeof stock !== "number" || stock < 0)
+      return res.status(400).json({ message: "Stock không hợp lệ" });
+
+    const updated = await Book.findByIdAndUpdate(
+      bookId,
+      { stock },
+      { new: true, runValidators: true }
+    ).populate("category_id", "name slug");
+
+    if (!updated) return res.status(404).json({ message: "Book not found" });
+
+    res.json(updated);
+  } catch (err: any) {
+    res.status(500).json({ message: "Error updating stock", error: err.message });
+  }
+};
+

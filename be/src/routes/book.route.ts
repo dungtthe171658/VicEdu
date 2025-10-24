@@ -1,34 +1,3 @@
-// routes/book.route.ts
-/*import express, { Router } from "express";
-import { checkAuth } from "../middlewares/middleware"; 
-import {
-  getBooks,
-  createBook,
-  updateBook,
-  hideBook,
-  deleteBook,
-} from "../controllers/book.controller";
-
-// Tạo router
-const router: Router = express.Router();
-
-// Public — ai cũng xem được danh sách sách
-router.get("/", getBooks);
-
-// Chỉ Admin hoặc Teacher mới được thêm/sửa/xóa
-// Nếu bạn có logic phân quyền theo role, thêm vào sau này
-router.post("/", checkAuth, createBook);
-router.put("/:id", checkAuth, updateBook);
-
-// Ẩn sách (soft delete)
-router.put("/:id/hide", checkAuth, hideBook);
-
-// Xóa sách hẳn (hard delete)
-router.delete("/:id", checkAuth, deleteBook);
-
-export default router;*/
-
-// routes/book.route.ts
 import express, { Router } from "express";
 import {
   getBooks,
@@ -36,23 +5,20 @@ import {
   createBook,
   updateBook,
   deleteBook,
+  updateBookStock,
 } from "../controllers/book.controller";
+import { authenticateToken, checkRole } from "../middlewares/auth";
 
-// Tạo router
 const router: Router = express.Router();
 
 // Public — ai cũng xem được danh sách sách
 router.get("/", getBooks);
-
-// Lấy sách theo ID
 router.get("/:id", getBookById);
+router.put("/:id/stock", authenticateToken, updateBookStock);
 
-// Tạm thời bỏ checkAuth để test
-router.post("/", createBook);
-router.put("/:id", updateBook);
-
-
-// Xóa sách hẳn (hard delete)
-router.delete("/:id", deleteBook);
+// Chỉ Admin hoặc Teacher mới được thêm/sửa/xóa/trừ stock
+router.post("/", authenticateToken, checkRole(['admin', 'teacher']), createBook);
+router.put("/:id", authenticateToken, checkRole(['admin', 'teacher']), updateBook);
+router.delete("/:id", authenticateToken, checkRole(['admin', 'teacher']), deleteBook);
 
 export default router;

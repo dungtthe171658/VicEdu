@@ -2,18 +2,24 @@ import { useParams, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import bookApi from "../../api/bookApi";
 import type { BookDto } from "../../types/book.d";
-import type { CategoryDto } from "../../types/category.d";
+import type { Category } from "../../types/category.d";
 import "./BookDetailPage.css";
 
 const isCategoryPopulated = (
-  category: string | CategoryDto
-): category is CategoryDto => {
-  return typeof category === "object" && category !== null && "name" in category;
+  category: string | Category
+): category is Category => {
+  return (
+    typeof category === "object" && category !== null && "name" in category
+  );
 };
 
 const getImageSrc = (img?: string) => {
   if (!img) return "/no-image.png";
-  if (img.startsWith("data:") || img.startsWith("http") || img.startsWith("https")) {
+  if (
+    img.startsWith("data:") ||
+    img.startsWith("http") ||
+    img.startsWith("https")
+  ) {
     return img;
   }
   return "/no-image.png";
@@ -91,7 +97,7 @@ const BookDetailPage = () => {
   if (error) return <p className="error-text">{error}</p>;
   if (!book) return <p className="error-text">Không tìm thấy sách.</p>;
 
-  const priceVND = (book.price_cents).toLocaleString("vi-VN", {
+  const priceVND = book.price_cents.toLocaleString("vi-VN", {
     style: "currency",
     currency: "VND",
   });
@@ -113,7 +119,7 @@ const BookDetailPage = () => {
           </button>
 
           {/* --- Thumbnails nhỏ bên dưới --- */}
-          {book.images?.length > 1 && (
+          {book?.images && book.images.length > 1 && (
             <div className="book-thumbnails">
               {book.images.map((img, idx) => (
                 <img

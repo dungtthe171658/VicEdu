@@ -17,6 +17,7 @@ import LoginPage from "../pages/LoginPage";
 import RegisterPage from "../pages/RegisterPage";
 import BookListPage from "../pages/books/BookListPage";
 import BookDetailPage from "../pages/books/BookDetailPage";
+import { CoursePage } from "../pages/courses/CoursePage";
 
 // 🔹 Category / Courses / Cart
 import { CategoryPage } from "../pages/category/CategoryPage.tsx";
@@ -38,12 +39,6 @@ import ManageCategoriesPage from "../pages/dashboard/Admin/ManageCategoriesPage"
 import ManageCoursesPage from "../pages/dashboard/Admin/ManageCoursesPage";
 import ManageReviewsPage from "../pages/dashboard/Admin/ManageReviewsPage";
 
-
-
-
-
-
-
 // 🔹 Protected route
 import ProtectedRoute from "./ProtectedRoute";
 
@@ -60,7 +55,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/category" element={<CategoryPage />} />
         <Route path="/courses/:slug" element={<CourseDetail />} />
         <Route path="/cart" element={<CartPage />} />
-
+        <Route path="/courses" element={<CoursePage />} />
       <Route path="/profile" element={<ProfilePage />} />
         <Route path="/my-courses" element={<MyCoursesPage />} />
 <Route path="/my-orders" element={<OrderHistoryPage />} /> 
