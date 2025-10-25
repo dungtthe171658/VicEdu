@@ -8,6 +8,7 @@ import {
   unlockUser,
   softDeleteUser,
   restoreUser,
+  createUser,
 } from "../controllers/user.controller";
 import { authenticateToken, checkRole } from "../middlewares/auth";
 
@@ -32,5 +33,6 @@ router.route("/:id")
 router.post("/:id/lock", lockUser);
 router.post("/:id/unlock", unlockUser);
 router.post("/:id/restore", restoreUser);
+router.post("/", createUser);
 
 export default router;

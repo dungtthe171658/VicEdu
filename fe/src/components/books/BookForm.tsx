@@ -25,19 +25,29 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
 
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const data: Category[] = await categoryApi.getAll(); // trực tiếp array
-        setCategories(data || []);
-      } catch {
-        setCategories([]);
-      } finally {
-        setLoadingCategories(false);
-      }
-    };
-    fetchCategories();
-  }, []);
+ useEffect(() => {
+  const fetchCategories = async () => {
+    try {
+      const res = await categoryApi.getAll();
+
+      // 🔍 Tự động nhận diện mảng danh mục dù API trả kiểu gì
+      const list =
+        Array.isArray(res) ? res :
+        Array.isArray(res?.data) ? res.data :
+        Array.isArray(res?.categories) ? res.categories : [];
+
+      setCategories(list);
+    } catch (err) {
+      console.error("❌ Lỗi khi tải danh mục:", err);
+      setCategories([]);
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+
+  fetchCategories();
+}, []);
+
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
