@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { FaPlus, FaLock, FaUnlock, FaEdit, FaTrashAlt } from 'react-icons/fa';
 import userApi from '../../../api/userApi';
 import type { UserDto, UserRole } from '../../../types/user.d'; 
+import UserForm from "../../../components/common/UserForm";
 
 // --- THÊM IMPORT MUI ---
 import { 
@@ -228,13 +229,13 @@ if (Array.isArray(items)) {
       <Dialog open={isModalOpen} onClose={() => setIsModalOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{editingUser ? `Chỉnh sửa: ${editingUser.name}` : "Tạo Người dùng Mới"}</DialogTitle>
         <DialogContent dividers>
-          {/* 
+          
             ⚠️ Cần phải có UserForm.tsx để truyền vào đây.
             <UserForm 
                 initialData={editingUser || {}} 
                 onSubmit={handleSaveUser} 
             /> 
-          */}
+         
           <Typography color="text.secondary">
               (UserForm component needs to be implemented here to handle UC01: Create User)
           </Typography>
