@@ -4,7 +4,7 @@ import type { OrderDto, OrderStatus } from "../../types/order";
 import type { Course } from "../../types/course";
 import type { BookDto } from "../../types/book";
 import bookApi from "../../api/bookApi";
-import courseApi from "../../api/courseApi";
+import courseAdminApi from "../../api/courseAdminApi";
 import "./OrderForm.css";
 
 interface OrderFormProps {
@@ -28,7 +28,7 @@ const OrderForm = ({ initialData = {}, onSubmit }: OrderFormProps) => {
       try {
         const [bookRes, courseRes] = await Promise.all([
           bookApi.getAll(),
-          courseApi.getAll(),
+          courseAdminApi.getAll(),
         ]);
         setBooks(bookRes.data || []);
         setCourses(courseRes.data || []);

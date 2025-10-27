@@ -9,17 +9,16 @@ import type { Course } from "../../types/course";
 import { SkeletonBanner, SkeletonCard } from "../courses/Skeleton";
 import { CardImage, CourseCard } from "../courses/CourseCard";
 import { SectionHeader } from "./SectionHeader";
-import { CategoryCard } from "./CategoryCard.tsx";
+import { CategoryCard } from "./CategoryCard";
 import BookShowcase from "../books/BookShowcase.tsx";
 
-const Placeholder = "https://placehold.co/800x450?text=Banner&font=inter";
+const Placeholder = "public/assets/vicedu_banner.png";
 
 // Helper: chuẩn hoá mảng trả về từ API
 function normalizeList<T = any>(res: any): T[] {
   if (Array.isArray(res)) return res;
   if (Array.isArray(res?.data)) return res.data;
   if (Array.isArray(res?.items)) return res.items;
-  // Một số BE trả { result: [...] } hay { rows: [...] }
   if (Array.isArray(res?.result)) return res.result;
   if (Array.isArray(res?.rows)) return res.rows;
   return [];
@@ -29,7 +28,6 @@ function normalizeList<T = any>(res: any): T[] {
 function toId(val: any): string {
   if (val == null) return "";
   if (typeof val === "object") {
-    // mongodb dạng { $oid: "..." } hoặc { _id: "..." }
     if (val.$oid) return String(val.$oid);
     if (val._id) return String(val._id);
   }
@@ -121,23 +119,40 @@ export default function CategoryList() {
   }, [catArray]);
 
   const filteredCourses = useMemo(() => {
-    if (activeCat === "all") return courseArray;
+    if (!courseArray?.length) return [];
 
+    if (activeCat === "all") {
+      return [...courseArray].sort(() => 0.5 - Math.random()).slice(0, 6);
+    }
+
+    // tìm category theo slug hoặc _id
     const matchCat =
-      catArray.find((c) => c?.slug === activeCat) ||
-      catArray.find((c) => toId(c?._id) === activeCat);
+      catArray.find((c) => c.slug === activeCat) ||
+      catArray.find((c) => toId(c._id) === activeCat);
 
-    if (!matchCat) return courseArray;
+    if (!matchCat) return [];
 
     const matchId = toId(matchCat._id);
 
     return courseArray.filter((crs: any) => {
-      // chấp nhận nhiều kiểu field từ BE
-      const cid =
-        toId(crs?.category?._id) ||
-        toId(crs?.categoryId) ||
-        toId(crs?.category);
-      return cid === matchId;
+      // check category array (nếu course.category populated)
+      if (Array.isArray(crs.category) && crs.category.length > 0) {
+        return crs.category.some((c: any) => {
+          return toId(c._id || c) === matchId;
+        });
+      }
+
+      // check category_id (string/object/array)
+      const cate = crs.category_id;
+      if (!cate) return false;
+
+      if (typeof cate === "string") return toId(cate) === matchId;
+      if (typeof cate === "object" && !Array.isArray(cate))
+        return toId(cate._id || cate) === matchId;
+      if (Array.isArray(cate))
+        return cate.some((c) => toId(c._id || c) === matchId);
+
+      return false;
     });
   }, [activeCat, courseArray, catArray]);
 
@@ -229,8 +244,12 @@ export default function CategoryList() {
           {loading ? (
             <SkeletonBanner />
           ) : (
-            <div className="overflow-hidden rounded-2xl shadow-md border border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50">
-              <CardImage src={Placeholder} alt="Banner" className="h-64" />
+            <div className="overflow-hidden rounded-2xl shadow-md border border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 inline-block">
+              <CardImage
+                src={Placeholder}
+                alt="Vicedu Banner"
+                className="w-full h-auto object-cover"
+              />
             </div>
           )}
         </section>
@@ -266,7 +285,7 @@ export default function CategoryList() {
                   }`
             }
           />
-          <div className="ml-auto flex gap-2">
+          <div className="ml-auto flex gap-2 flex-wrap">
             <Chip
               label="Tất cả"
               active={activeCat === "all"}
@@ -299,6 +318,7 @@ export default function CategoryList() {
           </div>
         )}
       </section>
+
       <section className="mt-16">
         <BookShowcase />
       </section>

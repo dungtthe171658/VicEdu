@@ -44,6 +44,10 @@ const userApi = {
   // [Admin] Khôi phục tài khoản
   restore: (id: string) => 
     axios.post(`${API_URL}/${id}/restore`, {}, { headers: getAuthHeaders() }),
+
+   // [Admin] Tạo mới user
+  create: (data: Partial<UserDto>) =>
+    axios.post(API_URL, data, { headers: getAuthHeaders() }),
 };
 
 

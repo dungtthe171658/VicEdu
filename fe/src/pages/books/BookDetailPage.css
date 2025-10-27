@@ -1,3 +1,7 @@
+/* ======================= */
+/* --- Book Detail Page --- */
+/* ======================= */
+
 .book-detail-page {
   display: flex;
   justify-content: space-between;
@@ -18,35 +22,37 @@
   background-color: #fff;
   padding: 24px;
   border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-/* --- Ảnh chính & nút mũi tên --- */
-.book-images {
-  position: relative;
+/* --- Ảnh chính --- */
+.book-main-image {
   width: 100%;
   max-width: 420px;
   height: 420px;
-  margin-bottom: 16px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden;
-}
-
-.book-images img {
-  width: 100%;
-  height: 100%;
   object-fit: contain;
   border-radius: 12px;
   background-color: #f3f4f6;
   transition: opacity 0.4s ease-in-out, transform 0.3s ease;
+  margin-bottom: 12px;
+  position: relative;
 }
 
 /* --- Mũi tên điều hướng --- */
+.book-images {
+  width: 100%;
+  max-width: 420px;
+  height: 420px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 8px;
+  position: relative;
+}
+
 .book-images button {
   position: absolute;
   top: 50%;
@@ -81,13 +87,13 @@
   right: 10px;
 }
 
-/* --- Thumbnail nhỏ --- */
+/* --- Thumbnail nhỏ dưới ảnh chính --- */
 .book-thumbnails {
   display: flex;
   justify-content: center;
   gap: 10px;
-  margin-top: 10px;
   flex-wrap: wrap;
+  margin-top: 8px;
 }
 
 .book-thumbnails img {
@@ -112,7 +118,7 @@
   transform: scale(1.05);
 }
 
-/* --- Thông tin --- */
+/* --- Thông tin sách --- */
 .book-detail-container h1 {
   font-size: 28px;
   font-weight: 700;
@@ -141,60 +147,19 @@
   margin-bottom: 16px;
 }
 
-/* --- Sidebar sách cùng thể loại --- */
-.book-same-category {
-  flex: 1;
-  min-width: 280px;
-  background-color: #fff;
-  padding: 16px;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-}
-
-.book-same-category h3 {
-  font-size: 20px;
+/* --- Stock hiển thị --- */
+.stock {
   font-weight: 600;
-  margin-bottom: 12px;
+  margin: 0.5rem 0;
+  font-size: 1rem;
 }
 
-.book-same-category ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+.in-stock {
+  color: #16a34a; /* xanh lá */
 }
 
-.book-same-category li {
-  display: flex;
-  align-items: center;
-  margin-bottom: 12px;
-  border: 1px solid #e2e8f0;
-  padding: 8px;
-  border-radius: 8px;
-  background-color: #fefefe;
-  transition: box-shadow 0.2s;
-}
-
-.book-same-category li:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.book-same-category img {
-  width: 50px;
-  height: 50px;
-  object-fit: cover;
-  border-radius: 6px;
-  margin-right: 12px;
-}
-
-.book-same-category a {
-  font-size: 14px;
-  font-weight: 500;
-  text-decoration: none;
-  color: #1d4ed8;
-}
-
-.book-same-category a:hover {
-  text-decoration: underline;
+.out-of-stock {
+  color: #dc2626; /* đỏ nổi bật */
 }
 
 /* --- Nút giỏ hàng --- */
@@ -219,6 +184,87 @@
   cursor: default;
 }
 
+/* --- Nút giỏ hàng disable khi hết hàng --- */
+.add-to-cart-btn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  color: #fff;
+}
+
+/* --- Sidebar sách cùng thể loại --- */
+.book-same-category {
+  flex: 1;
+  min-width: 280px;
+  background-color: #fff;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.book-same-category h3 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.book-same-category ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.book-same-category li {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  border: 1px solid #e2e8f0;
+  padding: 8px;
+  border-radius: 8px;
+  background-color: #fefefe;
+  transition: box-shadow 0.2s, background-color 0.2s, border-color 0.2s;
+}
+
+.book-same-category li:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.book-same-category img {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-right: 12px;
+}
+
+.book-same-category a {
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  color: #1d4ed8;
+}
+
+.book-same-category a:hover {
+  text-decoration: underline;
+}
+
+/* --- Nhãn hết hàng trong sidebar --- */
+.out-of-stock-label {
+  color: #dc2626;
+  font-weight: bold;
+  font-size: 0.8rem;
+  margin-left: 0.5rem;
+}
+
+/* --- Sidebar li nổi bật khi hết hàng --- */
+.book-same-category li.out-of-stock-item {
+  border: 1px solid #dc2626;
+  background-color: #fee2e2;
+}
+
+.book-same-category li.out-of-stock-item:hover {
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
+}
+
 /* --- Responsive --- */
 @media (max-width: 768px) {
   .book-detail-page {
@@ -230,11 +276,30 @@
     height: auto;
   }
 
-  .book-images img {
+  .book-main-image {
     height: auto;
   }
 
   .book-same-category {
     width: 100%;
+  }
+
+  .stock {
+    font-weight: 600;
+    margin: 0.5rem 0;
+  }
+
+  .in-stock {
+    color: #16a34a;
+  }
+
+  .out-of-stock {
+    color: #dc2626;
+  }
+
+  .out-of-stock-label {
+    color: #dc2626;
+    font-weight: bold;
+    margin-left: 0.5rem;
   }
 }

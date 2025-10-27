@@ -227,35 +227,42 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
  */
 export const createUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { fullName, email, phone, role, isActive = true, avatarUrl } = req.body;
+    const { name, email, password, phone, role, avatar } = req.body;
 
-    if (!fullName || !email || !role) {
-      res.status(400).json({ message: "fullName, email, role are required." });
+    if (!name || !email || !role || !password) {
+      res.status(400).json({ message: "name, email, role, password are required." });
       return;
     }
 
-    // check trùng email
     const exists = await UserModel.exists({ email: String(email).toLowerCase() });
     if (exists) {
       res.status(409).json({ message: "Email already exists." });
       return;
     }
 
+    const bcrypt = await import("bcryptjs");
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const user = await UserModel.create({
-      fullName,
+      name,
       email: String(email).toLowerCase(),
+      password: hashedPassword,
       phone,
       role,
-      isActive: Boolean(isActive),
-      avatarUrl,
+      avatar,
+      is_verified: false,
     });
 
-    const plain = await UserModel.findById(user._id).select(SAFE_USER_PROJECTION).lean();
-    res.status(201).json({ message: "User created successfully.", user: plain });
+    const plainUser = user.toObject() as Record<string, any>;
+    delete plainUser.password;
+
+    res.status(201).json({ message: "User created successfully.", user: plainUser });
   } catch (error: any) {
+    console.error("❌ CreateUser Error:", error);
     res.status(500).json({ message: "Server error.", error: error.message });
   }
 };
+
 
 /**
  * PUT /users/:id

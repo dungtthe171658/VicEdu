@@ -1,14 +1,17 @@
 import type { BookDto } from "../../types/book.d";
 import { useNavigate } from "react-router-dom";
 import "./BookCard.css";
+import { useCart } from "../../contexts/CartContext";
+import { useState } from "react";
 
 interface BookCardProps {
   book: BookDto;
-  onAddToCart?: (book: BookDto) => void;
 }
 
-const BookCard = ({ book, onAddToCart }: BookCardProps) => {
+const BookCard = ({ book }: BookCardProps) => {
   const navigate = useNavigate();
+  const { addBookItem } = useCart();
+  const [isAdding, setIsAdding] = useState(false);
 
   const handleCardClick = () => {
     navigate(`/books/${book._id}`);
@@ -16,10 +19,27 @@ const BookCard = ({ book, onAddToCart }: BookCardProps) => {
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onAddToCart?.(book);
+    if (isOutOfStock || isAdding) return;
+
+    setIsAdding(true);
+
+    // Hiệu ứng UX: delay nhẹ để cảm giác "đang thêm"
+    setTimeout(() => {
+      addBookItem({
+        _id: book._id,
+        title: book.title,
+        price_cents: book.price_cents,
+        stock: book.stock ?? 0,
+        image: book.images ?? [],
+        quantity: 1,
+      });
+
+      setIsAdding(false);
+      alert(`✅ Đã thêm "${book.title}" vào giỏ hàng!`);
+    }, 400);
   };
 
-  const priceVND = (book.price_cents).toLocaleString("vi-VN", {
+  const priceVND = (book.price_cents || 0).toLocaleString("vi-VN", {
     style: "currency",
     currency: "VND",
   });
@@ -49,11 +69,17 @@ const BookCard = ({ book, onAddToCart }: BookCardProps) => {
         </p>
 
         <button
-          className={`add-to-cart-btn ${isOutOfStock ? "disabled" : ""}`}
+          className={`add-to-cart-btn ${
+            isOutOfStock ? "disabled" : isAdding ? "loading" : ""
+          }`}
           onClick={handleAddToCart}
-          disabled={isOutOfStock}
+          disabled={isOutOfStock || isAdding}
         >
-          🛒 Thêm vào giỏ hàng
+          {isOutOfStock
+            ? "Hết hàng"
+            : isAdding
+            ? "Đang thêm..."
+            : "🛒 Thêm vào giỏ hàng"}
         </button>
       </div>
     </div>

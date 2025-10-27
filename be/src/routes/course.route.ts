@@ -8,7 +8,7 @@ const router = express.Router();
 router.get("/", courseController.getPublicCourses);
 router.get("/:slug", courseController.getCourseBySlug);
 
-router.post("/", authenticateToken, checkRole(['teacher']), courseController.createCourse);
+router.post("/", authenticateToken, checkRole(['admin', 'teacher']), courseController.createCourse);
 router.get("/admin/all", authenticateToken, checkRole(['admin']), courseController.getAllCoursesForAdmin);
 router.patch("/:id/status", authenticateToken, checkRole(['admin']), courseController.updateCourseStatus);
 

@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 import type { Course } from "../../types/course";
 import type { Category } from "../../types/category";
 import categoryApi from "../../api/categoryApi";
-import "./CourseForm.css"; 
+import "./CourseForm.css";
 
 interface CourseFormProps {
   initialData?: Partial<Course>;
@@ -25,9 +25,19 @@ const CourseForm = ({ initialData = {}, onSubmit }: CourseFormProps) => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const data: Category[] = await categoryApi.getAll(); // trả về array
-        setCategories(data || []);
-      } catch {
+        const res = await categoryApi.getAll();
+        console.log("📦 Category API result:", res);
+        // Kiểm tra kiểu dữ liệu thực tế
+        if (Array.isArray(res.data)) {
+          setCategories(res.data);
+        } else if (Array.isArray(res)) {
+          setCategories(res);
+        } else {
+          console.warn("⚠️ Category API không trả về mảng:", res);
+          setCategories([]);
+        }
+      } catch (err) {
+        console.error("❌ Lỗi load categories:", err);
         setCategories([]);
       } finally {
         setLoadingCategories(false);
@@ -35,6 +45,7 @@ const CourseForm = ({ initialData = {}, onSubmit }: CourseFormProps) => {
     };
     fetchCategories();
   }, []);
+
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -46,8 +57,8 @@ const CourseForm = ({ initialData = {}, onSubmit }: CourseFormProps) => {
         type === "checkbox"
           ? checked
           : name === "price_cents"
-          ? Number(value)
-          : value,
+            ? Number(value)
+            : value,
     }));
   };
 

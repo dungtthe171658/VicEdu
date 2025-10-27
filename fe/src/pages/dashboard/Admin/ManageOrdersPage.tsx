@@ -91,8 +91,11 @@ const ManageOrdersPage = () => {
                   {order.status}
                 </td>
                 <td>
-                  {order.total_amount.toLocaleString("vi-VN")} ₫
-                </td>
+  {order.total_amount
+    ? order.total_amount.toLocaleString("vi-VN")
+    : "0"} ₫
+</td>
+
                 <td>
                   {order.created_at
                     ? new Date(order.created_at).toLocaleString("vi-VN")
