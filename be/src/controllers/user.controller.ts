@@ -12,7 +12,7 @@ const parseBool = (v: any) =>
   v === true || v === "true" ? true : v === false || v === "false" ? false : undefined;
 
 const SAFE_USER_PROJECTION = "-password -__v"; // ẩn trường nhạy cảm
-
+const PROFILE_PROJECTION = "-password -__v"; // muốn ẩn thêm trường gì thì thêm ở đây
 /**
  * GET /users
  * [Admin] Liệt kê người dùng với lọc/tìm kiếm/phân trang/sort + meta.
@@ -120,6 +120,73 @@ export const getMyProfile = async (req: AuthRequest, res: Response): Promise<voi
     res.status(500).json({ message: "Server error.", error: error.message });
   }
 };
+
+export const getMyProfileFull = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId =
+      (req.user as any)?._id?.toString?.() || (req.user as any)?.id?.toString?.();
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    const user = await UserModel.findById(userId)
+      .select(PROFILE_PROJECTION)
+      // .populate([{ path: "courses", select: "title slug" }]) // nếu cần populate
+      .lean();
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    return res.json({ user });
+  } catch (e: any) {
+    return res.status(500).json({ message: e.message });
+  }
+};
+
+
+export const updateMyAvatar = async (req: AuthRequest, res: Response) => {
+  try {
+    const { image_url, image_public_id } = req.body as {
+      image_url?: string;
+      image_public_id?: string;
+    };
+
+    if (!image_url || !image_public_id) {
+      return res
+        .status(400)
+        .json({ message: "Thiếu image_url hoặc image_public_id" });
+    }
+
+    // userId lấy từ middleware auth gắn vào req.user
+    const userId =
+      (req.user as any)?._id?.toString?.() || (req.user as any)?.id?.toString?.();
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    // cập nhật avatar và (tuỳ chọn) lưu cả public_id để sau này xoá Cloudinary
+    const updated = await UserModel.findByIdAndUpdate(
+      userId,
+      {
+        avatar: image_url,
+        avatar_public_id: image_public_id,
+        updated_at: new Date(),
+      },
+      { new: true, runValidators: true }
+    )
+      .select(SAFE_USER_PROJECTION)
+      .lean();
+
+    if (!updated) {
+      return res.status(404).json({ message: "User không tồn tại" });
+    }
+
+    return res.json({
+      message: "Cập nhật avatar thành công",
+      user: updated,
+    });
+  } catch (e: any) {
+    return res.status(500).json({ message: e.message });
+  }
+};
+
 
 /**
  * GET /users/:id
