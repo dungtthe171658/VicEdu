@@ -9,6 +9,7 @@
     "@aws-sdk/s3-request-presigner": "^3.914.0",
     "@payos/node": "^2.0.3",
     "@sendgrid/mail": "^7.6.0",
+    "@supabase/supabase-js": "^2.76.1",
     "@types/bcrypt": "^3.0.0",
     "@types/body-parser": "^1.19.0",
     "@types/compression": "^1.7.0",
