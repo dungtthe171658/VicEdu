@@ -12,6 +12,7 @@ import  MyCoursesPage from "../pages/my-account/MyCoursesPage";
 import  OrderHistoryPage  from "../pages/my-account/OrderHistoryPage.tsx";
 
 // 🔹 Public pages
+import about from "../pages/user/about.tsx";
 import HomePage from "../pages/user/HomePage";
 import LoginPage from "../pages/LoginPage";
 import RegisterPage from "../pages/RegisterPage";
@@ -41,6 +42,7 @@ import ManageReviewsPage from "../pages/dashboard/Admin/ManageReviewsPage";
 
 // 🔹 Protected route
 import ProtectedRoute from "./ProtectedRoute";
+import About from "../pages/user/about.tsx";
 
 const AppRoutes: React.FC = () => {
   return (
@@ -57,6 +59,8 @@ const AppRoutes: React.FC = () => {
         <Route path="/cart" element={<CartPage />} />
         <Route path="/courses" element={<CoursePage />} />
       <Route path="/profile" element={<ProfilePage />} />
+      
+      <Route path="/about" element={<About />} />
         <Route path="/my-courses" element={<MyCoursesPage />} />
 <Route path="/my-orders" element={<OrderHistoryPage />} /> 
 
