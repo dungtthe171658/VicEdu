@@ -34,7 +34,7 @@ export const CoursePage = () => {
 
   // Filter state
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [priceLimit, setPriceLimit] = useState<number>(5000000);
+  const [priceLimit, setPriceLimit] = useState<number>(500000);
   const [sortBy, setSortBy] = useState<string>("none");
 
   // Fetch data
@@ -122,7 +122,7 @@ export const CoursePage = () => {
           <input
             type="range"
             min={10000}
-            max={5000000}
+            max={500000}
             step={10000}
             value={priceLimit}
             onChange={(e) => setPriceLimit(Number(e.target.value))}
@@ -130,7 +130,7 @@ export const CoursePage = () => {
           />
           <div className="flex justify-between text-xs text-gray-500 mt-1">
             <span>10.000đ</span>
-            <span>5.000.000đ</span>
+            <span>500.000đ</span>
           </div>
         </div>
 

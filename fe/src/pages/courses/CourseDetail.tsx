@@ -15,27 +15,13 @@ export default function CourseDetail() {
 
   const { addCourse, courses, removeCourse } = useCart();
 
-  // Giả sử bạn có danh sách user (giảng viên) ở đây:
-  // Nếu sau này bạn có API riêng cho user, có thể fetch hoặc lấy từ context
-  const [users, setUsers] = useState<any[]>([]);
-
   useEffect(() => {
     (async () => {
       try {
-        let currentCourse = course;
-
         // Nếu chưa có course (vào trực tiếp /courses/:slug)
-        if (!currentCourse && slug) {
+        if (!course && slug) {
           const data = await courseApi.getBySlug(slug);
-          currentCourse = data;
           setCourse(data);
-        }
-
-        // ✅ Fetch danh sách users (giảng viên)
-        const res = await fetch("http://localhost:8888/api/users");
-        if (res.ok) {
-          const usersData = await res.json();
-          setUsers(usersData);
         }
       } catch (err) {
         console.error("Lỗi khi tải dữ liệu khóa học:", err);
@@ -54,35 +40,7 @@ export default function CourseDetail() {
   const isInCart = courses.some((c) => c._id === course._id);
   const formatVND = (n: number) => n.toLocaleString("vi-VN");
 
-  // ✅ Xử lý giảng viên (an toàn cho cả ObjectId hoặc object populate)
-  const lectureNames = (() => {
-    if (!course.teacher_id) return "Admin";
-
-    // Trường hợp backend populate: teacher là object có full_name
-    if (
-      Array.isArray(course.teacher_id) &&
-      course.teacher_id.length > 0 &&
-      typeof course.teacher_id[0] === "object" &&
-      course.teacher_id[0].full_name
-    ) {
-      return course.teacher_id.map((t: any) => t.full_name).join(", ");
-    }
-
-    // Trường hợp teacher là mảng ObjectId: map sang users
-    if (Array.isArray(course.teacher_id) && users.length > 0) {
-      const names = course.teacher_id
-        .map((id: any) => {
-          const teacher = users.find((u) => u._id === id || u._id?.$oid === id);
-          return teacher?.full_name;
-        })
-        .filter(Boolean);
-      return names.length > 0 ? names.join(", ") : "Admin";
-    }
-
-    return "Admin";
-  })();
-
-  // ✅ Danh mục
+  // Danh mục
   const categoryName =
     Array.isArray(course.category) && course.category.length > 0
       ? course.category[0].name || "Chưa có danh mục"
@@ -114,8 +72,29 @@ export default function CourseDetail() {
 
           {/* Giảng viên */}
           <p className="text-sm md:text-base font-semibold text-blue-500 mb-2">
-            Giảng viên: <span className="text-gray-700">{lectureNames}</span>
+            Giảng viên:{" "}
+            <span className="text-gray-700">
+              {course.teacherNames && course.teacherNames.length > 0
+                ? course.teacherNames.join(", ")
+                : "Admin"}
+            </span>
           </p>
+
+          {/* Nếu muốn hiển thị avatar giáo viên, có thể thêm: */}
+          {course.teacher && course.teacher.length > 0 && (
+            <div className="flex items-center gap-3 mb-4">
+              {course.teacher.map((t) => (
+                <div key={t.full_name} className="flex items-center gap-1">
+                  <img
+                    src={t.avatar_url}
+                    alt={t.full_name}
+                    className="w-6 h-6 rounded-full"
+                  />
+                  <span className="text-gray-700">{t.full_name}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Danh mục */}
           <p className="text-sm md:text-base font-semibold text-blue-500 mb-3 flex items-center gap-2">
