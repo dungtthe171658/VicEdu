@@ -2,9 +2,7 @@ import { useLocation, useParams, Link } from "react-router-dom";
 import { ArrowLeft, BookOpen, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import courseApi from "../../api/courseApi";
-import categoryApi from "../../api/categoryApi";
 import type { Course } from "../../types/course";
-import type { Category } from "../../types/category";
 import { useCart } from "../../contexts/CartContext";
 
 export default function CourseDetail() {
@@ -14,10 +12,13 @@ export default function CourseDetail() {
   const [course, setCourse] = useState<Course | null>(
     (location.state as any)?.course || null
   );
-  const [category, setCategory] = useState<Category | null>(null);
+
   const { addCourse, courses, removeCourse } = useCart();
 
-  // Logic fetch course + category
+  // Giả sử bạn có danh sách user (giảng viên) ở đây:
+  // Nếu sau này bạn có API riêng cho user, có thể fetch hoặc lấy từ context
+  const [users, setUsers] = useState<any[]>([]);
+
   useEffect(() => {
     (async () => {
       try {
@@ -30,17 +31,17 @@ export default function CourseDetail() {
           setCourse(data);
         }
 
-        // Lấy category tương ứng (logic từ CourseCard)
-        if (currentCourse?.category_id) {
-          const res = await categoryApi.getById(currentCourse.category_id);
-          // Tùy API: res.data hoặc res
-          setCategory(res?.data || res);
+        // ✅ Fetch danh sách users (giảng viên)
+        const res = await fetch("http://localhost:8888/api/users");
+        if (res.ok) {
+          const usersData = await res.json();
+          setUsers(usersData);
         }
       } catch (err) {
         console.error("Lỗi khi tải dữ liệu khóa học:", err);
       }
     })();
-  }, [slug, course]);
+  }, [slug]);
 
   if (!course) {
     return (
@@ -52,6 +53,40 @@ export default function CourseDetail() {
 
   const isInCart = courses.some((c) => c._id === course._id);
   const formatVND = (n: number) => n.toLocaleString("vi-VN");
+
+  // ✅ Xử lý giảng viên (an toàn cho cả ObjectId hoặc object populate)
+  const lectureNames = (() => {
+    if (!course.teacher_id) return "Admin";
+
+    // Trường hợp backend populate: teacher là object có full_name
+    if (
+      Array.isArray(course.teacher_id) &&
+      course.teacher_id.length > 0 &&
+      typeof course.teacher_id[0] === "object" &&
+      course.teacher_id[0].full_name
+    ) {
+      return course.teacher_id.map((t: any) => t.full_name).join(", ");
+    }
+
+    // Trường hợp teacher là mảng ObjectId: map sang users
+    if (Array.isArray(course.teacher_id) && users.length > 0) {
+      const names = course.teacher_id
+        .map((id: any) => {
+          const teacher = users.find((u) => u._id === id || u._id?.$oid === id);
+          return teacher?.full_name;
+        })
+        .filter(Boolean);
+      return names.length > 0 ? names.join(", ") : "Admin";
+    }
+
+    return "Admin";
+  })();
+
+  // ✅ Danh mục
+  const categoryName =
+    Array.isArray(course.category) && course.category.length > 0
+      ? course.category[0].name || "Chưa có danh mục"
+      : "Chưa có danh mục";
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
@@ -77,13 +112,16 @@ export default function CourseDetail() {
             {course.title}
           </h1>
 
+          {/* Giảng viên */}
+          <p className="text-sm md:text-base font-semibold text-blue-500 mb-2">
+            Giảng viên: <span className="text-gray-700">{lectureNames}</span>
+          </p>
+
           {/* Danh mục */}
-          {category && (
-            <p className="text-sm md:text-base font-semibold text-blue-500 mb-3 flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-blue-500" />
-              {category.name}
-            </p>
-          )}
+          <p className="text-sm md:text-base font-semibold text-blue-500 mb-3 flex items-center gap-2">
+            <BookOpen className="w-4 h-4 text-blue-500" />
+            {categoryName}
+          </p>
 
           {/* Rating */}
           <div className="flex items-center gap-1 text-amber-500 mb-4">

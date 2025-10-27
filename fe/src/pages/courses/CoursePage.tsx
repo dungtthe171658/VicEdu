@@ -59,9 +59,19 @@ export const CoursePage = () => {
   const filteredCourses = useMemo(() => {
     let list = [...courses];
 
-    // Filter by category
+    // ✅ Filter by category
     if (selectedCategory !== "all") {
-      list = list.filter((c) => toId(c.category_id) === selectedCategory);
+      list = list.filter((c) => {
+        if (Array.isArray(c.category)) {
+          return c.category.some(
+            (cat: any) => toId(cat._id) === selectedCategory
+          );
+        }
+        if (c.category_id) {
+          return toId(c.category_id) === selectedCategory;
+        }
+        return false;
+      });
     }
 
     // Filter by price range

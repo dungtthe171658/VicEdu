@@ -119,25 +119,41 @@ export default function CategoryList() {
   }, [catArray]);
 
   const filteredCourses = useMemo(() => {
-    if (!courseArray.length) return [];
+    if (!courseArray?.length) return [];
 
     if (activeCat === "all") {
-      // Lấy 6 course random
-      const shuffled = [...courseArray].sort(() => 0.5 - Math.random());
-      return shuffled.slice(0, 6);
+      return [...courseArray].sort(() => 0.5 - Math.random()).slice(0, 6);
     }
 
-    // Tìm category match
+    // tìm category theo slug hoặc _id
     const matchCat =
       catArray.find((c) => c.slug === activeCat) ||
-      catArray.find((c) => toId(c?._id) === activeCat);
+      catArray.find((c) => toId(c._id) === activeCat);
 
     if (!matchCat) return [];
 
     const matchId = toId(matchCat._id);
 
-    // Filter course theo category_id (giống CoursePage)
-    return courseArray.filter((crs: any) => toId(crs.category_id) === matchId);
+    return courseArray.filter((crs: any) => {
+      // check category array (nếu course.category populated)
+      if (Array.isArray(crs.category) && crs.category.length > 0) {
+        return crs.category.some((c: any) => {
+          return toId(c._id || c) === matchId;
+        });
+      }
+
+      // check category_id (string/object/array)
+      const cate = crs.category_id;
+      if (!cate) return false;
+
+      if (typeof cate === "string") return toId(cate) === matchId;
+      if (typeof cate === "object" && !Array.isArray(cate))
+        return toId(cate._id || cate) === matchId;
+      if (Array.isArray(cate))
+        return cate.some((c) => toId(c._id || c) === matchId);
+
+      return false;
+    });
   }, [activeCat, courseArray, catArray]);
 
   return (
