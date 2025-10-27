@@ -6,6 +6,7 @@ import lessonRoutes from "./lesson.route";
 const router = express.Router();
 
 router.get("/", courseController.getPublicCourses);
+router.get("/id/:id", courseController.getCourseById);
 router.get("/:slug", courseController.getCourseBySlug);
 
 router.post("/", authenticateToken, checkRole(['admin', 'teacher']), courseController.createCourse);

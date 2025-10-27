@@ -1,4 +1,5 @@
 import express from "express";
+import enrollmentRoutes from "./routes/enrollment.route";
 import cors from "cors";
 import morgan from "morgan";
 import bodyParser from "body-parser";
@@ -23,6 +24,7 @@ app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 app.use("/api/payments", paymentRoutes); 
+app.use("/api/enrollments", enrollmentRoutes);
 // Đăng ký routes
 app.use("/api/books", bookRoutes);
 app.use("/api/users", userRoutes);
