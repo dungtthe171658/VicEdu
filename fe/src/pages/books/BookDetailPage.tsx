@@ -67,7 +67,7 @@ const BookDetailPage = () => {
   }, [id]);
 
   const handleAddToCart = () => {
-    if (!book) return;
+    if (!book || (book.stock ?? 0) <= 0) return;
     const cart = JSON.parse(localStorage.getItem("cart") || "[]");
     const exists = cart.find((item: BookDto) => item._id === book._id);
     if (!exists) {
@@ -102,6 +102,9 @@ const BookDetailPage = () => {
     currency: "VND",
   });
 
+  // --- Fix TypeScript warning stock undefined ---
+  const stock = book.stock ?? 0;
+
   return (
     <div className="book-detail-page">
       <div className="book-detail-container">
@@ -111,29 +114,29 @@ const BookDetailPage = () => {
             ◀
           </button>
           <img
+            className="book-main-image"
             src={getImageSrc(book.images?.[currentImageIndex])}
             alt={`${book.title} - ${currentImageIndex + 1}`}
           />
           <button className="next-btn" onClick={handleNextImage}>
             ▶
           </button>
-
-          {/* --- Thumbnails nhỏ bên dưới --- */}
-          {book?.images && book.images.length > 1 && (
-            <div className="book-thumbnails">
-              {book.images.map((img, idx) => (
-                <img
-                  key={idx}
-                  src={getImageSrc(img)}
-                  alt={`Thumbnail ${idx + 1}`}
-                  className={currentImageIndex === idx ? "active" : ""}
-                  onClick={() => setCurrentImageIndex(idx)}
-                />
-              ))}
-            </div>
-          )}
         </div>
 
+        {book?.images && book.images.length > 1 && (
+          <div className="book-thumbnails">
+            {book.images.map((img, idx) => (
+              <img
+                key={idx}
+                src={getImageSrc(img)}
+                alt={`Thumbnail ${idx + 1}`}
+                className={currentImageIndex === idx ? "active" : ""}
+                onClick={() => setCurrentImageIndex(idx)}
+              />
+            ))}
+          </div>
+        )}
+        <br/>
         <h1>{book.title}</h1>
         {book.author && <p className="author">{book.author}</p>}
 
@@ -144,14 +147,24 @@ const BookDetailPage = () => {
         )}
 
         {book.description && <p className="description">{book.description}</p>}
+
         <p className="price">{priceVND}</p>
+
+        {/* --- Hiển thị stock --- */}
+        <p className={`stock ${stock > 0 ? "in-stock" : "out-of-stock"}`}>
+          {stock > 0 ? `Còn ${stock} cuốn` : "Hết hàng"}
+        </p>
 
         <button
           className={`add-to-cart-btn ${added ? "added" : ""}`}
           onClick={handleAddToCart}
-          disabled={added}
+          disabled={added || stock <= 0}
         >
-          {added ? "✅ Đã thêm vào giỏ hàng" : "🛒 Thêm vào giỏ hàng"}
+          {stock <= 0
+            ? "❌ Hết hàng"
+            : added
+            ? "✅ Đã thêm vào giỏ hàng"
+            : "🛒 Thêm vào giỏ hàng"}
         </button>
       </div>
 
@@ -161,9 +174,15 @@ const BookDetailPage = () => {
         {sameCategoryBooks.length > 0 ? (
           <ul>
             {sameCategoryBooks.map((b) => (
-              <li key={b._id}>
+              <li
+                key={b._id}
+                className={(b.stock ?? 0) <= 0 ? "out-of-stock-item" : ""}
+              >
                 <img src={getImageSrc(b.images?.[0])} alt={b.title} />
                 <Link to={`/books/${b._id}`}>{b.title}</Link>
+                {(b.stock ?? 0) <= 0 && (
+                  <span className="out-of-stock-label">Hết hàng</span>
+                )}
               </li>
             ))}
           </ul>

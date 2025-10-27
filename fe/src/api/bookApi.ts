@@ -3,9 +3,8 @@ import type { BookDto } from "../types/book.d";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8888/api";
 
-// Lấy token từ localStorage (hoặc từ context nếu bạn dùng)
 const getAuthHeaders = () => {
-  const token = localStorage.getItem("accessToken"); // Hoặc tên key token bạn dùng
+  const token = localStorage.getItem("accessToken");
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
