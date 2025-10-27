@@ -10,6 +10,8 @@ export interface ICourse extends Document {
   category: mongoose.Types.ObjectId | mongoose.Types.ObjectId[];
   status: "pending" | "approved" | "rejected";
   lessons: mongoose.Types.ObjectId[];
+
+
 }
 
 const courseSchema = new Schema<ICourse>(

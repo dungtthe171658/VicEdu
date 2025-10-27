@@ -22,6 +22,13 @@ const userApi = {
   update: (id: string, data: Partial<UserDto>) =>
     axios.put(`${API_URL}/${id}`, data, { headers: getAuthHeaders() }),
 
+  getProfileFull: () =>
+    axios.get<{ user: UserDto }>(`${API_URL}/me/full`, {
+      headers: getAuthHeaders(),
+    }),
+
+
+    
   // [Admin] Khóa tài khoản
   lock: (id: string, hours: number) =>
     axios.post(`${API_URL}/${id}/lock`, { hours }, { headers: getAuthHeaders() }),
@@ -42,5 +49,6 @@ const userApi = {
   create: (data: Partial<UserDto>) =>
     axios.post(API_URL, data, { headers: getAuthHeaders() }),
 };
+
 
 export default userApi;

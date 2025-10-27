@@ -10,7 +10,7 @@ import authRoutes from "./routes/auth.route";
 import userRoutes from "./routes/user.route";
 import orderRoutes from "./routes/order.route";
 import reviewRouter from "./routes/review.route";
-
+import uploadRoutes from "./routes/upload.route";
 import lessonRoutes from "./routes/lesson.route";
 import paymentRoutes from "./routes/payment.route"; // <-- THÊM
 
@@ -32,6 +32,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/lesson", lessonRoutes);
 app.use("/api/reviews", reviewRouter);
+app.use("/api/uploads", uploadRoutes);
+
+
 
 //app.use("/api", apiRoutes);
 export default app;

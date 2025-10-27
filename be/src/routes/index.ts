@@ -7,7 +7,7 @@ import orderRoutes from './order.route';
 import paymentRoutes from './payment.route';
 import reviewRoutes from './review.route';
 import dashboardRoutes from './dashboard.route';
-
+import uploadRoutes from './upload.route';
 import authRoutes from './auth.route';
 import userRoutes from './user.route';
 import homeRoutes from "./home.routes";
@@ -23,6 +23,7 @@ router.use('/payments', paymentRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use("/home", homeRoutes);
-
+router.use("/user", userRoutes);
+router.use("/uploads", uploadRoutes);
 
 export default router;
