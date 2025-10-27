@@ -40,6 +40,29 @@ export const getCourseBySlug = async (req: Request, res: Response) => {
   }
 };
 
+export const getCourseById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: "Thiếu tham số id" });
+    }
+
+    const course = await CourseModel.findById(id)
+      .populate("teacher", "full_name avatar_url -_id")
+      .populate("category", "name slug")
+      .lean();
+
+    if (!course) {
+      return res.status(404).json({ message: "Không tìm thấy khóa học" });
+    }
+
+    const teacherNames = (course as any).teacher?.map((t: any) => t.full_name) || [];
+    return res.status(200).json({ ...course, teacherNames });
+  } catch (error: any) {
+    return res.status(500).json({ message: error.message || "Lỗi server" });
+  }
+};
+
 export const createCourse = async (req: AuthRequest, res: Response) => {
   try {
     const { title, description, price, category } = req.body;

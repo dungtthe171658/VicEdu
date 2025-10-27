@@ -31,7 +31,7 @@ export default function MyCoursesPage() {
   const fetchCourseById = async (id: string): Promise<Course | null> => {
     try {
       // Gợi ý có endpoint GET /api/courses/:id (nếu chưa có, bạn thêm ở BE)
-      const res = await axios.get(`/courses/${id}`);
+      const res = await axios.get(`/courses/id/${id}`);
       return res as Course;
     } catch {
       return null;
@@ -44,7 +44,17 @@ export default function MyCoursesPage() {
       setError(null);
       try {
         // Gợi ý BE: GET /api/enrollments/my (populate sẵn)
-        const data = (await axios.get("/enrollments/my")) as any;
+        console.log("[MyCourses] fetching /enrollments/my", {
+          baseURL: (axios as any).defaults?.baseURL,
+          hasToken: !!localStorage.getItem("accessToken"),
+        });
+                const params: any = {};
+        const testEmail = (import.meta as any).env?.VITE_ENROLL_TEST_EMAIL;
+        if (testEmail) params.email = String(testEmail);
+        if ((import.meta as any).env?.DEV) params.includePending = 1;
+
+        const data = (await axios.get("/enrollments/my", { params })) as any;
+        console.log("[MyCourses] /enrollments/my response:", data);
 
         if (Array.isArray(data) && data.length && data[0]?.course) {
           // Trường hợp đã populate
@@ -56,11 +66,15 @@ export default function MyCoursesPage() {
           const fetched: Course[] = [];
           for (const item of raw) {
             if (!item.course_id) continue;
+            console.log("[MyCourses] fetching course by id:", item.course_id);
             const c = await fetchCourseById(item.course_id);
+            console.log("[MyCourses] fetched course id:", c?._id);
             if (c) fetched.push(c);
           }
+          console.log("[MyCourses] total fetched courses:", fetched.length);
           setCourses(fetched);
         } else {
+          console.log("[MyCourses] response is not array, setting empty list");
           setCourses([]);
         }
       } catch (e: any) {
@@ -137,3 +151,5 @@ export default function MyCoursesPage() {
     </div>
   );
 }
+
+
