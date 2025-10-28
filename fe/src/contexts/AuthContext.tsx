@@ -63,7 +63,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       // axios interceptor của bạn trả THẲNG data => me chính là object user
-      const me = await authApi.me();
+      const meResponse = await authApi.me();
+const me = meResponse.data;
       const mapped = mapBackendUserToFront(me as BackendUser);
       setUser(mapped);
     } catch {
@@ -88,7 +89,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem("accessToken", token);
 
     // Gọi /me để đồng bộ user
-    const me = await authApi.me(); // trả thẳng object user
+    const meResponse = await authApi.me();
+const me = meResponse.data; // trả thẳng object user
     const mapped = mapBackendUserToFront(me as BackendUser);
     setUser(mapped);
   }, []);
@@ -100,7 +102,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginWithGoogle = useCallback(async (token: String) => {
       localStorage.setItem("accessToken", String(token));
     try {
-      const me = await authApi.me();
+      const meResponse = await authApi.me();
+const me = meResponse.data;
       const mapped = mapBackendUserToFront(me as BackendUser);
       setUser(mapped);
     } catch (error) {
