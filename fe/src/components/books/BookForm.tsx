@@ -29,7 +29,7 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [uploading, setUploading] = useState(false);
 
-  // 🟢 Load danh mục
+  // Load danh mục
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -43,7 +43,7 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
           : [];
         setCategories(list);
       } catch (err) {
-        console.error("❌ Lỗi khi tải danh mục:", err);
+        console.error("Lỗi khi tải danh mục:", err);
         setCategories([]);
       } finally {
         setLoadingCategories(false);
@@ -76,12 +76,8 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
         }
       );
 
-      // 🟡 Log status và raw text để debug
-      console.log("🔍 Response status:", res.status);
       const text = await res.text();
-      console.log("📦 Raw response text:", text);
 
-      // Parse JSON nếu có thể
       let data;
       try {
         data = JSON.parse(text);
@@ -104,9 +100,9 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
         images: [...(prev.images || []), data.secure_url],
       }));
 
-      console.log("✅ Ảnh đã upload:", data.secure_url);
+      console.log("Ảnh đã upload thành công");
     } catch (err) {
-      console.error("❌ Lỗi upload ảnh:", err);
+      console.error("Lỗi upload ảnh:", err);
       alert(`Upload ảnh thất bại: ${err instanceof Error ? err.message : err}`);
     } finally {
       setUploading(false);
