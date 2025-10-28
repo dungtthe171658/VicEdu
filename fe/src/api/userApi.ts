@@ -27,6 +27,12 @@ const userApi = {
       headers: getAuthHeaders(),
     }),
 
+  // [User] Lấy avatar (nhẹ, chỉ trả avatar)
+  getMyAvatar: () =>
+    axios.get<{ avatar: string | null }>(`${API_URL}/me/avatar`, {
+      headers: getAuthHeaders(),
+    }),
+
 
     
   // [Admin] Khóa tài khoản

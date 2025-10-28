@@ -4,6 +4,7 @@ import {
   getUserById,
   getMyProfile,
   getMyProfileFull,
+  getMyAvatar,
   updateUser,
   lockUser,
   unlockUser,
@@ -20,6 +21,7 @@ const router = express.Router();
 // Route cho người dùng tự lấy thông tin của mình (tất cả các role đã login đều được)
 router.get("/me", authenticateToken, getMyProfile);
 router.get("/me/full", authenticateToken, getMyProfileFull);
+router.get("/me/avatar", authenticateToken, getMyAvatar);
 // ✅ Cho phép user tự đổi avatar (chỉ cần đăng nhập, không cần role admin)
 router.put("/me/avatar", authenticateToken, updateMyAvatar);
 

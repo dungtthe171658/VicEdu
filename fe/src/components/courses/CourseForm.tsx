@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import type { Course } from "../../types/course";
 import type { Category } from "../../types/category";
 import categoryApi from "../../api/categoryApi";
+import axios from "../../api/axios";
 import "./CourseForm.css";
 
 interface CourseFormProps {
@@ -21,6 +22,8 @@ const CourseForm = ({ initialData = {}, onSubmit }: CourseFormProps) => {
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [thumbFile, setThumbFile] = useState<File | null>(null);
+  const [uploadingThumb, setUploadingThumb] = useState(false);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -73,6 +76,62 @@ const CourseForm = ({ initialData = {}, onSubmit }: CourseFormProps) => {
     };
 
     onSubmit(payload);
+  };
+
+  // Cloudinary helpers (fallback: user can paste URL directly if upload fails)
+  type CloudinarySign = {
+    timestamp: number;
+    signature: string;
+    apiKey: string;
+    cloudName: string;
+    folder: string;
+    upload_preset: string;
+  };
+
+  const getCloudinarySignature = async (
+    folder: string,
+    uploadPreset = "vicedu_default"
+  ): Promise<CloudinarySign> => {
+    const res = await axios.get<CloudinarySign>("/uploads/cloudinary-signature", {
+      params: { folder, upload_preset: uploadPreset },
+    });
+    return res as unknown as CloudinarySign;
+  };
+
+  const uploadImageToCloudinary = async (
+    file: File,
+    sign: CloudinarySign
+  ): Promise<{ secure_url: string; public_id: string }> => {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("api_key", sign.apiKey);
+    form.append("timestamp", String(sign.timestamp));
+    form.append("upload_preset", sign.upload_preset?.trim());
+    form.append("folder", sign.folder);
+    form.append("signature", sign.signature);
+
+    const endpoint = `https://api.cloudinary.com/v1_1/${sign.cloudName}/image/upload`;
+    const res = await fetch(endpoint, { method: "POST", body: form });
+    const json = await res.json();
+    if (!json?.secure_url || !json?.public_id) {
+      throw new Error(json?.error?.message || "Upload Cloudinary thất bại");
+    }
+    return { secure_url: json.secure_url, public_id: json.public_id };
+  };
+
+  const handleUploadThumbnail = async () => {
+    if (!thumbFile) return;
+    try {
+      setUploadingThumb(true);
+      const sign = await getCloudinarySignature("vicedu/images/course-thumbs");
+      const { secure_url } = await uploadImageToCloudinary(thumbFile, sign);
+      setFormData((prev) => ({ ...prev, thumbnail_url: secure_url }));
+      setThumbFile(null);
+    } catch (e: any) {
+      alert(e?.message || "Upload Cloudinary thất bại. Bạn có thể dán URL vào ô trên.");
+    } finally {
+      setUploadingThumb(false);
+    }
   };
 
   return (
@@ -147,6 +206,13 @@ const CourseForm = ({ initialData = {}, onSubmit }: CourseFormProps) => {
           value={formData.thumbnail_url || ""}
           onChange={handleChange}
         />
+        <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
+          <input type="file" accept="image/*" onChange={(e) => setThumbFile(e.target.files?.[0] || null)} />
+          <button type="button" onClick={handleUploadThumbnail} disabled={!thumbFile || uploadingThumb}>
+            {uploadingThumb ? "Đang tải..." : "Upload Cloudinary"}
+          </button>
+          <span style={{ fontSize: 12, color: '#6b7280' }}>Hoặc dán URL ảnh vào ô trên.</span>
+        </div>
       </div>
 
       <div className="form-group">
@@ -181,3 +247,4 @@ const CourseForm = ({ initialData = {}, onSubmit }: CourseFormProps) => {
 };
 
 export default CourseForm;
+

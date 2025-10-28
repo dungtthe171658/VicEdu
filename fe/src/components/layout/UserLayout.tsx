@@ -10,6 +10,9 @@ const UserHeader = () => {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [avatarSrc, setAvatarSrc] = useState<string | undefined>(
+    user?.avatar ? String(user.avatar) : undefined
+  );
 
   useEffect(() => {
     const onClickOutside = (e: MouseEvent) => {
@@ -23,6 +26,26 @@ const UserHeader = () => {
     logout();
     navigate("/login");
   };
+
+  // Resolve avatar from backend if missing; keep local state for onError fallback
+  useEffect(() => {
+    setAvatarSrc(user?.avatar ? String(user.avatar) : undefined);
+    if (user && !user.avatar) {
+      import("../../api/userApi")
+        .then((m: any) => m.default.getMyAvatar())
+        .then((res: any) =>
+          import("../../utils/buildAvatarUrl").then((mod: any) =>
+            mod.buildAvatarUrl(res?.data?.avatar)
+          )
+        )
+        .then((url: string | undefined) => {
+          if (url) setAvatarSrc(url);
+        })
+        .catch(() => {
+          // silent: fallback shows icon
+        });
+    }
+  }, [user?.avatar, user?._id]);
 
   return (
     <header className="user-header">
@@ -42,8 +65,13 @@ const UserHeader = () => {
           ) : (
             <div className="relative" ref={dropdownRef}>
               <button onClick={() => setOpen((s) => !s)} className="flex items-center gap-2 focus:outline-none">
-                {user.avatar ? (
-                  <img src={user.avatar} alt="avatar" className="h-8 w-8 rounded-full object-cover" />
+                {avatarSrc ? (
+                  <img
+                    src={avatarSrc}
+                    alt="avatar"
+                    className="h-8 w-8 rounded-full object-cover"
+                    onError={() => setAvatarSrc(undefined)}
+                  />
                 ) : (
                   <FaUserCircle size={26} className="text-gray-600" />
                 )}

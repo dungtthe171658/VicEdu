@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import courseAdminApi from "../../../api/courseAdminApi";
 import type { Course } from "../../../types/course";
@@ -21,7 +21,7 @@ export default function CourseManageDetail() {
       const res = await courseAdminApi.getById(courseId);
       setCourse(res.data ?? res); // support either shape
     } catch (e: any) {
-      setError(e?.message || "Không tải được khóa học");
+      setError(e?.message || "KhÃ´ng táº£i Ä‘Æ°á»£c khÃ³a há»c");
     } finally {
       setLoading(false);
     }
@@ -40,7 +40,7 @@ export default function CourseManageDetail() {
       await courseAdminApi.update(courseId, data);
       await load();
     } catch (e: any) {
-      setError(e?.message || "Lưu khóa học thất bại");
+      setError(e?.message || "LÆ°u khÃ³a há»c tháº¥t báº¡i");
     } finally {
       setSaving(false);
     }
@@ -49,22 +49,22 @@ export default function CourseManageDetail() {
   return (
     <div className="p-4">
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-        <button onClick={() => navigate("/dashboard/manage-courses")}>← Quay lại</button>
-        <h2 style={{ margin: 0 }}>Thiết kế khóa học</h2>
+        <button onClick={() => navigate("/dashboard/manage-courses")}>â† Quay láº¡i</button>
+        <h2 style={{ margin: 0 }}>Thiáº¿t káº¿ khÃ³a há»c</h2>
       </div>
 
       {loading ? (
-        <div>Đang tải khóa học...</div>
+        <div>Äang táº£i khÃ³a há»c...</div>
       ) : error ? (
         <div style={{ color: "red" }}>{error}</div>
       ) : !course ? (
-        <div>Không tìm thấy khóa học.</div>
+        <div>KhÃ´ng tÃ¬m tháº¥y khÃ³a há»c.</div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 20 }}>
           <div style={{ background: "#fff", borderRadius: 12, padding: 16 }}>
-            <h3 style={{ marginTop: 0 }}>Thông tin khóa học</h3>
+            <h3 style={{ marginTop: 0 }}>ThÃ´ng tin khÃ³a há»c</h3>
             <CourseForm initialData={course} onSubmit={handleSave} />
-            {saving && <div style={{ marginTop: 8 }}>Đang lưu...</div>}
+            {saving && <div style={{ marginTop: 8 }}>Äang lÆ°u...</div>}
           </div>
           <div style={{ background: "#fff", borderRadius: 12, padding: 16 }}>
             <LessonManager courseId={course._id} />
@@ -74,4 +74,5 @@ export default function CourseManageDetail() {
     </div>
   );
 }
+
 
