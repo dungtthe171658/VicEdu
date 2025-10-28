@@ -40,6 +40,7 @@ import ManageCategoriesPage from "../pages/dashboard/Admin/ManageCategoriesPage"
 import ManageCoursesPage from "../pages/dashboard/Admin/ManageCoursesPage";
 import CourseManageDetail from "../pages/dashboard/Admin/CourseManageDetail";
 import ManageReviewsPage from "../pages/dashboard/Admin/ManageReviewsPage";
+import LessonManageDetail from "../pages/dashboard/Admin/LessonManageDetail";
 
 // 🔹 Protected route
 import ProtectedRoute from "./ProtectedRoute";
@@ -120,7 +121,7 @@ const AppRoutes: React.FC = () => {
         <Route
           path="manage-courses"
           element={
-            <ProtectedRoute allowedRoles={["admin"]}>
+            <ProtectedRoute allowedRoles={["admin", "teacher"]}>
               <ManageCoursesPage />
             </ProtectedRoute>
           }
@@ -128,8 +129,16 @@ const AppRoutes: React.FC = () => {
         <Route
           path="manage-courses/:courseId"
           element={
-            <ProtectedRoute allowedRoles={["admin"]}>
+            <ProtectedRoute allowedRoles={["admin", "teacher"]}>
               <CourseManageDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="manage-courses/:courseId/lessons/:lessonId"
+          element={
+            <ProtectedRoute allowedRoles={["admin", "teacher"]}>
+              <LessonManageDetail />
             </ProtectedRoute>
           }
         />

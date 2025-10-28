@@ -3,8 +3,10 @@ import { useEffect, useState } from "react";
 import bookApi from "../../api/bookApi";
 import type { BookDto } from "../../types/book.d";
 import type { Category } from "../../types/category.d";
+import { useCart } from "../../contexts/CartContext";
 import "./BookDetailPage.css";
 
+// Kiểm tra category có đầy đủ dữ liệu
 const isCategoryPopulated = (
   category: string | Category
 ): category is Category => {
@@ -13,6 +15,7 @@ const isCategoryPopulated = (
   );
 };
 
+// Lấy src ảnh
 const getImageSrc = (img?: string) => {
   if (!img) return "/no-image.png";
   if (
@@ -27,19 +30,28 @@ const getImageSrc = (img?: string) => {
 
 const BookDetailPage = () => {
   const { id } = useParams<{ id: string }>();
+  const { addBookItem } = useCart();
+
   const [book, setBook] = useState<BookDto | null>(null);
   const [sameCategoryBooks, setSameCategoryBooks] = useState<BookDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // --- Button state ---
   const [added, setAdded] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
+  // --- Fetch book & same category books ---
   useEffect(() => {
     if (!id) return;
+
     const fetchBook = async () => {
       try {
         setLoading(true);
         setError(null);
+
         const res = await bookApi.getById(id);
         const bookData: BookDto = res.data;
         setBook(bookData);
@@ -63,22 +75,42 @@ const BookDetailPage = () => {
         setLoading(false);
       }
     };
+
     fetchBook();
   }, [id]);
 
-  const handleAddToCart = () => {
-    if (!book || (book.stock ?? 0) <= 0) return;
-    const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-    const exists = cart.find((item: BookDto) => item._id === book._id);
-    if (!exists) {
-      cart.push(book);
-      localStorage.setItem("cart", JSON.stringify(cart));
+  if (loading) return <p className="loading-text">Đang tải sách...</p>;
+  if (error) return <p className="error-text">{error}</p>;
+  if (!book) return <p className="error-text">Không tìm thấy sách.</p>;
+
+  const stock = book.stock ?? 0;
+  const isOutOfStock = stock <= 0;
+
+  // --- Handle add to cart ---
+  const handleAddToCart = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!book || isOutOfStock || isAdding || added) return;
+
+    setIsAdding(true);
+
+    // Giả lập UX async / delay
+    setTimeout(() => {
+      addBookItem({
+        _id: book._id,
+        title: book.title,
+        price_cents: book.price_cents,
+        stock,
+        image: book.images ?? [],
+        quantity: 1,
+      });
+
+      setIsAdding(false);
       setAdded(true);
-    } else {
-      alert("Sách này đã có trong giỏ hàng 🛒");
-    }
+      alert(`✅ Đã thêm "${book.title}" vào giỏ hàng!`);
+    }, 400);
   };
 
+  // --- Image carousel ---
   const handlePrevImage = () => {
     if (!book?.images || book.images.length === 0) return;
     setCurrentImageIndex((prev) =>
@@ -93,17 +125,10 @@ const BookDetailPage = () => {
     );
   };
 
-  if (loading) return <p className="loading-text">Đang tải sách...</p>;
-  if (error) return <p className="error-text">{error}</p>;
-  if (!book) return <p className="error-text">Không tìm thấy sách.</p>;
-
   const priceVND = book.price_cents.toLocaleString("vi-VN", {
     style: "currency",
     currency: "VND",
   });
-
-  // --- Fix TypeScript warning stock undefined ---
-  const stock = book.stock ?? 0;
 
   return (
     <div className="book-detail-page">
@@ -136,7 +161,7 @@ const BookDetailPage = () => {
             ))}
           </div>
         )}
-        <br/>
+
         <h1>{book.title}</h1>
         {book.author && <p className="author">{book.author}</p>}
 
@@ -150,18 +175,28 @@ const BookDetailPage = () => {
 
         <p className="price">{priceVND}</p>
 
-        {/* --- Hiển thị stock --- */}
-        <p className={`stock ${stock > 0 ? "in-stock" : "out-of-stock"}`}>
-          {stock > 0 ? `Còn ${stock} cuốn` : "Hết hàng"}
+        <p className={`stock ${isOutOfStock ? "out-of-stock" : "in-stock"}`}>
+          {isOutOfStock ? "Hết hàng" : `Còn ${stock} cuốn`}
         </p>
 
+        {/* --- Button thêm vào giỏ hàng theo logic BookCard --- */}
         <button
-          className={`add-to-cart-btn ${added ? "added" : ""}`}
+          className={`add-to-cart-btn ${
+            isOutOfStock
+              ? "disabled"
+              : isAdding
+              ? "loading"
+              : added
+              ? "added"
+              : ""
+          }`}
           onClick={handleAddToCart}
-          disabled={added || stock <= 0}
+          disabled={isOutOfStock || isAdding || added}
         >
-          {stock <= 0
-            ? "❌ Hết hàng"
+          {isOutOfStock
+            ? "Hết hàng"
+            : isAdding
+            ? "Đang thêm..."
             : added
             ? "✅ Đã thêm vào giỏ hàng"
             : "🛒 Thêm vào giỏ hàng"}

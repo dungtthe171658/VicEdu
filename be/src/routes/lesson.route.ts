@@ -22,7 +22,7 @@ router.get("/:lessonId", getLessonById);
 router.post(
   "/courses/:courseId/lessons",
   authenticateToken,
-  checkRole(["teacher"]),
+  checkRole(["teacher", "admin"]),
   createLesson
 );
 
@@ -30,7 +30,7 @@ router.post(
 router.put(
   "/:lessonId",
   authenticateToken,
-  checkRole(["teacher"]),
+  checkRole(["teacher", "admin"]),
   updateLesson
 );
 
@@ -38,7 +38,7 @@ router.put(
 router.delete(
   "/:lessonId",
   authenticateToken,
-  checkRole(["teacher"]),
+  checkRole(["teacher", "admin"]),
   deleteLesson
 );
 
