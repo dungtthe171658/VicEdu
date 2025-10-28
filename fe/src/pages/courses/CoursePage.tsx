@@ -5,6 +5,7 @@ import type { Course } from "../../types/course";
 import type { Category } from "../../types/category";
 import { CourseCard } from "../../components/courses/CourseCard";
 import { SkeletonCard } from "../../components/courses/Skeleton";
+import enrollmentApi from "../../api/enrollmentApi";
 
 function normalizeList<T = any>(res: any): T[] {
   if (Array.isArray(res)) return res;
@@ -31,6 +32,7 @@ export const CoursePage = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [enrolledIds, setEnrolledIds] = useState<Set<string>>(new Set());
 
   // Filter state
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -41,12 +43,14 @@ export const CoursePage = () => {
   useEffect(() => {
     (async () => {
       try {
-        const [courseRes, categoryRes] = await Promise.all([
+        const [courseRes, categoryRes, myEnrollIds] = await Promise.all([
           courseApi.getAll(),
           categoryApi.getAll(),
+          enrollmentApi.getMyEnrolledCourseIds().catch(() => new Set<string>()),
         ]);
         setCourses(normalizeList<Course>(courseRes));
         setCategories(normalizeList<Category>(categoryRes));
+        if (myEnrollIds instanceof Set) setEnrolledIds(myEnrollIds);
       } catch (err) {
         console.error("Failed to load courses or categories:", err);
       } finally {
@@ -164,7 +168,7 @@ export const CoursePage = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredCourses.map((c) => (
-              <CourseCard key={toId(c._id)} c={c} />
+              <CourseCard key={toId(c._id)} c={c} isEnrolled={enrolledIds.has(toId((c as any)._id))} />
             ))}
           </div>
         )}

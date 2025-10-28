@@ -111,10 +111,11 @@ export const getLessonById = async (req: Request, res: Response) => {
 export const createLesson = async (req: AuthRequest, res: Response) => {
   try {
     const { courseId } = req.params;
-    const { title, video_url, duration_minutes } = req.body as {
+    const { title, video_url, duration_minutes, description } = req.body as {
       title: string;
       video_url?: string;
       duration_minutes?: number;
+      description?: string;
     };
 
     const cid = toObjectId(courseId);
@@ -137,6 +138,7 @@ export const createLesson = async (req: AuthRequest, res: Response) => {
       duration_minutes: Number(duration_minutes || 0),
       course_id: cid,
       position,
+      description,
     });
 
     // Đẩy vào mảng lessons của course
@@ -160,11 +162,12 @@ export const updateLesson = async (req: AuthRequest, res: Response) => {
     if (!lid) return res.status(400).json({ message: "Invalid lessonId" });
 
     const payload: any = {};
-    const { title, video_url, duration_minutes, position } = req.body;
+    const { title, video_url, duration_minutes, position, description } = req.body;
     if (title !== undefined) payload.title = title;
     if (video_url !== undefined) payload.video_url = video_url;
     if (duration_minutes !== undefined) payload.duration_minutes = Number(duration_minutes);
     if (position !== undefined) payload.position = Number(position);
+    if (description !== undefined) payload.description = description;
 
     const updated = await LessonModel.findByIdAndUpdate(lid, payload, {
       new: true,

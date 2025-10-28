@@ -1,22 +1,23 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import courseAdminApi from "../../../api/courseAdminApi";
 import type { Course } from "../../../types/course";
 import CourseForm from "../../../components/courses/CourseForm";
 import "./ManageCoursesPage.css";
 
 const ManageCoursesPage = () => {
+  const navigate = useNavigate();
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<Partial<Course> | null>(null);
   const [showModal, setShowModal] = useState(false);
 
-  // Tải danh sách khóa học
   const loadCourses = async () => {
     try {
       const res = await courseAdminApi.getAll();
-      setCourses(res.data);
+      setCourses(res.data ?? res);
     } catch (error) {
       console.error("Error loading courses:", error);
-      alert("Không thể tải danh sách khóa học!");
+      alert("Khong the tai danh sach khoa hoc");
     }
   };
 
@@ -24,7 +25,6 @@ const ManageCoursesPage = () => {
     loadCourses();
   }, []);
 
-  // Lưu (thêm hoặc cập nhật)
   const handleSave = async (data: Partial<Course>) => {
     try {
       if (selectedCourse?._id) {
@@ -37,31 +37,28 @@ const ManageCoursesPage = () => {
       loadCourses();
     } catch (error) {
       console.error("Error saving course:", error);
-      alert("Lưu khóa học thất bại. Vui lòng kiểm tra dữ liệu.");
+      alert("Luu khoa hoc that bai. Vui long kiem tra du lieu.");
     }
   };
 
-  // Sửa
   const handleEdit = (course: Course) => {
     setSelectedCourse(course);
     setShowModal(true);
   };
 
-  // Thêm mới
   const handleAdd = () => {
     setSelectedCourse(null);
     setShowModal(true);
   };
 
-  // Xóa
   const handleDelete = async (id: string) => {
-    if (confirm("Bạn có chắc chắn muốn xóa khóa học này không?")) {
+    if (confirm("B?n ch?c ch?n mu?n x�a kh�a h?c n�y?")) {
       try {
         await courseAdminApi.delete(id);
         loadCourses();
       } catch (error) {
         console.error("Error deleting course:", error);
-        alert("Không thể xóa khóa học.");
+        alert("Kh�ng th? x�a kh�a h?c.");
       }
     }
   };
@@ -69,10 +66,8 @@ const ManageCoursesPage = () => {
   return (
     <div className="course-management-container">
       <div className="header">
-        <h2>Quản lý khóa học</h2>
-        <button className="add-btn" onClick={handleAdd}>
-          + Thêm khóa học
-        </button>
+        <h2>Qu?n l� kh�a h?c</h2>
+        <button className="add-btn" onClick={handleAdd}>+ Th�m kh�a h?c</button>
       </div>
 
       <ul className="course-list">
@@ -80,17 +75,14 @@ const ManageCoursesPage = () => {
           <li key={course._id}>
             <div className="course-info">
               <strong>{course.title}</strong>
-              <span>{course.category?.name || "Chưa có danh mục"}</span>
+              <span>{course.category?.name || "Chua c� danh m?c"}</span>
               <span>{(course.price_cents / 100).toLocaleString()} VND</span>
               <span className={`status ${course.status}`}>{course.status}</span>
             </div>
             <div className="actions">
-              <button className="edit-btn" onClick={() => handleEdit(course)}>
-                Sửa
-              </button>
-              <button className="delete-btn" onClick={() => handleDelete(course._id)}>
-                Xóa
-              </button>
+              <button className="detail-btn" onClick={() => navigate(`/dashboard/manage-courses/${course._id}`)}>Chi ti?t</button>
+              <button className="edit-btn" onClick={() => handleEdit(course)}>S?a</button>
+              <button className="delete-btn" onClick={() => handleDelete(course._id)}>X�a</button>
             </div>
           </li>
         ))}
@@ -99,11 +91,9 @@ const ManageCoursesPage = () => {
       {showModal && (
         <div className="modal">
           <div className="modal-content">
-            <h3>{selectedCourse ? "Chỉnh sửa khóa học" : "Thêm khóa học mới"}</h3>
+            <h3>{selectedCourse ? "Ch?nh s?a kh�a h?c" : "Th�m kh�a h?c m?i"}</h3>
             <CourseForm initialData={selectedCourse || {}} onSubmit={handleSave} />
-            <button className="close-btn" onClick={() => setShowModal(false)}>
-              Đóng
-            </button>
+            <button className="close-btn" onClick={() => setShowModal(false)}>��ng</button>
           </div>
         </div>
       )}

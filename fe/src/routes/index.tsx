@@ -38,6 +38,7 @@ import BookManagementPage from "../pages/books/BookManagementPage";
 import ManageOrdersPage from "../pages/dashboard/Admin/ManageOrdersPage.tsx";
 import ManageCategoriesPage from "../pages/dashboard/Admin/ManageCategoriesPage";
 import ManageCoursesPage from "../pages/dashboard/Admin/ManageCoursesPage";
+import CourseManageDetail from "../pages/dashboard/Admin/CourseManageDetail";
 import ManageReviewsPage from "../pages/dashboard/Admin/ManageReviewsPage";
 
 // 🔹 Protected route
@@ -121,6 +122,14 @@ const AppRoutes: React.FC = () => {
           element={
             <ProtectedRoute allowedRoles={["admin"]}>
               <ManageCoursesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="manage-courses/:courseId"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <CourseManageDetail />
             </ProtectedRoute>
           }
         />
