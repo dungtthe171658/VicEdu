@@ -1,10 +1,12 @@
 import { useLocation, useParams, Link } from "react-router-dom";
-import { ArrowLeft, BookOpen, Star } from "lucide-react";
+import { ArrowLeft, BookOpen, Star, Lock } from "lucide-react";
 import { useEffect, useState } from "react";
 import courseApi from "../../api/courseApi";
 import enrollmentApi from "../../api/enrollmentApi";
 import type { Course } from "../../types/course";
 import { useCart } from "../../contexts/CartContext";
+import lessonApi from "../../api/lessonApi";
+import type { Lesson } from "../../types/lesson";
 
 export default function CourseDetail() {
   const { slug } = useParams();
@@ -12,6 +14,11 @@ export default function CourseDetail() {
 
   const [course, setCourse] = useState<Course | null>((location.state as any)?.course || null);
   const [isEnrolled, setIsEnrolled] = useState<boolean>(false);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [loadingLessons, setLoadingLessons] = useState(false);
+  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+  const [playbackUrl, setPlaybackUrl] = useState<string>("");
+  const [loadingPlayback, setLoadingPlayback] = useState(false);
 
   const { addCourse, courses, removeCourse } = useCart();
 
@@ -23,7 +30,7 @@ export default function CourseDetail() {
           setCourse(data);
         }
       } catch (err) {
-        console.error("Lỗi khi tải dữ liệu khóa học:", err);
+        console.error("Failed to load course:", err);
       }
     })();
   }, [slug]);
@@ -39,6 +46,43 @@ export default function CourseDetail() {
       }
     })();
   }, [course]);
+
+  // Load lessons when course is ready
+  useEffect(() => {
+    (async () => {
+      if (!course?._id) return;
+      try {
+        setLoadingLessons(true);
+        const list = await lessonApi.listByCourse(String((course as any)._id));
+        const arr = Array.isArray(list) ? list : [];
+        setLessons(arr);
+        if (arr.length > 0) setSelectedLessonId(arr[0]._id);
+      } catch (e) {
+        console.warn("Không thể tải danh sách bài học", e);
+      } finally {
+        setLoadingLessons(false);
+      }
+    })();
+  }, [course?._id]);
+
+  // Fetch playback URL only if user enrolled
+  useEffect(() => {
+    (async () => {
+      setPlaybackUrl("");
+      if (!selectedLessonId) return;
+      if (!isEnrolled) return;
+      try {
+        setLoadingPlayback(true);
+        const data = await lessonApi.playback(selectedLessonId);
+        const url = (data as any)?.playbackUrl || (data as any)?.url;
+        if (typeof url === "string") setPlaybackUrl(url);
+      } catch {
+        setPlaybackUrl("");
+      } finally {
+        setLoadingPlayback(false);
+      }
+    })();
+  }, [selectedLessonId, isEnrolled]);
 
   if (!course) {
     return (
@@ -110,7 +154,7 @@ export default function CourseDetail() {
 
           {!isEnrolled && (
             <p className="text-2xl font-semibold text-green-700 mb-6">
-              {formatVND((course as any).price_cents || 0)}₫
+              {formatVND((course as any).price_cents || 0)} đ
             </p>
           )}
 
@@ -142,6 +186,68 @@ export default function CourseDetail() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Lessons + Video section */}
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Video / Preview */}
+        <div className="lg:col-span-2 bg-white shadow border border-gray-100 rounded-2xl p-4">
+          <h3 className="text-lg font-semibold mb-3">Nội dung bài học</h3>
+          {loadingPlayback ? (
+            <div className="h-64 flex items-center justify-center">Đang tải video...</div>
+          ) : selectedLessonId ? (
+            isEnrolled ? (
+              playbackUrl ? (
+                <video controls src={playbackUrl} className="w-full rounded-lg bg-black" />
+              ) : (
+                <div className="h-64 flex items-center justify-center text-gray-500">Không có URL phát cho bài học này.</div>
+              )
+            ) : (
+              <div className="h-64 flex flex-col items-center justify-center text-gray-500 gap-2">
+                <Lock className="w-6 h-6" />
+                <div>Bạn cần mua khóa học để xem video.</div>
+              </div>
+            )
+          ) : (
+            <div className="h-64 flex items-center justify-center text-gray-500">Chưa chọn bài học.</div>
+          )}
+
+          {/* Selected lesson description */}
+          {selectedLessonId && (
+            <div className="mt-4 text-sm text-gray-700 whitespace-pre-wrap">
+              {lessons.find((l) => l._id === selectedLessonId)?.description || ""}
+            </div>
+          )}
+        </div>
+
+        {/* Lesson list */}
+        <aside className="bg-white shadow border border-gray-100 rounded-2xl p-4">
+          <h3 className="text-lg font-semibold mb-3">Danh sách bài học</h3>
+          {loadingLessons ? (
+            <div>Đang tải danh sách...</div>
+          ) : lessons.length === 0 ? (
+            <div>Chưa có bài học nào.</div>
+          ) : (
+            <ul className="divide-y divide-gray-100">
+              {lessons.map((ls) => (
+                <li key={ls._id}>
+                  <button
+                    onClick={() => setSelectedLessonId(ls._id)}
+                    className={`w-full text-left p-3 hover:bg-gray-50 transition ${selectedLessonId === ls._id ? "bg-blue-50" : ""}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{ls.position}. {ls.title}</span>
+                      {!isEnrolled && <Lock className="w-4 h-4 text-gray-400" />}
+                    </div>
+                    {ls.description && (
+                      <div className="text-xs text-gray-500 mt-1 line-clamp-2">{ls.description}</div>
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </aside>
       </div>
     </div>
   );

@@ -111,11 +111,15 @@ export const getLessonById = async (req: Request, res: Response) => {
 export const createLesson = async (req: AuthRequest, res: Response) => {
   try {
     const { courseId } = req.params;
-    const { title, video_url, duration_minutes, description } = req.body as {
+    const { title, video_url, duration_minutes, description, storage_provider, storage_bucket, storage_path, playback_url } = req.body as {
       title: string;
       video_url?: string;
       duration_minutes?: number;
       description?: string;
+      storage_provider?: string;
+      storage_bucket?: string;
+      storage_path?: string;
+      playback_url?: string;
     };
 
     const cid = toObjectId(courseId);
@@ -139,6 +143,10 @@ export const createLesson = async (req: AuthRequest, res: Response) => {
       course_id: cid,
       position,
       description,
+      storage_provider,
+      storage_bucket,
+      storage_path,
+      playback_url,
     });
 
     // Đẩy vào mảng lessons của course
@@ -162,12 +170,16 @@ export const updateLesson = async (req: AuthRequest, res: Response) => {
     if (!lid) return res.status(400).json({ message: "Invalid lessonId" });
 
     const payload: any = {};
-    const { title, video_url, duration_minutes, position, description } = req.body;
+    const { title, video_url, duration_minutes, position, description, storage_provider, storage_bucket, storage_path, playback_url } = req.body;
     if (title !== undefined) payload.title = title;
     if (video_url !== undefined) payload.video_url = video_url;
     if (duration_minutes !== undefined) payload.duration_minutes = Number(duration_minutes);
     if (position !== undefined) payload.position = Number(position);
     if (description !== undefined) payload.description = description;
+    if (storage_provider !== undefined) payload.storage_provider = storage_provider;
+    if (storage_bucket !== undefined) payload.storage_bucket = storage_bucket;
+    if (storage_path !== undefined) payload.storage_path = storage_path;
+    if (playback_url !== undefined) payload.playback_url = playback_url;
 
     const updated = await LessonModel.findByIdAndUpdate(lid, payload, {
       new: true,
@@ -240,9 +252,19 @@ export const getLessonPlayback = async (req: AuthRequest, res: Response) => {
     if (!enrolled) return res.status(403).json({ message: "You have no access to this lesson" });
 
     // Ưu tiên HLS nếu đã có; nếu chưa thì dùng video_url thuần
-    const rawPlayback =
-      (lesson as any).playback_url /* HLS qua CloudFront nếu đã thiết lập */ ||
-      (lesson as any).video_url;   /* video mp4/url cũ */
+    let rawPlayback = (lesson as any).playback_url || (lesson as any).video_url;
+
+    // If Supabase storage used and no public URL, generate signed URL
+    if (!rawPlayback && (lesson as any).storage_provider === 'supabase' && (lesson as any).storage_path) {
+      try {
+        const { supabaseAdmin } = await import('../lib/supabase');
+        if (supabaseAdmin) {
+          const bucket = (lesson as any).storage_bucket || 'videos';
+          const { data, error } = await supabaseAdmin.storage.from(bucket).createSignedUrl((lesson as any).storage_path, 60 * 30);
+          if (!error && data?.signedUrl) rawPlayback = data.signedUrl;
+        }
+      } catch {}
+    }
 
     if (!rawPlayback) return res.status(404).json({ message: "No playback URL" });
 
@@ -261,3 +283,4 @@ export default {
   deleteLesson,
   getLessonPlayback,
 };
+
