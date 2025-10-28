@@ -67,7 +67,7 @@
     "@types/express-session": "^1.18.2",
     "@types/mongoose-delete": "^1.0.6",
     "@types/morgan": "^1.9.10",
-    "@types/node": "^24.8.1",
+    "@types/node": "^24.9.1",
     "@types/nodemailer": "^7.0.2",
     "@types/passport": "^1.0.17",
     "@types/passport-google-oauth20": "^2.0.16",
