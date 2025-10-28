@@ -29,29 +29,32 @@ export function CardImage({
   );
 }
 
-export function CourseCard({ c }: { c: Course }) {
+export function CourseCard({ c, isEnrolled = false }: { c: Course; isEnrolled?: boolean }) {
   const [category, setCategory] = useState<string>("");
 
   useEffect(() => {
-    // ✅ Trường hợp đã có category (backend populate)
-    if (Array.isArray(c.category) && c.category.length > 0) {
-      setCategory(c.category.map((cat: any) => cat.name).join(", "));
+    // Trường hợp đã có category (backend populate)
+    if (Array.isArray((c as any).category) && (c as any).category.length > 0) {
+      setCategory(((c as any).category as any[]).map((cat: any) => cat.name).join(", "));
       return;
     }
 
-    // ✅ Nếu có category_id -> fetch thủ công
-    if (c.category_id) {
+    // Nếu có category_id -> fetch tên cục bộ
+    if ((c as any).category_id) {
       (async () => {
         try {
-          const res = await categoryApi.getById(c.category_id);
-          if (res?.data?.name) setCategory(res.data.name);
-          else if (res?.name) setCategory(res.name);
+          const res = await categoryApi.getById((c as any).category_id as any as string);
+          if ((res as any)?.data?.name) setCategory((res as any).data.name);
+          else if ((res as any)?.name) setCategory((res as any).name);
         } catch (err) {
           console.error("Failed to fetch category:", err);
         }
       })();
     }
-  }, [c.category, c.category_id]);
+  }, [
+    (c as any).category,
+    (c as any).category_id,
+  ]);
 
   return (
     <Link
@@ -91,12 +94,15 @@ export function CourseCard({ c }: { c: Course }) {
                 />
               ))}
             </div>
-            <p className="font-semibold text-green-700">
-              {VND(c.price_cents || 0)}đ
-            </p>
+            {!isEnrolled && (
+              <p className="font-semibold text-green-700">
+                {VND((c as any).price_cents || 0)}₫
+              </p>
+            )}
           </div>
         </div>
       </div>
     </Link>
   );
 }
+

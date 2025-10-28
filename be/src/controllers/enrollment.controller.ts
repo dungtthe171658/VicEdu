@@ -11,6 +11,26 @@ function getUserIdFromToken(req: Request & { user?: any }): string | null {
   return id || null;
 }
 
+
+export const getMyEnrollMini = async (req: Request, res: Response) => {
+  try {
+    const uid = getUserIdFromToken(req);
+    if (!uid) return res.status(401).json({ message: "Unauthenticated" });
+
+    const userObjectId = new mongoose.Types.ObjectId(uid);
+
+    // Truy vấn enrollments cơ bản
+    const enrollments = await EnrollmentModel.find({ user_id: userObjectId })
+      .select("_id course_id status") // chỉ lấy field cần thiết
+      .lean();
+
+    return res.json(enrollments);
+  } catch (error: any) {
+    console.error("getMyEnrollMini error:", error?.message || error);
+    return res.status(500).json({ message: error?.message || "Server error" });
+  }
+};
+
 export const getMyEnrollments = async (req: Request, res: Response) => {
   try {
     // Avoid caching for dynamic user-specific results
