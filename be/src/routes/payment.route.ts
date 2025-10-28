@@ -1,17 +1,28 @@
 // routes/payment.route.ts
+import express from "express";
 import { Router } from "express";
-import { createPaymentLink, payosWebhook, vnpayReturn } from "../controllers/payment.controller";
-import { authenticateToken as verifyToken } from "../middlewares/auth"; // hoặc verifyToken bạn đang dùng
+import {
+  createPaymentLink,
+  payosWebhook,
+  payosReturnHandler,
+  payosCancelHandler,
+  vnpayReturn,
+  cancelPayment,
+  activateOrderCourses, // ⬅️ NEW
+} from "../controllers/payment.controller";
+import { authenticateToken as verifyToken } from "../middlewares/auth";
 
 const router = Router();
 
-// Tạo link thanh toán (FE gọi)
+// Public (PayOS gọi/redirect)
+router.post("/payos/webhook", express.raw({ type: "application/json" }), payosWebhook);
+router.get("/payos/return",  payosReturnHandler);
+router.get("/payos/cancel",  payosCancelHandler);
+router.get("/vnpay/return",  vnpayReturn);
+
+// Protected (FE gọi)
 router.post("/create-payment-link", verifyToken, createPaymentLink);
-
-// Webhook PayOS (PayOS gọi)
-router.post("/payos/webhook", payosWebhook);
-
-// VNPay return (trình duyệt redirect về – nếu dùng VNPay)
-router.get("/vnpay/return", vnpayReturn);
+router.post("/cancel",              verifyToken, cancelPayment);
+router.post("/activate",            verifyToken, activateOrderCourses); // ⬅️ NEW
 
 export default router;
