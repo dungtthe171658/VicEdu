@@ -1,13 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import lessonApi, { type LessonPayload } from "../../api/lessonApi";
 import type { Lesson } from "../../types/lesson";
 import { supabase } from "../../lib/supabase";
+import uploadApi from "../../api/uploadApi";
 
 type Props = {
   courseId: string;
 };
 
 export default function LessonManager({ courseId }: Props) {
+  const navigate = useNavigate();
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,20 +63,33 @@ export default function LessonManager({ courseId }: Props) {
           "Thiếu cấu hình Supabase (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY). Hãy thêm vào fe/.env.local và khởi động lại."
         );
       }
-      // 1) Upload file to Supabase storage bucket "videos"
-      const path = `lessons/${courseId}/${Date.now()}_${file!.name}`;
-      const { error: uploadErr } = await supabase.storage.from("videos").upload(path, file!, {
-        upsert: true,
+      // 1) Lấy token upload đã ký từ Backend (Service Role)
+      const signed = await uploadApi.createSupabaseSignedUpload({
+        courseId,
+        filename: file!.name,
         contentType: file!.type || "video/mp4",
       });
-      if (uploadErr) throw uploadErr;
+      // 2) Upload file bằng signed URL (bỏ qua RLS)
+      const upRes = await supabase.storage
+        .from(signed.bucket || "videos")
+        .uploadToSignedUrl(signed.path, signed.token, file!);
+      if ((upRes as any).error) throw (upRes as any).error;
 
-      // 2) Get public URL
-      const { data: pub } = supabase.storage.from("videos").getPublicUrl(path);
+      // 3) Lấy public URL (nếu bucket để Public)
+      const { data: pub } = supabase.storage
+        .from(signed.bucket || "videos")
+        .getPublicUrl(signed.path);
       const publicUrl = pub.publicUrl;
 
-      // 3) Create lesson with video_url
-      const payload: LessonPayload = { title: title.trim(), video_url: publicUrl, description: description.trim() };
+      // 4) Tạo lesson kèm metadata lưu trữ
+      const payload: LessonPayload & any = {
+        title: title.trim(),
+        video_url: publicUrl,
+        description: description.trim(),
+        storage_provider: "supabase",
+        storage_bucket: signed.bucket || "videos",
+        storage_path: signed.path,
+      };
       await lessonApi.create(courseId, payload);
 
       // 4) Clear form and refresh list
@@ -119,13 +135,8 @@ export default function LessonManager({ courseId }: Props) {
       const payload: LessonPayload = { title: editTitle.trim(), description: editDescription.trim() };
       if (editFile) {
         if (!supabase) throw new Error("Thiếu cấu hình Supabase cho upload");
-        const path = `lessons/${courseId}/${Date.now()}_${editFile.name}`;
-        const { error: uploadErr } = await supabase.storage
-          .from("videos")
-          .upload(path, editFile, { upsert: true, contentType: editFile.type || "video/mp4" });
-        if (uploadErr) throw uploadErr;
-        const { data: pub } = supabase.storage.from("videos").getPublicUrl(path);
-        payload.video_url = pub.publicUrl;
+        const signed2 = await uploadApi.createSupabaseSignedUpload({ courseId, filename: editFile.name, contentType: editFile.type || "video/mp4" });       
+         const upRes2 = await supabase.storage.from(signed2.bucket || "videos").uploadToSignedUrl(signed2.path, signed2.token, editFile);        if ((upRes2 as any).error) throw (upRes2 as any).error;        const { data: pub } = supabase.storage.from(signed2.bucket || "videos").getPublicUrl(signed2.path);        payload.video_url = pub.publicUrl;        (payload as any).storage_provider = "supabase";        (payload as any).storage_bucket = signed2.bucket || "videos";        (payload as any).storage_path = signed2.path;
       }
       await lessonApi.update(ls._id, payload);
       await load();
@@ -285,6 +296,7 @@ export default function LessonManager({ courseId }: Props) {
                           <span style={{ fontSize: 12, color: "#999" }}>Chưa có video</span>
                         )}
                         <button onClick={() => openPlayback(ls._id)} style={{ fontSize: 12 }}>Play (auth)</button>
+                        <button onClick={() => navigate(`/dashboard/manage-courses/${courseId}/lessons/${ls._id}`)} style={{ fontSize: 12 }}>Xem chi tiết</button>
                         <button onClick={() => viewDetail(ls._id)} style={{ fontSize: 12 }}>Xem chi tiết</button>
                       </div>
                     </>
@@ -349,4 +361,3 @@ export default function LessonManager({ courseId }: Props) {
     </div>
   );
 }
-
