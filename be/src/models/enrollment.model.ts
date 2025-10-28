@@ -6,8 +6,9 @@ export interface IEnrollment extends Document {
   course_id: mongoose.Types.ObjectId;
   progress: number;
   completed_lessons: mongoose.Types.ObjectId[];
-  status: "pending" | "active" | "cancelled";  
-  activated_at?: Date | null;                    
+  status: "pending" | "active" | "cancelled";     // ⭐️ thêm
+  order_id?: mongoose.Types.ObjectId | null;       // ⭐️ thêm để đối soát
+  activated_at?: Date | null;                      // ⭐️ thêm (khi active)
 }
 
 const enrollmentSchema = new Schema<IEnrollment>(
