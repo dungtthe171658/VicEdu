@@ -1,27 +1,22 @@
-import axios from "axios";
+import axios from "./axios";
 import type { Course } from "../types/course";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8888/api";
 
+// Auth header handled by axios interceptor in ./axios via accessToken
+
 const courseAdminApi = {
-  // Lấy tất cả khóa học
+  // Admin list should use the admin endpoint to include all courses
   getAll: (params?: Record<string, unknown>) =>
-    axios.get(`${BASE_URL}/courses`, { params }),
+    axios.get(`${BASE_URL}/courses/admin/all`, { params }),
 
-  // Lấy chi tiết 1 khóa học
-  getById: (id: string) => axios.get(`${BASE_URL}/courses/${id}`),
+  // Backend route is /api/courses/id/:id (not /:id)
+  getById: (id: string) => axios.get(`${BASE_URL}/courses/id/${id}`),
 
-  // Tạo khóa học mới
   create: (data: Partial<Course>) => axios.post(`${BASE_URL}/courses`, data),
 
-  // Cập nhật khóa học
-  update: (id: string, data: Partial<Course>) =>
-    axios.put(`${BASE_URL}/courses/${id}`, data),
+  update: (id: string, data: Partial<Course>) => axios.put(`${BASE_URL}/courses/${id}`, data),
 
-  // Ẩn / Hiện khóa học (nếu có chức năng này)
-  hide: (id: string) => axios.patch(`${BASE_URL}/courses/${id}/hide`),
-
-  // Xóa khóa học
   delete: (id: string) => axios.delete(`${BASE_URL}/courses/${id}`),
 };
 

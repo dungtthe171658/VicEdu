@@ -1,4 +1,5 @@
 import express from "express";
+import enrollmentRoutes from "./routes/enrollment.route";
 import cors from "cors";
 import morgan from "morgan";
 import bodyParser from "body-parser";
@@ -10,7 +11,7 @@ import authRoutes from "./routes/auth.route";
 import userRoutes from "./routes/user.route";
 import orderRoutes from "./routes/order.route";
 import reviewRouter from "./routes/review.route";
-
+import uploadRoutes from "./routes/upload.route";
 import lessonRoutes from "./routes/lesson.route";
 import paymentRoutes from "./routes/payment.route"; // <-- THÊM
 
@@ -23,6 +24,7 @@ app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 app.use("/api/payments", paymentRoutes); 
+app.use("/api/enrollments", enrollmentRoutes);
 // Đăng ký routes
 app.use("/api/books", bookRoutes);
 app.use("/api/users", userRoutes);
@@ -32,6 +34,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/lesson", lessonRoutes);
 app.use("/api/reviews", reviewRouter);
+app.use("/api/uploads", uploadRoutes);
+
+
 
 //app.use("/api", apiRoutes);
 export default app;

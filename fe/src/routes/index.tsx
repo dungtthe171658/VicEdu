@@ -12,11 +12,13 @@ import  MyCoursesPage from "../pages/my-account/MyCoursesPage";
 import  OrderHistoryPage  from "../pages/my-account/OrderHistoryPage.tsx";
 
 // 🔹 Public pages
+import about from "../pages/user/about.tsx";
 import HomePage from "../pages/user/HomePage";
 import LoginPage from "../pages/LoginPage";
 import RegisterPage from "../pages/RegisterPage";
 import BookListPage from "../pages/books/BookListPage";
 import BookDetailPage from "../pages/books/BookDetailPage";
+import { CoursePage } from "../pages/courses/CoursePage";
 
 // 🔹 Category / Courses / Cart
 import { CategoryPage } from "../pages/category/CategoryPage.tsx";
@@ -36,16 +38,12 @@ import BookManagementPage from "../pages/books/BookManagementPage";
 import ManageOrdersPage from "../pages/dashboard/Admin/ManageOrdersPage.tsx";
 import ManageCategoriesPage from "../pages/dashboard/Admin/ManageCategoriesPage";
 import ManageCoursesPage from "../pages/dashboard/Admin/ManageCoursesPage";
+import CourseManageDetail from "../pages/dashboard/Admin/CourseManageDetail";
 import ManageReviewsPage from "../pages/dashboard/Admin/ManageReviewsPage";
-
-
-
-
-
-
 
 // 🔹 Protected route
 import ProtectedRoute from "./ProtectedRoute";
+import About from "../pages/user/about.tsx";
 
 const AppRoutes: React.FC = () => {
   return (
@@ -60,8 +58,10 @@ const AppRoutes: React.FC = () => {
         <Route path="/category" element={<CategoryPage />} />
         <Route path="/courses/:slug" element={<CourseDetail />} />
         <Route path="/cart" element={<CartPage />} />
-
+        <Route path="/courses" element={<CoursePage />} />
       <Route path="/profile" element={<ProfilePage />} />
+      
+      <Route path="/about" element={<About />} />
         <Route path="/my-courses" element={<MyCoursesPage />} />
 <Route path="/my-orders" element={<OrderHistoryPage />} /> 
 
@@ -122,6 +122,14 @@ const AppRoutes: React.FC = () => {
           element={
             <ProtectedRoute allowedRoles={["admin"]}>
               <ManageCoursesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="manage-courses/:courseId"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <CourseManageDetail />
             </ProtectedRoute>
           }
         />

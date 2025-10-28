@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document, Model } from "mongoose";
+import mongoose, { Schema, Document } from "mongoose";
 
 export interface ICourse extends Document {
   title: string;
@@ -6,10 +6,12 @@ export interface ICourse extends Document {
   description: string;
   price: number;
   thumbnail_url?: string;
-  teacher: mongoose.Types.ObjectId;
-  category: mongoose.Types.ObjectId;
-  status: 'pending' | 'approved' | 'rejected';
+  teacher: mongoose.Types.ObjectId | mongoose.Types.ObjectId[];
+  category: mongoose.Types.ObjectId | mongoose.Types.ObjectId[];
+  status: "pending" | "approved" | "rejected";
   lessons: mongoose.Types.ObjectId[];
+
+
 }
 
 const courseSchema = new Schema<ICourse>(
@@ -19,17 +21,18 @@ const courseSchema = new Schema<ICourse>(
     description: { type: String, required: true },
     price: { type: Number, required: true, min: 0, default: 0 },
     thumbnail_url: { type: String },
-    teacher: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    category: { type: Schema.Types.ObjectId, ref: "Category", required: true },
+    teacher: [{ type: Schema.Types.ObjectId, ref: "User", required: true }],
+    category: [{ type: Schema.Types.ObjectId, ref: "Category", required: true }],
+
     status: {
       type: String,
-      enum: ['pending', 'approved', 'rejected'],
-      default: 'pending',
+      enum: ["pending", "approved", "rejected"],
+      default: "pending",
     },
+
     lessons: [{ type: Schema.Types.ObjectId, ref: "Lesson" }],
   },
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" }, collection: "courses" }
 );
 
-
-export default mongoose.model<ICourse>("Course", courseSchema);;
+export default mongoose.model<ICourse>("Course", courseSchema);

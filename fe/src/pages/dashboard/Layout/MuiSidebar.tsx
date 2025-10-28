@@ -58,6 +58,8 @@ const MuiSidebar: React.FC<SidebarProps> = ({
     { label: 'Khóa học', path: 'manage-courses', icon: ArticleIcon },
     { label: 'Danh mục', path: 'manage-categories', icon: CategoryIcon },
     { label: 'Đánh giá', path: 'manage-reviews', icon: ReviewsIcon },
+
+    
   ] as const;
 
   return (
