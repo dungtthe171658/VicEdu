@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useEffect, useMemo, useState } from 
 import * as authApi from "../api/authApi";
 import { getAuthToken } from "../api/api.helpers";
 import type { UserDto, UserRole } from "../types/user.d";
+import { buildAvatarUrl } from "../utils/buildAvatarUrl";
 
 type AuthContextType = {
   user: UserDto | null;
@@ -40,7 +41,8 @@ function mapBackendUserToFront(u: BackendUser): UserDto {
     name: u.name || "",
     email: u.email || "",
     phone: u.phone,
-    avatar: u.avatar,
+    // Ensure avatar becomes an absolute URL when BE returns a relative path
+    avatar: buildAvatarUrl(u.avatar) || undefined,
     role: (u.role as UserRole) || "customer",
     is_verified: Boolean(u.is_verified),
     lockedUntil: u.lockedUntil ?? null,

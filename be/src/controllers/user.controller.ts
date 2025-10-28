@@ -140,6 +140,28 @@ export const getMyProfileFull = async (req: AuthRequest, res: Response) => {
   }
 };
 
+/**
+ * GET /users/me/avatar
+ * Lấy avatar của user từ token (nhẹ hơn so với trả full profile).
+ */
+export const getMyAvatar = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId =
+      (req.user as any)?._id?.toString?.() || (req.user as any)?.id?.toString?.();
+    if (!userId) return res.status(401).json({ message: "Unauthenticated" });
+
+    const doc = await UserModel.findById(userId)
+      .select({ avatar: 1, _id: 0 })
+      .lean();
+
+    if (!doc) return res.status(404).json({ message: "User not found" });
+
+    return res.json({ avatar: doc.avatar ?? null });
+  } catch (e: any) {
+    return res.status(500).json({ message: e?.message || "Server error" });
+  }
+};
+
 
 export const updateMyAvatar = async (req: AuthRequest, res: Response) => {
   try {
