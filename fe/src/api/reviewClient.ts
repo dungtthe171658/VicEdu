@@ -46,6 +46,39 @@ export async function getCourseSummary(courseId: string): Promise<{ count: numbe
   }
 }
 
+export async function listForBook(bookId: string, page = 1, limit = 20): Promise<ReviewDto[]> {
+  try {
+    const params = { product_type: "Book", product_id: bookId, page, limit } as any;
+    const data = (await axios.get("/reviews/public", { params })) as any;
+    if (Array.isArray(data)) return data as ReviewDto[];
+    if (Array.isArray((data as any)?.data)) return (data as any).data as ReviewDto[];
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export async function getBookSummary(bookId: string): Promise<{ count: number; average: number; breakdown: Record<string, number> } | null> {
+  try {
+    const params = { product_type: "Book", product_id: bookId } as any;
+    const data = (await axios.get("/reviews/summary", { params })) as any;
+    if (data && typeof data === "object" && "count" in data) return data as any;
+    if ((data as any)?.data && typeof (data as any).data === "object") return (data as any).data as any;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export async function createBookReview(bookId: string, rating: number, comment?: string) {
+  return axios.post("/reviews", {
+    product_id: bookId,
+    product_type: "Book",
+    rating,
+    comment,
+  });
+}
+
 export async function createCourseReview(courseId: string, rating: number, comment?: string) {
   return axios.post("/reviews", {
     product_id: courseId,
@@ -55,4 +88,4 @@ export async function createCourseReview(courseId: string, rating: number, comme
   });
 }
 
-export default { listForCourse, createCourseReview, getCourseSummary };
+export default { listForCourse, createCourseReview, getCourseSummary, listForBook, getBookSummary, createBookReview };
