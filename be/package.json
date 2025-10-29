@@ -59,7 +59,8 @@
     "test": "echo \\\"Error: no src/test specified\\\" && exit 1",
     "build": "tsc",
     "serve:dev": "cross-env NODE_ENV=development node build/src/main.js",
-    "lint": "tslint --fix -c ./tslint.json src/**/*{.ts,.tsx}"
+    "lint": "tslint --fix -c ./tslint.json src/**/*{.ts,.tsx}",
+    "migrate:reviews": "ts-node src/scripts/reviewIndexes.ts"
   },
   "author": "HieuTV",
   "license": "ISC",

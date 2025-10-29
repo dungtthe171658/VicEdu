@@ -21,4 +21,8 @@ const reviewSchema = new Schema<IReview>(
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" }, collection: "reviews" }
 );
 
+// Indexes for performance and constraints
+reviewSchema.index({ product_type: 1, product_id: 1, status: 1, created_at: -1 });
+reviewSchema.index({ user_id: 1, product_type: 1, product_id: 1 }, { unique: true });
+
 export default  mongoose.model<IReview>("Review", reviewSchema);
