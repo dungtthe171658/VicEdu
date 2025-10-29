@@ -4,20 +4,23 @@ import {
   getAllReviews,
   approveReview,
   deleteReview,
+  getPublicReviews,
+  getPublicSummary,
 } from "../controllers/review.controller";
 import { authenticateToken, checkRole } from "../middlewares/auth";
 
 const router = express.Router();
 
-// Public reviews (không cần token)
-router.get("/public", getAllReviews);
+// Public reviews (approved only)
+router.get("/public", getPublicReviews);
+router.get("/summary", getPublicSummary);
 
-// Admin quản lý reviews (cần token admin)
+// Admin manage reviews
 router.get("/", authenticateToken, checkRole(["admin"]), getAllReviews);
 router.patch("/:id/approve", authenticateToken, checkRole(["admin"]), approveReview);
 router.delete("/:id", authenticateToken, checkRole(["admin"]), deleteReview);
 
-// User đã login tạo review
+// User creates review
 router.post("/", authenticateToken, createReview);
 
 export default router;

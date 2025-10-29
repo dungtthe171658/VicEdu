@@ -1,12 +1,13 @@
 import { useLocation, useParams, Link } from "react-router-dom";
 import { ArrowLeft, BookOpen, Star, Lock } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import courseApi from "../../api/courseApi";
 import enrollmentApi from "../../api/enrollmentApi";
 import type { Course } from "../../types/course";
 import { useCart } from "../../contexts/CartContext";
 import lessonApi from "../../api/lessonApi";
 import type { Lesson } from "../../types/lesson";
+import reviewClient, { type ReviewDto } from "../../api/reviewClient";
 
 export default function CourseDetail() {
   const { slug } = useParams();
@@ -14,14 +15,26 @@ export default function CourseDetail() {
 
   const [course, setCourse] = useState<Course | null>((location.state as any)?.course || null);
   const [isEnrolled, setIsEnrolled] = useState<boolean>(false);
+
+  // Lessons + playback
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loadingLessons, setLoadingLessons] = useState(false);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [playbackUrl, setPlaybackUrl] = useState<string>("");
   const [loadingPlayback, setLoadingPlayback] = useState(false);
 
+  // Reviews
+  const [reviews, setReviews] = useState<ReviewDto[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [reviewSummary, setReviewSummary] = useState<{ count: number; average: number; breakdown: Record<string, number> } | null>(null);
+  const [ratingInput, setRatingInput] = useState<number>(5);
+  const [commentInput, setCommentInput] = useState<string>("");
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewMessage, setReviewMessage] = useState<string>("");
+
   const { addCourse, courses, removeCourse } = useCart();
 
+  // Load course by slug when direct access
   useEffect(() => {
     (async () => {
       try {
@@ -35,6 +48,7 @@ export default function CourseDetail() {
     })();
   }, [slug]);
 
+  // Resolve enrolled status
   useEffect(() => {
     (async () => {
       try {
@@ -65,7 +79,7 @@ export default function CourseDetail() {
     })();
   }, [course?._id]);
 
-  // Fetch playback URL only if user enrolled
+  // Fetch playback URL only if user enrolled and selected lesson changes
   useEffect(() => {
     (async () => {
       setPlaybackUrl("");
@@ -84,6 +98,36 @@ export default function CourseDetail() {
     })();
   }, [selectedLessonId, isEnrolled]);
 
+  // Load reviews + summary for course
+  useEffect(() => {
+    (async () => {
+      if (!course?._id) return;
+      try {
+        setLoadingReviews(true);
+        const [list, summary] = await Promise.all([
+          reviewClient.listForCourse(String((course as any)._id)),
+          reviewClient.getCourseSummary(String((course as any)._id)),
+        ]);
+        setReviews(Array.isArray(list) ? list : []);
+        setReviewSummary(summary);
+      } catch (e) {
+        setReviews([]);
+        setReviewSummary(null);
+      } finally {
+        setLoadingReviews(false);
+      }
+    })();
+  }, [course?._id]);
+
+  const isInCart = courses.some((c) => (c as any)._id === (course as any)?._id);
+  const formatVND = (n: number) => n.toLocaleString("vi-VN");
+
+  const categoryName = useMemo(() => {
+    const cat = (course as any)?.category;
+    if (Array.isArray(cat) && cat.length > 0) return cat[0]?.name || "Chưa có danh mục";
+    return "Chưa có danh mục";
+  }, [course]);
+
   if (!course) {
     return (
       <div className="flex justify-center items-center h-96">
@@ -92,15 +136,9 @@ export default function CourseDetail() {
     );
   }
 
-  const isInCart = courses.some((c) => (c as any)._id === (course as any)._id);
-  const formatVND = (n: number) => n.toLocaleString("vi-VN");
-
-  const categoryName = Array.isArray((course as any).category) && (course as any).category.length > 0
-    ? ((course as any).category[0].name || "Chưa có danh mục")
-    : "Chưa có danh mục";
-
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
+      {/* Back */}
       <Link
         to="/courses"
         className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-6"
@@ -108,6 +146,7 @@ export default function CourseDetail() {
         <ArrowLeft className="w-4 h-4" /> Quay lại danh sách
       </Link>
 
+      {/* Course card */}
       <div className="bg-white shadow border border-gray-100 rounded-2xl overflow-hidden">
         <img
           src={course.thumbnail_url || "https://placehold.co/800x400"}
@@ -152,12 +191,14 @@ export default function CourseDetail() {
             {course.description || "Không có mô tả chi tiết."}
           </p>
 
+          {/* Price hidden if enrolled */}
           {!isEnrolled && (
             <p className="text-2xl font-semibold text-green-700 mb-6">
-              {formatVND((course as any).price_cents || 0)} đ
+              {formatVND((course as any).price_cents || 0)} ₫
             </p>
           )}
 
+          {/* Cart actions hidden if enrolled */}
           {!isEnrolled && (
             <div className="flex flex-wrap items-center gap-3 mt-8">
               {isInCart ? (
@@ -249,6 +290,137 @@ export default function CourseDetail() {
           )}
         </aside>
       </div>
+
+      {/* Reviews */}
+      <section className="mt-8 bg-white shadow border border-gray-100 rounded-2xl p-6">
+        <h3 className="text-xl font-semibold mb-4">Đánh giá khóa học</h3>
+
+        {/* Summary + Histogram */}
+        <div className="flex flex-col gap-2 mb-4">
+          <div className="flex items-center gap-3">
+            {(() => {
+              const avg = reviewSummary?.average ?? 0;
+              const count = reviewSummary?.count ?? reviews.length;
+              return (
+                <>
+                  <div className="flex items-center text-amber-500">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className={`w-5 h-5 ${i < Math.round(avg) ? "fill-current" : ""}`} />
+                    ))}
+                  </div>
+                  <span className="text-sm text-gray-600">{avg} / 5 • {count} đánh giá</span>
+                </>
+              );
+            })()}
+          </div>
+          {reviewSummary && (
+            <div className="space-y-1">
+              {[5,4,3,2,1].map((r) => {
+                const total = reviewSummary.count || 1;
+                const c = reviewSummary.breakdown[String(r)] || 0;
+                const pct = Math.round((c / total) * 100);
+                return (
+                  <div key={r} className="flex items-center gap-2 text-sm">
+                    <span className="w-8 text-gray-600">{r}★</span>
+                    <div className="flex-1 h-2 bg-gray-200 rounded">
+                      <div className="h-2 bg-amber-500 rounded" style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="w-10 text-right text-gray-600">{c}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Write review (only when enrolled) */}
+        {isEnrolled && (
+          <div className="mb-6 border rounded-xl p-4 bg-gray-50">
+            <h4 className="font-semibold mb-2">Viết đánh giá của bạn</h4>
+            <div className="flex items-center gap-3 mb-3">
+              <label className="text-sm text-gray-700">Chấm điểm:</label>
+              <select
+                value={ratingInput}
+                onChange={(e) => setRatingInput(Number(e.target.value))}
+                className="border rounded-lg p-2"
+              >
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </div>
+            <textarea
+              placeholder="Chia sẻ cảm nhận của bạn về khóa học..."
+              value={commentInput}
+              onChange={(e) => setCommentInput(e.target.value)}
+              className="w-full border rounded-lg p-3 min-h-[100px]"
+            />
+            <div className="mt-3 flex items-center gap-3">
+              <button
+                disabled={submittingReview}
+                onClick={async () => {
+                  if (!course?._id) return;
+                  setSubmittingReview(true);
+                  setReviewMessage("");
+                  try {
+                    await reviewClient.createCourseReview(String((course as any)._id), ratingInput, commentInput);
+                    setCommentInput("");
+                    setRatingInput(5);
+                    setReviewMessage("Đã gửi đánh giá, chờ duyệt.");
+                  } catch (e: any) {
+                    setReviewMessage(e?.message || "Không thể gửi đánh giá. Vui lòng đăng nhập và thử lại.");
+                  } finally {
+                    setSubmittingReview(false);
+                  }
+                }}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-60"
+              >
+                Gửi đánh giá
+              </button>
+              {reviewMessage && (
+                <span className="text-sm text-gray-600">{reviewMessage}</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Review list */}
+        {loadingReviews ? (
+          <div className="text-gray-500">Đang tải đánh giá...</div>
+        ) : reviews.length === 0 ? (
+          <div className="text-gray-500">Chưa có đánh giá nào.</div>
+        ) : (
+          <ul className="space-y-4">
+            {reviews.map((rv) => (
+              <li key={rv._id} className="border rounded-xl p-4">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="font-semibold text-gray-800 flex items-center gap-2">
+                    {typeof (rv as any).user_id === "object" && (rv as any).user_id?.name
+                      ? (rv as any).user_id.name
+                      : "Người dùng"}
+                    {(rv as any).verified && (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Đã mua</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 text-amber-500">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className={`w-4 h-4 ${i < Number((rv as any).rating || 0) ? "fill-current" : ""}`} />
+                    ))}
+                  </div>
+                </div>
+                {(rv as any).comment && (
+                  <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">{(rv as any).comment}</p>
+                )}
+                {(rv as any).created_at && (
+                  <div className="text-xs text-gray-400 mt-2">
+                    {new Date((rv as any).created_at as any).toLocaleString("vi-VN")}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
