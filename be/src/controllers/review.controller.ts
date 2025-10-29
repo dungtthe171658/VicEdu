@@ -106,8 +106,13 @@ export const getPublicReviews = async (req: AuthRequest, res: Response) => {
       );
     }
 
-    // Populate user and (optional) product title
+    // Populate user minimal info for public display
     pipeline.push(
+      { $lookup: { from: "users", localField: "user_id", foreignField: "_id", as: "user" } },
+      { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+      { $addFields: { user_id: "$user" } },
+      { $project: { user: 0 } },
+      // Sort and paginate
       { $sort: { created_at: -1 } },
       { $skip: skip },
       { $limit: limit }

@@ -391,37 +391,41 @@ export default function CourseDetail() {
           <div className="text-gray-500">Chưa có đánh giá nào.</div>
         ) : (
           <ul className="space-y-4">
-            {reviews.map((rv) => (
-              <li key={rv._id} className="border rounded-xl p-4">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="font-semibold text-gray-800 flex items-center gap-2">
-                    {typeof (rv as any).user_id === "object" && (rv as any).user_id?.name
-                      ? (rv as any).user_id.name
-                      : "Người dùng"}
-                    {(rv as any).verified && (
-                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Đã mua</span>
-                    )}
+            {reviews.map((rv) => {
+              const userRaw = (rv as any).user_id || (rv as any).user;
+              const nameRaw = typeof userRaw === "object" ? (userRaw?.name ?? "") : "";
+              const displayName = (typeof nameRaw === "string" && nameRaw.trim().length > 0)
+                ? nameRaw.trim()
+                : "Người dùng";
+              return (
+                <li key={rv._id} className="border rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="font-semibold text-gray-800 flex items-center gap-2">
+                      {displayName}
+                      {(rv as any).verified && (
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Đã mua</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 text-amber-500">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className={`w-4 h-4 ${i < Number((rv as any).rating || 0) ? "fill-current" : ""}`} />
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 text-amber-500">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className={`w-4 h-4 ${i < Number((rv as any).rating || 0) ? "fill-current" : ""}`} />
-                    ))}
-                  </div>
-                </div>
-                {(rv as any).comment && (
-                  <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">{(rv as any).comment}</p>
-                )}
-                {(rv as any).created_at && (
-                  <div className="text-xs text-gray-400 mt-2">
-                    {new Date((rv as any).created_at as any).toLocaleString("vi-VN")}
-                  </div>
-                )}
-              </li>
-            ))}
+                  {(rv as any).comment && (
+                    <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">{(rv as any).comment}</p>
+                  )}
+                  {(rv as any).created_at && (
+                    <div className="text-xs text-gray-400 mt-2">
+                      {new Date((rv as any).created_at as any).toLocaleString("vi-VN")}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
     </div>
   );
 }
-
