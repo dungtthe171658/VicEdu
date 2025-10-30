@@ -1,0 +1,135 @@
+[{
+  "_id": {
+    "$oid": "69006125f86732f74def1a75"
+  },
+  "course_id": {
+    "$oid": "68f530080a715505eca52edc"
+  },
+  "user_id": {
+    "$oid": "68f78d2795119104f5e13414"
+  },
+  "__v": 0,
+  "activated_at": {
+    "$date": "2025-10-28T06:23:17.359Z"
+  },
+  "completed_lessons": [],
+  "created_at": {
+    "$date": "2025-10-28T06:22:29.611Z"
+  },
+  "order_id": {
+    "$oid": "69006125ee481179d27d20df"
+  },
+  "progress": 0,
+  "status": "active",
+  "updated_at": {
+    "$date": "2025-10-28T06:23:17.360Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69006125f86732f74def1a76"
+  },
+  "course_id": {
+    "$oid": "68f530080a715505eca52edd"
+  },
+  "user_id": {
+    "$oid": "68f78d2795119104f5e13414"
+  },
+  "__v": 0,
+  "activated_at": {
+    "$date": "2025-10-28T06:23:17.359Z"
+  },
+  "completed_lessons": [],
+  "created_at": {
+    "$date": "2025-10-28T06:22:29.611Z"
+  },
+  "order_id": {
+    "$oid": "69006125ee481179d27d20df"
+  },
+  "progress": 0,
+  "status": "active",
+  "updated_at": {
+    "$date": "2025-10-28T06:23:17.360Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69006125f86732f74def1a77"
+  },
+  "course_id": {
+    "$oid": "68f530080a715505eca52edb"
+  },
+  "user_id": {
+    "$oid": "68f78d2795119104f5e13414"
+  },
+  "__v": 0,
+  "activated_at": {
+    "$date": "2025-10-28T06:23:17.359Z"
+  },
+  "completed_lessons": [],
+  "created_at": {
+    "$date": "2025-10-28T06:22:29.610Z"
+  },
+  "order_id": {
+    "$oid": "69006125ee481179d27d20df"
+  },
+  "progress": 0,
+  "status": "active",
+  "updated_at": {
+    "$date": "2025-10-28T06:23:17.360Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69006161f86732f74def1a78"
+  },
+  "course_id": {
+    "$oid": "68f530080a715505eca52eda"
+  },
+  "user_id": {
+    "$oid": "68f78d2795119104f5e13414"
+  },
+  "__v": 0,
+  "activated_at": {
+    "$date": "2025-10-28T06:23:51.784Z"
+  },
+  "completed_lessons": [],
+  "created_at": {
+    "$date": "2025-10-28T06:23:29.082Z"
+  },
+  "order_id": {
+    "$oid": "69006161ee481179d27d2109"
+  },
+  "progress": 0,
+  "status": "active",
+  "updated_at": {
+    "$date": "2025-10-28T06:23:51.785Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69016adf3760ddd623326bf9"
+  },
+  "course_id": {
+    "$oid": "68f530080a715505eca52eda"
+  },
+  "user_id": {
+    "$oid": "69016a4ebe37470e51ce6414"
+  },
+  "__v": 0,
+  "activated_at": {
+    "$date": "2025-10-29T01:17:13.111Z"
+  },
+  "completed_lessons": [],
+  "created_at": {
+    "$date": "2025-10-29T01:16:15.722Z"
+  },
+  "order_id": {
+    "$oid": "69016adfbe37470e51ce6442"
+  },
+  "progress": 0,
+  "status": "active",
+  "updated_at": {
+    "$date": "2025-10-29T01:17:13.112Z"
+  }
+}]

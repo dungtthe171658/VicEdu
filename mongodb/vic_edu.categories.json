@@ -1,0 +1,76 @@
+[{
+  "_id": {
+    "$oid": "68f53e140a715505eca52f1a"
+  },
+  "name": "Lập trình",
+  "slug": "lap-trinh",
+  "created_at": "2023-01-01T00:00:00Z",
+  "updated_at": "2023-01-01T00:00:00Z"
+},
+{
+  "_id": {
+    "$oid": "68f53e140a715505eca52f1c"
+  },
+  "name": "Lập trình Di động",
+  "slug": "lap-trinh-di-dong",
+  "created_at": "2023-01-01T00:02:00Z",
+  "updated_at": "2023-01-01T00:02:00Z"
+},
+{
+  "_id": {
+    "$oid": "68f53e140a715505eca52f1d"
+  },
+  "name": "Digital Marketing",
+  "slug": "digital-marketing",
+  "created_at": "2023-01-02T00:00:00Z",
+  "updated_at": "2023-01-02T00:00:00Z"
+},
+{
+  "_id": {
+    "$oid": "68f53e140a715505eca52f1e"
+  },
+  "name": "Thiết kế Đồ họa",
+  "slug": "thiet-ke-do-hoa",
+  "created_at": "2023-01-03T00:00:00Z",
+  "updated_at": "2023-01-03T00:00:00Z"
+},
+{
+  "_id": {
+    "$oid": "68ea494735117737b6d34619"
+  },
+  "name": "Web Frontend",
+  "slug": "web-frontend",
+  "parent_id": null,
+  "created_at": "2023-01-01T00:00:00Z",
+  "updated_at": "2023-01-01T00:00:00Z"
+},
+{
+  "_id": {
+    "$oid": "68ea494735117737b6d3461a"
+  },
+  "name": "Web Backend",
+  "slug": "web-backend",
+  "parent_id": null,
+  "created_at": "2023-01-01T00:00:00Z",
+  "updated_at": "2023-01-01T00:00:00Z"
+},
+{
+  "_id": {
+    "$oid": "68ea494735117737b6d3461b"
+  },
+  "name": "Fullstack",
+  "slug": "fullstack",
+  "parent_id": null,
+  "created_at": "2023-01-01T00:00:00Z",
+  "updated_at": "2023-01-01T00:00:00Z"
+},
+{
+  "_id": {
+    "$oid": "68ea494735117737b6d3461c"
+  },
+  "name": "Kỹ năng lập trình",
+  "slug": "ky-nang-lap-trinh",
+  "parent_id": null,
+  "created_at": "2023-01-01T00:00:00Z",
+  "updated_at": "2023-01-01T00:00:00Z"
+}]
