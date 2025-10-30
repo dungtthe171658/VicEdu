@@ -48,7 +48,7 @@ export class GeminiService {
   private buildSystemPrompt(context: ChatContext): string {
     const { userRole, systemData } = context;
 
-    let basePrompt = `Bạn là VudeicAI, trợ lý AI thông minh của VicEdu - nền tảng giáo dục trực tuyến hàng đầu Việt Nam.
+    let basePrompt = `Bạn là ViceduAI, trợ lý AI thông minh của VicEdu - nền tảng giáo dục trực tuyến hàng đầu Việt Nam.
 
 QUAN TRỌNG: 
 - Bạn KHÔNG được đề cập đến Google, Gemini hay bất kỳ công nghệ nào khác

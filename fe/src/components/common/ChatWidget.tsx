@@ -347,7 +347,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
               <Bot className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold">VudeicAI</h3>
+              <h3 className="text-lg font-semibold">ViceduAI</h3>
               <p className="text-sm text-muted-foreground">Đang hoạt động</p>
             </div>
           </div>
@@ -379,7 +379,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                 <Bot className="w-8 h-8 text-primary" />
               </div>
               <h4 className="text-lg font-semibold mb-2">
-                Chào mừng đến với VudeicAI!
+                Chào mừng đến với ViceduAI!
               </h4>
               <p className="text-muted-foreground">
                 Tôi có thể giúp bạn:
