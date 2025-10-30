@@ -1,0 +1,16 @@
+{
+  "name": "vic-edu-import",
+  "version": "1.0.0",
+  "description": "Import script for VicEdu MongoDB data",
+  "main": "import.js",
+  "scripts": {
+    "import": "node import.js",
+    "import:custom": "node import.js vic_edu mongodb://localhost:27017"
+  },
+  "dependencies": {
+    "mongodb": "^6.0.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

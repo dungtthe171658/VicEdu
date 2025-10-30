@@ -1,0 +1,359 @@
+[{
+  "_id": {
+    "$oid": "68ea4d5ed7da09c7d630fb01"
+  },
+  "category_id": {
+    "$oid": "68ea494735117737b6d3461b"
+  },
+  "title": "JavaScript Toàn Tập fixed 2",
+  "slug": "javascript-toan-tap-fixed-2",
+  "author": "Nguyễn Văn An",
+  "description": "Cuốn sách tổng hợp kiến thức JavaScript từ cơ bản đến nâng cao.",
+  "price_cents": 250000,
+  "stock": 50,
+  "is_published": true,
+  "images": [
+    "https://th.bing.com/th/id/OIP._tr4GI6e118UARjb5vkn3wEsEs?w=166&h=180&c=7&r=0&o=7&cb=12&pid=1.7&rm=3",
+    "https://th.bing.com/th/id/OIP.KqvqiLH9OAx2inkFjOmgOQHaE0?w=257&h=180&c=7&r=0&o=7&cb=12&pid=1.7&rm=3"
+  ],
+  "created_at": "2023-04-10T08:00:00Z",
+  "updated_at": {
+    "$date": "2025-10-28T03:10:06.227Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "68ea4d5ed7da09c7d630fb02"
+  },
+  "category_id": {
+    "$oid": "68ea494735117737b6d34618"
+  },
+  "title": "TypeScript Từ A Đến Z",
+  "slug": "typescript-tu-a-djen-z",
+  "author": "Nguyễn Văn Bình",
+  "description": "Khám phá TypeScript và cách áp dụng nó trong các dự án thực tế.",
+  "price_cents": 290000,
+  "stock": 60,
+  "is_published": true,
+  "images": [
+    "https://tse4.mm.bing.net/th/id/OIP.9tnCoM6wY7ht00qUPryqzAHaFx?cb=12&w=1196&h=932&rs=1&pid=ImgDetMain&o=7&rm=3"
+  ],
+  "created_at": "2023-04-10T08:00:00Z",
+  "updated_at": {
+    "$date": "2025-10-19T04:59:17.479Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "68ea4d5ed7da09c7d630fb03"
+  },
+  "category_id": {
+    "$oid": "68ea494735117737b6d34619"
+  },
+  "title": "Học React Cơ Bản",
+  "slug": "hoc-react-co-ban",
+  "author": "Trần Minh Khoa",
+  "description": "Cuốn sách hướng dẫn học React từ những khái niệm cơ bản đến cách xây dựng ứng dụng thực tế.",
+  "price_cents": 320000,
+  "stock": 40,
+  "is_published": true,
+  "images": [
+    "https://tse3.mm.bing.net/th/id/OIP.Ogpqjr8_jhNyIu0AgD5QcwHaKe?w=203&h=287&c=7&r=0&o=7&cb=12&pid=1.7&rm=3"
+  ],
+  "created_at": "2023-04-10T08:00:00Z",
+  "updated_at": {
+    "$date": "2025-10-19T05:03:41.377Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "68ea4d5ed7da09c7d630fb04"
+  },
+  "category_id": {
+    "$oid": "68ea494735117737b6d34619"
+  },
+  "title": "Vue.js Dành Cho Người Mới",
+  "slug": "vuejs-danh-cho-nguoi-moi",
+  "author": "Đặng Hồng Phúc",
+  "description": "Hướng dẫn chi tiết cách bắt đầu với Vue.js và xây dựng ứng dụng web hiện đại.",
+  "price_cents": 250000,
+  "stock": 34,
+  "is_published": true,
+  "images": [
+    "https://m.media-amazon.com/images/I/41gyN1n7GnL._SL500_.jpg"
+  ],
+  "created_at": "2023-04-10T08:00:00Z",
+  "updated_at": {
+    "$date": "2025-10-24T15:00:47.666Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "68ea4d5ed7da09c7d630fb05"
+  },
+  "category_id": {
+    "$oid": "68ea494735117737b6d3461a"
+  },
+  "title": "Node.js Nâng Cao",
+  "slug": "nodejs-nang-cao",
+  "author": "Phạm Hữu Đức",
+  "description": "Tài liệu chuyên sâu về Node.js, bao gồm kỹ thuật tối ưu và mô hình bất đồng bộ.",
+  "price_cents": 270000,
+  "stock": 55,
+  "is_published": true,
+  "images": [
+    "https://tse2.mm.bing.net/th/id/OIP.UbOfwrc6g_3ze1cLzlCdJAHaKe?w=203&h=287&c=7&r=0&o=7&cb=12&pid=1.7&rm=3"
+  ],
+  "created_at": "2023-04-10T08:00:00Z",
+  "updated_at": {
+    "$date": "2025-10-19T05:03:21.234Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "68ea4d5ed7da09c7d630fb06"
+  },
+  "category_id": {
+    "$oid": "68ea494735117737b6d3461a"
+  },
+  "title": "Express Toàn Tập",
+  "slug": "express-toan-tap",
+  "author": "Lê Quang Duy",
+  "description": "Tổng hợp toàn bộ kiến thức về Express framework cho Node.js.",
+  "price_cents": 230000,
+  "stock": 45,
+  "is_published": true,
+  "images": [
+    "https://tse2.mm.bing.net/th/id/OIP.owNmkq5FETIOb190NJmt0gAAAA?w=130&h=180&c=7&r=0&o=7&cb=12&pid=1.7&rm=3"
+  ],
+  "created_at": "2023-04-10T08:00:00Z",
+  "updated_at": {
+    "$date": "2025-10-19T05:04:03.615Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "68ea4d5ed7da09c7d630fb07"
+  },
+  "category_id": {
+    "$oid": "68ea494735117737b6d3461b"
+  },
+  "title": "Fullstack JavaScript",
+  "slug": "fullstack-javascript",
+  "author": "Trần Quốc Việt",
+  "description": "Từ front-end đến back-end, đây là cuốn sách giúp bạn trở thành lập trình viên fullstack.",
+  "price_cents": 370000,
+  "stock": 38,
+  "is_published": true,
+  "images": [
+    "https://tse3.mm.bing.net/th/id/OIP.M2xAJdrZdEP7cIsph0JEsQAAAA?cb=12&pid=ImgDet&w=170&h=242&c=7&o=7&rm=3",
+    "https://tse1.mm.bing.net/th/id/OIP.GfelemDaHNEXvXGvLBN4tAHaLO?cb=12&rs=1&pid=ImgDetMain&o=7&rm=3"
+  ],
+  "created_at": "2023-04-10T08:00:00Z",
+  "updated_at": {
+    "$date": "2025-10-19T05:05:24.942Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "68ea4d5ed7da09c7d630fb08"
+  },
+  "category_id": {
+    "$oid": "68ea494735117737b6d3461b"
+  },
+  "title": "Next.js Cơ Bản",
+  "slug": "nextjs-co-ban",
+  "author": "Phan Anh Tuấn",
+  "description": "Giới thiệu và hướng dẫn cách xây dựng website hiệu năng cao với Next.js.",
+  "price_cents": 310000,
+  "stock": 42,
+  "is_published": true,
+  "images": [
+    "https://testrigor.com/wp-content/uploads/2023/04/nextjs-logo-square.png"
+  ],
+  "created_at": "2023-04-10T08:00:00Z",
+  "updated_at": {
+    "$date": "2025-10-27T08:36:50.813Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "68ea4d5ed7da09c7d630fb09"
+  },
+  "category_id": {
+    "$oid": "68ea494735117737b6d3461c"
+  },
+  "title": "Debug JavaScript Hiệu Quả",
+  "slug": "debug-javascript-hieu-qua",
+  "author": "Lý Anh Khoa",
+  "description": "Phương pháp và công cụ giúp debug code JavaScript nhanh chóng và chính xác.",
+  "price_cents": 200000,
+  "stock": 50,
+  "is_published": true,
+  "images": [
+    "https://m.media-amazon.com/images/I/318KuDJM1hL._SY445_SX342_.jpg"
+  ],
+  "created_at": "2023-04-10T08:00:00Z",
+  "updated_at": {
+    "$date": "2025-10-19T05:06:21.829Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "68ea4d5ed7da09c7d630fb0a"
+  },
+  "category_id": {
+    "$oid": "68ea494735117737b6d3461c"
+  },
+  "title": "Clean Code Với JavaScript",
+  "slug": "clean-code-voi-javascript",
+  "author": "Bùi Văn Long",
+  "description": "Học cách viết code JavaScript sạch, dễ đọc và dễ bảo trì.",
+  "price_cents": 330000,
+  "stock": 44,
+  "is_published": true,
+  "images": [
+    "https://m.media-amazon.com/images/I/51UNoY6f-dL._AC_UL400_.jpg"
+  ],
+  "created_at": "2023-04-10T08:00:00Z",
+  "updated_at": {
+    "$date": "2025-10-19T05:06:59.266Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "68ea4d5ed7da09c7d630fb0b"
+  },
+  "category_id": {
+    "$oid": "68ea494735117737b6d34618"
+  },
+  "title": "React Nâng Cao",
+  "slug": "react-nang-cao",
+  "author": "Nguyễn Văn Hoàng",
+  "description": "Học cách xây dựng ứng dụng React phức tạp và tối ưu performance.",
+  "price_cents": 350000,
+  "stock": 30,
+  "is_published": true,
+  "images": [
+    "https://tse3.mm.bing.net/th/id/OIP.3EMNIQgu-Ieod0nzZpI1PAHaJI?w=134&h=180&c=7&r=0&o=7&cb=12&pid=1.7&rm=3"
+  ],
+  "created_at": "2023-04-10T08:00:00Z",
+  "updated_at": {
+    "$date": "2025-10-19T05:07:42.879Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "68ea4d5ed7da09c7d630fb0c"
+  },
+  "category_id": {
+    "$oid": "68ea494735117737b6d34619"
+  },
+  "title": "Vue Nâng Cao",
+  "slug": "vue-nang-cao",
+  "author": "Lê Minh Tuấn",
+  "description": "Tối ưu và mở rộng ứng dụng Vue.js chuyên sâu.",
+  "price_cents": 340000,
+  "stock": 28,
+  "is_published": true,
+  "images": [
+    "https://m.media-amazon.com/images/I/418NnKr2KKL.jpg"
+  ],
+  "created_at": "2023-04-10T08:00:00Z",
+  "updated_at": {
+    "$date": "2025-10-19T05:08:10.824Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "68ea4d5ed7da09c7d630fb0d"
+  },
+  "category_id": {
+    "$oid": "68ea494735117737b6d3461a"
+  },
+  "title": "Node.js Thực Hành",
+  "slug": "nodejs-thuc-hanh",
+  "author": "Phạm Anh Dũng",
+  "description": "Các bài tập thực hành Node.js để nâng cao kỹ năng lập trình.",
+  "price_cents": 280000,
+  "stock": 36,
+  "is_published": true,
+  "images": [
+    "https://tse4.mm.bing.net/th/id/OIP.F3MvKiNW-3h0_QY6Snh47QAAAA?w=178&h=220&c=7&r=0&o=7&cb=12&pid=1.7&rm=3"
+  ],
+  "created_at": "2023-04-10T08:00:00Z",
+  "updated_at": {
+    "$date": "2025-10-19T05:08:31.003Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "68ea4d5ed7da09c7d630fb0e"
+  },
+  "category_id": {
+    "$oid": "68ea494735117737b6d3461b"
+  },
+  "title": "Next.js Nâng Cao",
+  "slug": "nextjs-nang-cao",
+  "author": "Nguyễn Hoàng Nam",
+  "description": "Xây dựng website hiệu năng cao với Next.js nâng cao.",
+  "price_cents": 360000,
+  "stock": 32,
+  "is_published": true,
+  "images": [
+    "https://example.com/images/next-adv1.jpg",
+    "https://example.com/images/next-adv2.jpg"
+  ],
+  "created_at": "2023-04-10T08:00:00Z",
+  "updated_at": {
+    "$date": "2025-10-19T04:58:14.421Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "68ea4d5ed7da09c7d630fb0f"
+  },
+  "category_id": {
+    "$oid": "68ea494735117737b6d3461c"
+  },
+  "title": "Debug nâng cao",
+  "slug": "debug-nang-cao",
+  "author": "Lê Văn Hậu",
+  "description": "Kỹ thuật debug nâng cao cho dự án JavaScript lớn.",
+  "price_cents": 210000,
+  "stock": 0,
+  "is_published": true,
+  "images": [
+    "https://tse1.mm.bing.net/th/id/OIP.4QV5EeXHLpxKgUeAsHmEmAAAAA?cb=12&rs=1&pid=ImgDetMain&o=7&rm=3"
+  ],
+  "created_at": "2023-04-10T08:00:00Z",
+  "updated_at": {
+    "$date": "2025-10-19T05:09:14.531Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69003943a01c48b4098fb5af"
+  },
+  "title": "test",
+  "slug": "test",
+  "author": "df",
+  "description": "ff",
+  "price_cents": 123,
+  "stock": 1,
+  "category_id": {
+    "$oid": "68ea494735117737b6d3461b"
+  },
+  "is_published": true,
+  "images": [
+    "https://res.cloudinary.com/dlwxyaeck/image/upload/v1761624388/vicedu_banner_sbxase.webp",
+    "https://res.cloudinary.com/dlwxyaeck/image/upload/v1761624504/bmi_2022_ppt-canvasses_business-model-canvas_dtb77h.png"
+  ],
+  "created_at": {
+    "$date": "2025-10-28T03:32:19.223Z"
+  },
+  "updated_at": {
+    "$date": "2025-10-28T04:08:30.227Z"
+  },
+  "__v": 0
+}]

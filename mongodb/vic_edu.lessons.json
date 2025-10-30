@@ -1,0 +1,50 @@
+[{
+  "_id": {
+    "$oid": "6900b2bda0c1f2c5ea20d5e0"
+  },
+  "title": "bai 1",
+  "video_url": "https://xxqsjoyjokrgnqvtlakj.supabase.co/storage/v1/object/public/videos/lessons/68f530080a715505eca52eda/1761699069513_intro_lesson1.mp4",
+  "duration_minutes": 0,
+  "course_id": {
+    "$oid": "68f530080a715505eca52eda"
+  },
+  "position": 1,
+  "description": "desciption cho bai 1... intro mo dau",
+  "status": "pending",
+  "storage_provider": "supabase",
+  "storage_bucket": "videos",
+  "storage_path": "lessons/68f530080a715505eca52eda/1761699069513_intro_lesson1.mp4",
+  "reviews": [],
+  "created_at": {
+    "$date": "2025-10-28T12:10:37.597Z"
+  },
+  "updated_at": {
+    "$date": "2025-10-29T00:52:19.917Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6900b2eaa0c1f2c5ea20d5f5"
+  },
+  "title": "bai so 2",
+  "video_url": "https://xxqsjoyjokrgnqvtlakj.supabase.co/storage/v1/object/public/videos/lessons/68f530080a715505eca52eda/1761653477907_testkhac.mp4",
+  "duration_minutes": 0,
+  "course_id": {
+    "$oid": "68f530080a715505eca52eda"
+  },
+  "position": 2,
+  "description": "mô tả bài học ... descipt hướng dẫn load video",
+  "status": "pending",
+  "storage_provider": "supabase",
+  "storage_bucket": "videos",
+  "storage_path": "lessons/68f530080a715505eca52eda/1761653477907_testkhac.mp4",
+  "reviews": [],
+  "created_at": {
+    "$date": "2025-10-28T12:11:22.035Z"
+  },
+  "updated_at": {
+    "$date": "2025-10-28T14:01:38.651Z"
+  },
+  "__v": 0
+}]

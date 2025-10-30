@@ -1,0 +1,98 @@
+[{
+  "_id": {
+    "$oid": "68f530080a715505eca52eda"
+  },
+  "title": "Lập trình Node.js cho người mới bắt đầu",
+  "slug": "lap-trinh-nodejs-cho-nguoi-moi-bat-djau",
+  "short_desc": "Khóa học cung cấp kiến thức nền tảng về Node.js, Express và MongoDB.",
+  "description": "Nội dung chi tiết về khóa học được đăng tải trên Google Classroom...",
+  "price_cents": 10000,
+  "is_published": true,
+  "published_at": "2023-03-01T00:00:00Z",
+  "created_at": "2023-02-20T10:00:00Z",
+  "updated_at": {
+    "$date": "2025-10-28T14:44:18.226Z"
+  },
+  "category": [
+    {
+      "$oid": "68f53e140a715505eca52f1a"
+    }
+  ],
+  "teacher": [
+    {
+      "$oid": "64a1f001111111111111cccc"
+    }
+  ],
+  "__v": 2,
+  "lessons": [
+    {
+      "$oid": "6900b2bda0c1f2c5ea20d5e0"
+    },
+    {
+      "$oid": "6900b2eaa0c1f2c5ea20d5f5"
+    }
+  ],
+  "price": 0,
+  "status": "pending",
+  "thumbnail_url": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nodejs/nodejs-original.svg"
+},
+{
+  "_id": {
+    "$oid": "68f530080a715505eca52edb"
+  },
+  "title": "Marketing trên Facebook từ A-Z",
+  "slug": "marketing-tren-facebook-tu-a-z",
+  "short_desc": "Học cách chạy quảng cáo Facebook hiệu quả để tăng doanh thu.",
+  "description": "Toàn bộ bài giảng và tài liệu có trên lớp Google Classroom của khóa học.",
+  "price_cents": 10000,
+  "is_published": true,
+  "published_at": "2023-06-01T00:00:00Z",
+  "created_at": "2023-05-15T15:00:00Z",
+  "updated_at": "2023-05-20T15:00:00Z",
+  "category": {
+    "$oid": "68f53e140a715505eca52f1d"
+  },
+  "teacher": {
+    "$oid": "64a1f001111111111111cccc"
+  }
+},
+{
+  "_id": {
+    "$oid": "68f530080a715505eca52edc"
+  },
+  "title": "Lập trình Flutter cơ bản",
+  "slug": "lap-trinh-flutter-co-ban",
+  "short_desc": "Xây dựng ứng dụng di động đa nền tảng với Flutter.",
+  "description": "Học viên sẽ được thực hành qua các dự án thực tế...",
+  "price_cents": 10000,
+  "is_published": true,
+  "published_at": "2023-07-10T00:00:00Z",
+  "created_at": "2023-07-01T09:00:00Z",
+  "updated_at": "2023-07-01T09:00:00Z",
+  "teacher": {
+    "$oid": "64a1f001111111111111cccc"
+  },
+  "category": {
+    "$oid": "68f53e140a715505eca52f1c"
+  }
+},
+{
+  "_id": {
+    "$oid": "68f530080a715505eca52edd"
+  },
+  "title": "Thiết kế UI/UX với Figma",
+  "slug": "thiet-ke-ui-ux-voi-figma",
+  "short_desc": "Nắm vững công cụ thiết kế Figma và tư duy UI/UX.",
+  "description": "Khóa học chưa được công bố, đang trong quá trình hoàn thiện.",
+  "price_cents": 10000,
+  "is_published": true,
+  "published_at": null,
+  "created_at": "2023-08-01T14:00:00Z",
+  "updated_at": "2023-08-01T14:00:00Z",
+  "category": {
+    "$oid": "68f53e140a715505eca52f1e"
+  },
+  "teacher": {
+    "$oid": "68f53c250a715505eca52ef8"
+  }
+}]

@@ -1,0 +1,22 @@
+[{
+  "_id": {
+    "$oid": "69019482150559a192fde1ff"
+  },
+  "user_id": {
+    "$oid": "68f78d2795119104f5e13414"
+  },
+  "product_id": {
+    "$oid": "68f530080a715505eca52eda"
+  },
+  "product_type": "Course",
+  "rating": 5,
+  "comment": "oke",
+  "status": "approved",
+  "created_at": {
+    "$date": "2025-10-29T04:13:54.202Z"
+  },
+  "updated_at": {
+    "$date": "2025-10-29T04:46:32.351Z"
+  },
+  "__v": 0
+}]

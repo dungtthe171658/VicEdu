@@ -1,0 +1,129 @@
+[{
+  "_id": {
+    "$oid": "64a1f001111111111111aaaa"
+  },
+  "name": "Admin Test",
+  "email": "admin@example.com",
+  "password": "$2b$10$8j4CuukotAKiG13fQqVjKOe2u/MQV7EnqOG3G8rbCV8N0wGQ/XKQ6",
+  "phone": "0900000001",
+  "role": "admin",
+  "is_verified": true,
+  "verifyToken": null,
+  "verifyTokenExpiry": null,
+  "createdAt": {
+    "$date": "2025-08-22T06:00:00.000Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "64a1f001111111111111bbbb"
+  },
+  "name": "Customer Test",
+  "email": "customer@example.com",
+  "password": "$2b$10$8j4CuukotAKiG13fQqVjKOe2u/MQV7EnqOG3G8rbCV8N0wGQ/XKQ6",
+  "phone": "0900000002",
+  "role": "customer",
+  "is_verified": true,
+  "verifyToken": null,
+  "verifyTokenExpiry": null,
+  "createdAt": {
+    "$date": "2025-08-22T06:00:00.000Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "64a1f001111111111111cccc"
+  },
+  "name": "Teacher Test",
+  "email": "teacher@example.com",
+  "password": "$2b$10$8j4CuukotAKiG13fQqVjKOe2u/MQV7EnqOG3G8rbCV8N0wGQ/XKQ6",
+  "phone": "0900000003",
+  "role": "teacher",
+  "is_verified": true,
+  "verifyToken": null,
+  "verifyTokenExpiry": null,
+  "createdAt": {
+    "$date": "2025-08-22T06:00:00.000Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "68f78a920894770525e03650"
+  },
+  "name": "dung",
+  "email": "dung9avttb@gmail.com",
+  "password": "$2b$10$vWoSAnHfcEetAf/X1A6ufOh3UaMlPdEQOx8uAm.m5id5skoy8bciq",
+  "role": "admin",
+  "is_verified": true,
+  "verifyToken": "fa158b2319f96380372adc8dfbeb683eeb04daeed073b9c4d7099d9ad99603d7",
+  "verifyTokenExpiry": {
+    "$date": "2025-10-21T13:43:50.418Z"
+  },
+  "createdAt": {
+    "$date": "2025-10-21T13:28:50.421Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "68f78d2795119104f5e13414"
+  },
+  "name": "Nguyen Duc Hung",
+  "email": "duchungkimchung@gmail.com",
+  "password": "$2b$10$L2DguCpt5xDFZruntmRSLuU1FoOjQJwGeuVYKfxUHcHVULvmdnwpy",
+  "role": "customer",
+  "is_verified": true,
+  "verifyToken": "0715ef70c10638ec9ebbf3cabfd3f585d4362bbf2655aaea66638e733f3d0ac3",
+  "verifyTokenExpiry": {
+    "$date": "2025-10-21T13:54:51.827Z"
+  },
+  "createdAt": {
+    "$date": "2025-10-21T13:39:51.829Z"
+  },
+  "__v": 0,
+  "avatar": "https://res.cloudinary.com/dlwxyaeck/image/upload/v1761557213/vicedu/images/avatars/fjzkjkjuz7eugfy8rfzd.webp"
+},
+{
+  "_id": {
+    "$oid": "68f7dc2bd1346ac5e6b345e2"
+  },
+  "name": "Nguyen Thanh Nam",
+  "email": "namnthe161123@fpt.edu.vn",
+  "password": "google_oauth",
+  "avatar": "https://lh3.googleusercontent.com/a/ACg8ocK35yx7ZDwjdaRLAslgA4gME9rBvRV5WB9A_Qu5CacY8EuMrFSW=s96-c",
+  "role": "customer",
+  "is_verified": true,
+  "googleId": "102566255095390260565",
+  "createdAt": {
+    "$date": "2025-10-21T19:17:00.041Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "68f7eab213addf493d24d65a"
+  },
+  "name": "Nguyen Thanh Nam",
+  "email": "nguyenthanhnamidol@gmail.com",
+  "password": "$2b$10$vpn3z672tEoxkXPPDaLfAON4VCeGHAY2VKHIZCZYPGci.TKPUmspW",
+  "role": "customer",
+  "is_verified": true,
+  "createdAt": {
+    "$date": "2025-10-21T20:18:58.428Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "69016a4ebe37470e51ce6414"
+  },
+  "name": "Nguyen Duc Hung",
+  "email": "hungndhe171455@fpt.edu.vn",
+  "password": "$2b$10$cBpZBDe1pvHuGm/z78gtNutgso8KNbOVqJv98zMWW5n2Elz5rZk8i",
+  "role": "customer",
+  "is_verified": true,
+  "createdAt": {
+    "$date": "2025-10-29T01:13:50.754Z"
+  },
+  "__v": 0
+}]
