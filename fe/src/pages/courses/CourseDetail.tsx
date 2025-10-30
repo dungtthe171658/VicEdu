@@ -1,6 +1,6 @@
-import { useLocation, useParams, Link } from "react-router-dom";
+﻿import { useLocation, useParams, Link } from "react-router-dom";
 import { ArrowLeft, BookOpen, Star, Lock } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import courseApi from "../../api/courseApi";
 import enrollmentApi from "../../api/enrollmentApi";
 import type { Course } from "../../types/course";
@@ -8,6 +8,8 @@ import { useCart } from "../../contexts/CartContext";
 import lessonApi from "../../api/lessonApi";
 import type { Lesson } from "../../types/lesson";
 import reviewClient, { type ReviewDto } from "../../api/reviewClient";
+import BilingualSubtitles from "../../components/video/BilingualSubtitles";
+import { subtitleApi, type SubtitleFormat, type BilingualCue } from "../../api/subtitleApi";
 
 export default function CourseDetail() {
   const { slug } = useParams();
@@ -22,6 +24,15 @@ export default function CourseDetail() {
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [playbackUrl, setPlaybackUrl] = useState<string>("");
   const [loadingPlayback, setLoadingPlayback] = useState(false);
+
+  // Subtitles
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputEnRef = useRef<HTMLInputElement>(null);
+  const fileInputViRef = useRef<HTMLInputElement>(null);
+  const [subCues, setSubCues] = useState<BilingualCue[]>([]);
+  const [subMode, setSubMode] = useState<"both" | "en" | "vi">("vi");
+  const [subVisible, setSubVisible] = useState<boolean>(false);
+  const [loadingSubs, setLoadingSubs] = useState<boolean>(false);
 
   // Reviews
   const [reviews, setReviews] = useState<ReviewDto[]>([]);
@@ -46,7 +57,7 @@ export default function CourseDetail() {
         console.error("Failed to load course:", err);
       }
     })();
-  }, [slug]);
+  }, [slug]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Resolve enrolled status
   useEffect(() => {
@@ -72,7 +83,7 @@ export default function CourseDetail() {
         setLessons(arr);
         if (arr.length > 0) setSelectedLessonId(arr[0]._id);
       } catch (e) {
-        console.warn("Không thể tải danh sách bài học", e);
+        console.warn("Could not load lessons list", e);
       } finally {
         setLoadingLessons(false);
       }
@@ -98,35 +109,165 @@ export default function CourseDetail() {
     })();
   }, [selectedLessonId, isEnrolled]);
 
-  // Load reviews + summary for course
+  // Auto-load saved subtitles for this lesson
   useEffect(() => {
     (async () => {
-      if (!course?._id) return;
+      if (!selectedLessonId) return;
       try {
-        setLoadingReviews(true);
-        const [list, summary] = await Promise.all([
-          reviewClient.listForCourse(String((course as any)._id)),
-          reviewClient.getCourseSummary(String((course as any)._id)),
-        ]);
-        setReviews(Array.isArray(list) ? list : []);
-        setReviewSummary(summary);
-      } catch (e) {
-        setReviews([]);
-        setReviewSummary(null);
-      } finally {
-        setLoadingReviews(false);
+        const rec = await subtitleApi.get(selectedLessonId);
+        if (rec?.cues && rec.cues.length > 0) {
+          setSubCues(rec.cues);
+          setSubVisible(false); // loaded but hidden by default
+        } else {
+          setSubCues([]);
+          setSubVisible(false);
+        }
+      } catch {
+        setSubCues([]);
+        setSubVisible(false);
       }
     })();
-  }, [course?._id]);
+  }, [selectedLessonId]);
+
+  // Reset subs when playback url changes
+  useEffect(() => {
+    setSubVisible(false);
+  }, [playbackUrl]);
 
   const isInCart = courses.some((c) => (c as any)._id === (course as any)?._id);
-  const formatVND = (n: number) => n.toLocaleString("vi-VN");
+  const formatVND = (n: number) => `${n.toLocaleString("vi-VN")} VND`;
 
   const categoryName = useMemo(() => {
     const cat = (course as any)?.category;
-    if (Array.isArray(cat) && cat.length > 0) return cat[0]?.name || "Chưa có danh mục";
-    return "Chưa có danh mục";
+    if (Array.isArray(cat) && cat.length > 0) return cat[0]?.name || "No category";
+    return "No category";
   }, [course]);
+
+  // Helpers: parse VTT/SRT on FE (for native VI upload)
+  const parseTime = (s: string): number => {
+    const val = s.trim().replace(",", ".");
+    const parts = val.split(":");
+    let h = 0, m = 0, rest = "0";
+    if (parts.length === 3) { h = Number(parts[0]) || 0; m = Number(parts[1]) || 0; rest = parts[2]; }
+    else if (parts.length === 2) { m = Number(parts[0]) || 0; rest = parts[1]; }
+    else { rest = parts[0]; }
+    const sec = Number(rest) || 0;
+    return h * 3600 + m * 60 + sec;
+  };
+
+  const parseVtt = (content: string) => {
+    const lines = content.replace(/\r/g, "").split("\n");
+    const cues: Array<{ start: number; end: number; text: string }> = [];
+    let i = 0;
+    if (lines[0] && lines[0].toUpperCase().startsWith("WEBVTT")) i = 1;
+    while (i < lines.length) {
+      while (i < lines.length && lines[i].trim() === "") i++;
+      if (i >= lines.length) break;
+      if (lines[i] && !lines[i].includes("-->") && lines[i + 1] && lines[i + 1].includes("-->")) i++;
+      const tl = lines[i] || "";
+      const m = tl.match(/(\d{1,2}:[\d:]{1,7}[\.,]\d{1,3}|\d{1,2}:[\d:]{1,7})\s*-->\s*(\d{1,2}:[\d:]{1,7}[\.,]\d{1,3}|\d{1,2}:[\d:]{1,7})/);
+      if (!m) { i++; continue; }
+      const start = parseTime(m[1]);
+      const end = parseTime(m[2]);
+      i++;
+      const textLines: string[] = [];
+      while (i < lines.length && lines[i].trim() !== "") { textLines.push(lines[i]); i++; }
+      cues.push({ start, end, text: textLines.join("\n") });
+    }
+    return cues;
+  };
+
+  const parseSrt = (content: string) => {
+    const lines = content.replace(/\r/g, "").split("\n");
+    const cues: Array<{ start: number; end: number; text: string }> = [];
+    let i = 0;
+    while (i < lines.length) {
+      while (i < lines.length && lines[i].trim() === "") i++;
+      if (i >= lines.length) break;
+      if (/^\d+$/.test(lines[i].trim())) i++;
+      const tl = lines[i] || "";
+      const m = tl.match(/(\d{1,2}:[\d:]{1,7}[\.,]\d{1,3}|\d{1,2}:[\d:]{1,7})\s*-->\s*(\d{1,2}:[\d:]{1,7}[\.,]\d{1,3}|\d{1,2}:[\d:]{1,7})/);
+      if (!m) { i++; continue; }
+      const start = parseTime(m[1]);
+      const end = parseTime(m[2]);
+      i++;
+      const textLines: string[] = [];
+      while (i < lines.length && lines[i].trim() !== "") { textLines.push(lines[i]); i++; }
+      cues.push({ start, end, text: textLines.join("\n") });
+    }
+    return cues;
+  };
+
+  const handleUploadEnglish = async (file: File) => {
+    if (!selectedLessonId) return;
+    try {
+      setLoadingSubs(true);
+      const text = await file.text();
+      const lower = file.name.toLowerCase();
+      const isSrt = lower.endsWith(".srt");
+      const isVtt = lower.endsWith(".vtt") || text.trim().toUpperCase().startsWith("WEBVTT");
+      const fmt: SubtitleFormat = isSrt ? "srt" : (isVtt ? "vtt" : "vtt");
+      const resp = await subtitleApi.translate(text, fmt, "en", "vi");
+      const cues = resp.cues || [];
+      setSubCues(cues);
+      setSubVisible(true);
+      // persist
+      await subtitleApi.save(selectedLessonId, { enVtt: text, viVtt: resp.targetVtt, cues });
+    } catch (e) {
+      console.error("Subtitle translation error:", e);
+    } finally {
+      setLoadingSubs(false);
+    }
+  };
+
+  const handleUploadVietnamese = async (file: File) => {
+    if (!selectedLessonId) return;
+    try {
+      setLoadingSubs(true);
+      const text = await file.text();
+      const lower = file.name.toLowerCase();
+      const isSrt = lower.endsWith(".srt");
+      const isVtt = lower.endsWith(".vtt") || text.trim().toUpperCase().startsWith("WEBVTT");
+      const base = isSrt ? parseSrt(text) : parseVtt(text);
+      const cues: BilingualCue[] = base.map((c) => ({ start: c.start, end: c.end, source: "", target: c.text }));
+      setSubCues(cues);
+      setSubVisible(true);
+      await subtitleApi.save(selectedLessonId, { viVtt: text, cues });
+    } catch (e) {
+      console.error("Subtitle parse error:", e);
+    } finally {
+      setLoadingSubs(false);
+    }
+  };
+
+  // 👇 Sửa gọn: hàm riêng cho nút "Auto-generate (VI only)"
+  const handleAutoGenerateViOnly = async () => {
+    try {
+      setLoadingSubs(true);
+      const video = videoRef.current;
+      const duration = video && isFinite((video as any).duration) ? (video as any).duration : 0;
+      if (!selectedLessonId) throw new Error("No lesson");
+      const r = await subtitleApi.autoGenerate(selectedLessonId);
+      const split = (t: string) => (t || "").split(/(?<=[\.\?\!])\s+/).filter((s) => s.trim().length > 0);
+      const viArr = split((r as any).viText);
+      const n = Math.max(viArr.length, 1);
+      const step = duration > 0 ? duration / n : 4;
+      const cues = Array.from({ length: n }).map((_, i) => ({
+        start: Math.max(0, i * step),
+        end: Math.max(0.1, (i + 1) * step),
+        source: "",
+        target: viArr[i] || "",
+      }));
+      setSubCues(cues);
+      setSubMode("vi");
+      setSubVisible(true);
+      await subtitleApi.save(selectedLessonId, { cues });
+    } catch (e) {
+      console.error("Auto-generate subtitles failed:", e);
+    } finally {
+      setLoadingSubs(false);
+    }
+  };
 
   if (!course) {
     return (
@@ -143,7 +284,7 @@ export default function CourseDetail() {
         to="/courses"
         className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-6"
       >
-        <ArrowLeft className="w-4 h-4" /> Quay lại danh sách
+        <ArrowLeft className="w-4 h-4" /> Back to courses
       </Link>
 
       {/* Course card */}
@@ -158,7 +299,7 @@ export default function CourseDetail() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">{course.title}</h1>
 
           <p className="text-sm md:text-base font-semibold text-blue-500 mb-2">
-            Giảng viên: <span className="text-gray-700">
+            Instructor: <span className="text-gray-700">
               {course.teacherNames && course.teacherNames.length > 0
                 ? course.teacherNames.join(", ")
                 : "Admin"}
@@ -188,13 +329,13 @@ export default function CourseDetail() {
           </div>
 
           <p className="text-gray-700 mb-6 leading-relaxed">
-            {course.description || "Không có mô tả chi tiết."}
+            {course.description || "No detailed description."}
           </p>
 
           {/* Price hidden if enrolled */}
           {!isEnrolled && (
             <p className="text-2xl font-semibold text-green-700 mb-6">
-              {formatVND((course as any).price_cents || 0)} ₫
+              {formatVND((course as any).price_cents || 0)}
             </p>
           )}
 
@@ -207,13 +348,13 @@ export default function CourseDetail() {
                     to="/cart"
                     className="bg-gray-100 text-gray-800 px-5 py-2.5 rounded-lg font-semibold border border-gray-300 hover:bg-gray-200 transition"
                   >
-                    Đã trong giỏ hàng
+                    In cart
                   </Link>
                   <button
                     onClick={() => removeCourse((course as any)._id)}
                     className="bg-red-100 text-red-600 px-4 py-2.5 rounded-lg font-semibold border border-red-300 hover:bg-red-200 transition"
                   >
-                    Xóa khỏi giỏ
+                    Remove
                   </button>
                 </>
               ) : (
@@ -221,7 +362,7 @@ export default function CourseDetail() {
                   className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition"
                   onClick={() => addCourse(course)}
                 >
-                  Đăng ký học ngay
+                  Enroll now
                 </button>
               )}
             </div>
@@ -233,27 +374,100 @@ export default function CourseDetail() {
       <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Video / Preview */}
         <div className="lg:col-span-2 bg-white shadow border border-gray-100 rounded-2xl p-4">
-          <h3 className="text-lg font-semibold mb-3">Nội dung bài học</h3>
+          <h3 className="text-lg font-semibold mb-3">Lesson content</h3>
+
+          {/* Subtitles toolbar */}
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            {/* Upload EN (translate to VI) */}
+            <input
+              ref={fileInputEnRef}
+              type="file"
+              accept=".vtt,.srt"
+              className="hidden"
+              onChange={async (e) => {
+                const f = (e.target as HTMLInputElement).files?.[0];
+                if (f) await handleUploadEnglish(f);
+                (e.currentTarget as HTMLInputElement).value = "";
+              }}
+            />
+            <button
+              disabled={!isEnrolled || !playbackUrl || loadingSubs}
+              onClick={() => fileInputEnRef.current?.click()}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1.5 rounded border"
+            >
+              Upload EN VTT/SRT (translate)
+            </button>
+
+            {/* Upload VI (no translation) */}
+            <input
+              ref={fileInputViRef}
+              type="file"
+              accept=".vtt,.srt"
+              className="hidden"
+              onChange={async (e) => {
+                const f = (e.target as HTMLInputElement).files?.[0];
+                if (f) await handleUploadVietnamese(f);
+                (e.currentTarget as HTMLInputElement).value = "";
+              }}
+            />
+            <button
+              disabled={!isEnrolled || !playbackUrl || loadingSubs}
+              onClick={() => fileInputViRef.current?.click()}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1.5 rounded border"
+            >
+              Upload VI VTT/SRT (no translate)
+            </button>
+
+            {/* Auto-generate from audio */}
+            <button
+              disabled={!isEnrolled || !playbackUrl || loadingSubs}
+              onClick={handleAutoGenerateViOnly}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1.5 rounded border"
+            >
+              Auto-generate (VI only)
+            </button>
+
+            <select
+              value={subMode}
+              onChange={(e) => setSubMode((e.target as HTMLSelectElement).value as any)}
+              className="border rounded px-2 py-1"
+            >
+              <option value="both">Bilingual</option>
+              <option value="en">English</option>
+              <option value="vi">Vietnamese</option>
+            </select>
+            <button
+              disabled={subCues.length === 0}
+              onClick={() => setSubVisible((v) => !v)}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1.5 rounded border"
+            >
+              {subVisible ? "Hide subtitles" : "Show subtitles"}
+            </button>
+            {loadingSubs && <span className="text-sm text-gray-500">Processing subtitles...</span>}
+          </div>
+
           {loadingPlayback ? (
-            <div className="h-64 flex items-center justify-center">Đang tải video...</div>
+            <div className="h-64 flex items-center justify-center">Loading video...</div>
           ) : selectedLessonId ? (
             isEnrolled ? (
               playbackUrl ? (
-                <video controls src={playbackUrl} className="w-full rounded-lg bg-black" />
+                <div className="relative">
+                  <video ref={videoRef} controls src={playbackUrl} className="w-full rounded-lg bg-black" />
+                  <BilingualSubtitles videoRef={videoRef} cues={subCues} mode={subMode} visible={subVisible} />
+                </div>
               ) : (
-                <div className="h-64 flex items-center justify-center text-gray-500">Không có URL phát cho bài học này.</div>
+                <div className="h-64 flex items-center justify-center text-gray-500">No playback URL available for this lesson.</div>
               )
             ) : (
               <div className="h-64 flex flex-col items-center justify-center text-gray-500 gap-2">
                 <Lock className="w-6 h-6" />
-                <div>Bạn cần mua khóa học để xem video.</div>
+                <div>You need to enroll to watch the video.</div>
               </div>
             )
           ) : (
-            <div className="h-64 flex items-center justify-center text-gray-500">Chưa chọn bài học.</div>
+            <div className="h-64 flex items-center justify-center text-gray-500">No lesson selected.</div>
           )}
 
-          {/* Selected lesson description */}
           {selectedLessonId && (
             <div className="mt-4 text-sm text-gray-700 whitespace-pre-wrap">
               {lessons.find((l) => l._id === selectedLessonId)?.description || ""}
@@ -263,11 +477,11 @@ export default function CourseDetail() {
 
         {/* Lesson list */}
         <aside className="bg-white shadow border border-gray-100 rounded-2xl p-4">
-          <h3 className="text-lg font-semibold mb-3">Danh sách bài học</h3>
+          <h3 className="text-lg font-semibold mb-3">Lessons</h3>
           {loadingLessons ? (
-            <div>Đang tải danh sách...</div>
+            <div>Loading list...</div>
           ) : lessons.length === 0 ? (
-            <div>Chưa có bài học nào.</div>
+            <div>No lessons yet.</div>
           ) : (
             <ul className="divide-y divide-gray-100">
               {lessons.map((ls) => (
@@ -293,7 +507,7 @@ export default function CourseDetail() {
 
       {/* Reviews */}
       <section className="mt-8 bg-white shadow border border-gray-100 rounded-2xl p-6">
-        <h3 className="text-xl font-semibold mb-4">Đánh giá khóa học</h3>
+        <h3 className="text-xl font-semibold mb-4">Course reviews</h3>
 
         {/* Summary + Histogram */}
         <div className="flex flex-col gap-2 mb-4">
@@ -308,7 +522,7 @@ export default function CourseDetail() {
                       <Star key={i} className={`w-5 h-5 ${i < Math.round(avg) ? "fill-current" : ""}`} />
                     ))}
                   </div>
-                  <span className="text-sm text-gray-600">{avg} / 5 • {count} đánh giá</span>
+                  <span className="text-sm text-gray-600">{avg} / 5 – {count} reviews</span>
                 </>
               );
             })()}
@@ -336,9 +550,9 @@ export default function CourseDetail() {
         {/* Write review (only when enrolled) */}
         {isEnrolled && (
           <div className="mb-6 border rounded-xl p-4 bg-gray-50">
-            <h4 className="font-semibold mb-2">Viết đánh giá của bạn</h4>
+            <h4 className="font-semibold mb-2">Write your review</h4>
             <div className="flex items-center gap-3 mb-3">
-              <label className="text-sm text-gray-700">Chấm điểm:</label>
+              <label className="text-sm text-gray-700">Rating:</label>
               <select
                 value={ratingInput}
                 onChange={(e) => setRatingInput(Number(e.target.value))}
@@ -350,7 +564,7 @@ export default function CourseDetail() {
               </select>
             </div>
             <textarea
-              placeholder="Chia sẻ cảm nhận của bạn về khóa học..."
+              placeholder="Share your thoughts about the course..."
               value={commentInput}
               onChange={(e) => setCommentInput(e.target.value)}
               className="w-full border rounded-lg p-3 min-h-[100px]"
@@ -366,16 +580,16 @@ export default function CourseDetail() {
                     await reviewClient.createCourseReview(String((course as any)._id), ratingInput, commentInput);
                     setCommentInput("");
                     setRatingInput(5);
-                    setReviewMessage("Đã gửi đánh giá, chờ duyệt.");
+                    setReviewMessage("Review submitted for approval.");
                   } catch (e: any) {
-                    setReviewMessage(e?.message || "Không thể gửi đánh giá. Vui lòng đăng nhập và thử lại.");
+                    setReviewMessage(e?.message || "Failed to submit review. Please sign in and try again.");
                   } finally {
                     setSubmittingReview(false);
                   }
                 }}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-60"
               >
-                Gửi đánh giá
+                Submit review
               </button>
               {reviewMessage && (
                 <span className="text-sm text-gray-600">{reviewMessage}</span>
@@ -386,9 +600,9 @@ export default function CourseDetail() {
 
         {/* Review list */}
         {loadingReviews ? (
-          <div className="text-gray-500">Đang tải đánh giá...</div>
+          <div className="text-gray-500">Loading reviews...</div>
         ) : reviews.length === 0 ? (
-          <div className="text-gray-500">Chưa có đánh giá nào.</div>
+          <div className="text-gray-500">No reviews yet.</div>
         ) : (
           <ul className="space-y-4">
             {reviews.map((rv) => {
@@ -396,14 +610,14 @@ export default function CourseDetail() {
               const nameRaw = typeof userRaw === "object" ? (userRaw?.name ?? "") : "";
               const displayName = (typeof nameRaw === "string" && nameRaw.trim().length > 0)
                 ? nameRaw.trim()
-                : "Người dùng";
+                : "User";
               return (
                 <li key={rv._id} className="border rounded-xl p-4">
                   <div className="flex items-center justify-between mb-1">
                     <div className="font-semibold text-gray-800 flex items-center gap-2">
                       {displayName}
                       {(rv as any).verified && (
-                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Đã mua</span>
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Purchased</span>
                       )}
                     </div>
                     <div className="flex items-center gap-1 text-amber-500">

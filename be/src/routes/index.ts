@@ -1,6 +1,6 @@
-// routes/index.ts
+﻿// routes/index.ts
 import express from "express";
-import bookRoutes from "./book.route"; // hoặc .ts nếu chưa build
+import bookRoutes from "./book.route"; // hoáº·c .ts náº¿u chÆ°a build
 import categoryRoutes from "./category.route";
 import courseRoutes from "./course.route";
 import orderRoutes from "./order.route";
@@ -12,10 +12,11 @@ import authRoutes from "./auth.route";
 import userRoutes from "./user.route";
 import homeRoutes from "./home.routes";
 import chatRoutes from "./chat.route";
+import subtitleRoutes from "./subtitle.route";
 
 const router = express.Router();
 
-// mount tất cả book routes vào /books
+// mount táº¥t cáº£ book routes vÃ o /books
 router.use("/books", bookRoutes);
 router.use("/categories", categoryRoutes);
 router.use("/courses", courseRoutes);
@@ -27,5 +28,7 @@ router.use("/home", homeRoutes);
 router.use("/user", userRoutes);
 router.use("/uploads", uploadRoutes);
 router.use("/chat", chatRoutes);
+router.use("/subtitles", subtitleRoutes);
 
 export default router;
+

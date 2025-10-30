@@ -13,7 +13,7 @@ export default function About() {
           controls
           width="100%"
           className="w-full h-auto"
-          src="https://xxqsjoyjokrgnqvtlakj.supabase.co/storage/v1/object/public/videos/intro_lesson1.mp4"
+          src=""
         />
       </div>
     </div>
