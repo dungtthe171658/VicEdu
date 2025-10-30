@@ -1,4 +1,4 @@
-import express from "express";
+﻿import express from "express";
 import enrollmentRoutes from "./routes/enrollment.route";
 import cors from "cors";
 import morgan from "morgan";
@@ -13,21 +13,22 @@ import orderRoutes from "./routes/order.route";
 import reviewRouter from "./routes/review.route";
 import uploadRoutes from "./routes/upload.route";
 import lessonRoutes from "./routes/lesson.route";
-import paymentRoutes from "./routes/payment.route"; // <-- THÊM
+import paymentRoutes from "./routes/payment.route"; // <-- THÃŠM
 import chatRoutes from "./routes/chat.route";
 import chatTestRoutes from "./routes/chat-test.route";
+import subtitleRoutes from "./routes/subtitle.route";
 
 // import apiRoutes from "./routes/index";
 const app = express();
 
-// Middleware cơ bản
+// Middleware cÆ¡ báº£n
 app.use(cors());
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 app.use("/api/payments", paymentRoutes);
 app.use("/api/enrollments", enrollmentRoutes);
-// Đăng ký routes
+// ÄÄƒng kÃ½ routes
 app.use("/api/books", bookRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/categories", categoryRoutes);
@@ -39,6 +40,7 @@ app.use("/api/reviews", reviewRouter);
 app.use("/api/uploads", uploadRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/chat-test", chatTestRoutes);
+app.use("/api/subtitles", subtitleRoutes);
 
 //app.use("/api", apiRoutes);
 export default app;
