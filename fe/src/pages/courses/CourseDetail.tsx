@@ -248,16 +248,129 @@ export default function CourseDetail() {
       const duration = video && isFinite((video as any).duration) ? (video as any).duration : 0;
       if (!selectedLessonId) throw new Error("No lesson");
       const r = await subtitleApi.autoGenerate(selectedLessonId);
-      const split = (t: string) => (t || "").split(/(?<=[\.\?\!])\s+/).filter((s) => s.trim().length > 0);
-      const viArr = split((r as any).viText);
-      const n = Math.max(viArr.length, 1);
-      const step = duration > 0 ? duration / n : 4;
-      const cues = Array.from({ length: n }).map((_, i) => ({
-        start: Math.max(0, i * step),
-        end: Math.max(0.1, (i + 1) * step),
-        source: "",
-        target: viArr[i] || "",
-      }));
+
+      const normalize = (t: string) =>
+        (t || "")
+          .replace(/[\t\f\v]+/g, " ")
+          .replace(/\s+/g, " ")
+          .replace(/\s+(?=[\.,!?…])/g, "")
+          .trim();
+
+      const splitSentences = (t: string): string[] => {
+        const cleaned = normalize(t).replace(/\.\.\./g, "…");
+        const raw = cleaned.split(/(?<=[\.!?…])\s+/g).filter(Boolean);
+        const out: string[] = [];
+        for (const s of raw) {
+          const trimmed = s.trim();
+          if (!trimmed) continue;
+          out.push(trimmed);
+        }
+        return out;
+      };
+
+      const mergeShortFragments = (arr: string[], minChars = 18): string[] => {
+        const out: string[] = [];
+        for (const s of arr) {
+          const last = out[out.length - 1];
+          if (last && (last.length < minChars || s.length < minChars)) {
+            out[out.length - 1] = `${last} ${s}`.replace(/\s+/g, " ").trim();
+          } else {
+            out.push(s);
+          }
+        }
+        return out;
+      };
+
+      const splitTooLong = (arr: string[], maxChars = 90): string[] => {
+        const out: string[] = [];
+        for (const s of arr) {
+          if (s.length <= maxChars) {
+            out.push(s);
+            continue;
+          }
+          const mid = Math.floor(s.length / 2);
+          const punct = /[,;:\u2014\u2013]/g;
+          let breakPos = -1;
+          let m: RegExpExecArray | null;
+          while ((m = punct.exec(s))) {
+            if (Math.abs(m.index - mid) < Math.abs(breakPos - mid) || breakPos === -1) {
+              breakPos = m.index + 1;
+            }
+          }
+          if (breakPos === -1) {
+            const leftSpace = s.lastIndexOf(" ", mid);
+            const rightSpace = s.indexOf(" ", mid + 1);
+            const pick = leftSpace >= 0 ? leftSpace : rightSpace >= 0 ? rightSpace : -1;
+            breakPos = pick >= 0 ? pick + 1 : -1;
+          }
+          if (breakPos > 0 && breakPos < s.length) {
+            const a = s.slice(0, breakPos).trim();
+            const b = s.slice(breakPos).trim();
+            if (a) out.push(a);
+            if (b) out.push(b);
+          } else {
+            out.push(s);
+          }
+        }
+        return out;
+      };
+
+      const viSentences0 = splitSentences((r as any).viText || "");
+      const viSentences = splitTooLong(mergeShortFragments(viSentences0));
+
+      const estimateDurSec = (s: string) => {
+        const cps = 14; // chars per second
+        const base = 0.4; // entry pause
+        const sec = base + Math.max(0, s.length) / cps;
+        return Math.max(1.2, Math.min(6.5, sec));
+      };
+
+      const targetDur = duration > 0 ? duration : Math.max(viSentences.length * 3, 30);
+      let durArr = viSentences.map(estimateDurSec);
+      const sum = durArr.reduce((a, b) => a + b, 0);
+      const scale = sum > 0 ? targetDur / sum : 1;
+      durArr = durArr.map((d) => Math.max(0.9, Math.min(7.5, d * scale)));
+
+      const gap = 0.08;
+      const cues: BilingualCue[] = [];
+      let cursor = 0;
+      for (let i = 0; i < viSentences.length; i++) {
+        const text = viSentences[i];
+        const start = cursor;
+        const end = start + durArr[i];
+        const wrapTwoLines = (t: string): string => {
+          const maxLine = 42;
+          if (t.length <= maxLine) return t;
+          const idx = t.lastIndexOf(" ", maxLine);
+          if (idx > 0 && idx < t.length - 1) {
+            return `${t.slice(0, idx).trim()}\n${t.slice(idx + 1).trim()}`;
+          }
+          return t;
+        };
+        cues.push({ start: Math.max(0, start), end: Math.max(start + 0.1, end), source: "", target: wrapTwoLines(text) });
+        cursor = end + gap;
+      }
+
+      if (duration > 0 && cues.length > 0) {
+        const overshoot = cues[cues.length - 1].end - duration;
+        if (overshoot > 0) {
+          const shrink = overshoot / cues.length;
+          let acc = 0;
+          for (let i = 0; i < cues.length; i++) {
+            acc += shrink;
+            const newStart = Math.max(0, cues[i].start - acc);
+            const newEnd = Math.max(newStart + 0.1, cues[i].end - acc);
+            cues[i].start = newStart;
+            cues[i].end = newEnd;
+          }
+          const last = cues[cues.length - 1];
+          const delta = last.end - duration;
+          if (delta !== 0) {
+            last.end -= delta;
+          }
+        }
+      }
+
       setSubCues(cues);
       setSubMode("vi");
       setSubVisible(true);
