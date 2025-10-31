@@ -39,29 +39,47 @@ const LoginPage = () => {
   }, [location, navigate, auth]);
   // LoginPage.tsx
   const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (isLoading) return;
+  event.preventDefault();
+  if (isLoading) return;
 
-    const emailNorm = email.trim().toLowerCase();
-    if (!emailNorm || !password) {
-      setError('Vui lòng nhập đầy đủ email và mật khẩu.');
-      return;
-    }
+  const emailNorm = email.trim().toLowerCase();
+  if (!emailNorm || !password) {
+    setError("Vui lòng nhập đầy đủ email và mật khẩu.");
+    return;
+  }
 
-    setIsLoading(true);
-    setError(null);
+  setIsLoading(true);
+  setError(null);
 
-    try {
-      await auth.login(emailNorm, password);
-      navigate('/dashboard', { replace: true });
-    } catch (err: any) {
-      // interceptor của bạn reject(JSON) => err.message là message từ BE (nếu có)
-      const message = err?.message || 'Đăng nhập thất bại.';
-      setError(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  try {
+    await auth.login(emailNorm, password);
+
+    // ⚙️ Đảm bảo chờ context cập nhật user
+    setTimeout(() => {
+      const user = auth.user || JSON.parse(localStorage.getItem("user") || "{}");
+
+      if (!user || !user.role) {
+        console.warn("Không lấy được role người dùng:", user);
+        navigate("/", { replace: true });
+        return;
+      }
+
+      if (user.role === "admin") {
+        navigate("/dashboard", { replace: true });
+      } else if (user.role === "teacher") {
+        navigate("/teacher", { replace: true });
+      } else {
+        navigate("/", { replace: true });
+      }
+    }, 100); // chờ 100ms để context sync
+  } catch (err: any) {
+    const message = err?.message || "Đăng nhập thất bại.";
+    setError(message);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
 
   return (

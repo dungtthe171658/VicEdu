@@ -93,6 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const me = await authApi.me(); // trả thẳng object user
     const mapped = mapBackendUserToFront(me as BackendUser);
     setUser(mapped);
+    localStorage.setItem("user", JSON.stringify(mapped));
   }, []);
 
   const logout = useCallback(() => {

@@ -1,4 +1,3 @@
-// src/pages/dashboard/Admin/ManageOrdersPage.tsx
 import { useState, useEffect } from "react";
 import orderApi from "../../../api/orderApi";
 import type { OrderDto } from "../../../types/order";
@@ -10,18 +9,18 @@ const ManageOrdersPage = () => {
 
   // ✅ Tải danh sách đơn hàng
   const loadOrders = async () => {
-  try {
-    setLoading(true);
-    const data = await orderApi.getAll();
-    console.log("📦 Orders from API:", data); // <--- thêm dòng này
-    setOrders(data);
-  } catch (error) {
-    console.error("Error loading orders:", error);
-    alert("Không thể tải danh sách đơn hàng!");
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      setLoading(true);
+      const data = await orderApi.getAll();
+      console.log("📦 Orders from API:", data);
+      setOrders(data);
+    } catch (error) {
+      console.error("Error loading orders:", error);
+      alert("Không thể tải danh sách đơn hàng!");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     loadOrders();
@@ -44,16 +43,30 @@ const ManageOrdersPage = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
+      case "paid":
         return "green";
       case "pending":
         return "orange";
       case "cancelled":
+      case "canceled":
         return "gray";
-      case "failed":
-        return "red";
       default:
         return "black";
     }
+  };
+
+  // ✅ Xác định loại đơn hàng
+  const getOrderType = (order: OrderDto) => {
+    if (order.course_id) return "Khóa học";
+    if (order.book_id) return "Sách";
+    return "Khác";
+  };
+
+  // ✅ Lấy tên người dùng
+  const getUserName = (user: any) => {
+    if (!user) return "Không rõ";
+    if (typeof user === "object") return user.name || "Không rõ";
+    return user;
   };
 
   return (
@@ -75,6 +88,7 @@ const ManageOrdersPage = () => {
             <tr>
               <th>Mã đơn</th>
               <th>Người dùng</th>
+              <th>Loại đơn</th>
               <th>Trạng thái</th>
               <th>Tổng tiền</th>
               <th>Ngày tạo</th>
@@ -86,16 +100,17 @@ const ManageOrdersPage = () => {
             {orders.map((order) => (
               <tr key={order._id}>
                 <td>{order._id}</td>
-                <td>{typeof order.user_id === "object" ? order.user_id?.name : order.user_id}</td>
+                <td>{getUserName(order.user_id)}</td>
+                <td>{getOrderType(order)}</td>
                 <td style={{ color: getStatusColor(order.status) }}>
                   {order.status}
                 </td>
                 <td>
-  {order.total_amount
-    ? order.total_amount.toLocaleString("vi-VN")
-    : "0"} ₫
-</td>
-
+                  {order.total_amount
+                    ? order.total_amount.toLocaleString("vi-VN")
+                    : "0"}{" "}
+                  ₫
+                </td>
                 <td>
                   {order.created_at
                     ? new Date(order.created_at).toLocaleString("vi-VN")
