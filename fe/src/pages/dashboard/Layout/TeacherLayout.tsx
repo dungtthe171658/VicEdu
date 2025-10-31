@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Box } from '@mui/material';
 import { Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '../../../hooks/useAuth';
-import TeacherSidebar from '../Layout/TeacherSidebar';
+import MuiSidebar from '../Layout/MuiSidebar';
 import TeacherNavbar from '../Layout/TeacherNavbar';
 
 const SIDEBAR_WIDTH = 240;
@@ -17,14 +17,20 @@ const TeacherLayout: React.FC = () => {
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'grey.100' }}>
+      {/* Navbar trên cùng (co giãn theo sidebar) */}
       <TeacherNavbar
         onToggleDrawer={() => setOpen((s) => !s)}
         isSidebarOpen={open}
         sidebarWidth={SIDEBAR_WIDTH}
         collapsedWidth={SIDEBAR_COLLAPSED}
+        // title có thể bỏ trống để tự lấy từ URL
         showSearch
       />
-      <TeacherSidebar open={open} onToggle={() => setOpen((s) => !s)} />
+
+      {/* Sidebar bên trái */}
+      <MuiSidebar open={open} onToggle={() => setOpen((s) => !s)} />
+
+      {/* Nội dung trang con */}
       <Box component="main" sx={{ flexGrow: 1, pt: 8, px: 3 }}>
         <Outlet />
       </Box>

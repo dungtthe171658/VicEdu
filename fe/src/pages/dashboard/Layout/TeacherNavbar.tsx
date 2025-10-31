@@ -5,17 +5,21 @@ import {
   IconButton,
   Typography,
   Box,
+  InputBase,
+  Badge,
   Menu,
   MenuItem,
   Avatar,
-  Badge,
   Tooltip,
+  useMediaQuery,
 } from '@mui/material';
 import { styled, useTheme } from '@mui/material/styles';
 import MenuIcon from '@mui/icons-material/Menu';
+import SearchIcon from '@mui/icons-material/Search';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import LogoutIcon from '@mui/icons-material/Logout';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../hooks/useAuth';
 
@@ -25,7 +29,48 @@ type TeacherNavbarProps = {
   sidebarWidth?: number;
   collapsedWidth?: number;
   title?: string;
+  showSearch?: boolean;
+  rightActions?: React.ReactNode;
+  showBack?: boolean;
 };
+
+const Search = styled('div')(({ theme }) => ({
+  position: 'relative',
+  borderRadius: 999,
+  backgroundColor: theme.palette.mode === 'light' ? '#f1f5f9' : theme.palette.grey[800],
+  '&:hover': {
+    backgroundColor: theme.palette.mode === 'light' ? '#e5e7eb' : theme.palette.grey[700],
+  },
+  marginLeft: 0,
+  width: '100%',
+  [theme.breakpoints.up('sm')]: {
+    marginLeft: theme.spacing(1),
+    width: 'auto',
+    minWidth: 280,
+  },
+  border: `1px solid ${theme.palette.divider}`,
+}));
+
+const SearchIconWrapper = styled('div')(({ theme }) => ({
+  padding: theme.spacing(0, 2),
+  height: '100%',
+  position: 'absolute',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  pointerEvents: 'none',
+}));
+
+const StyledInputBase = styled(InputBase)(({ theme }) => ({
+  color: 'inherit',
+  width: '100%',
+  '& .MuiInputBase-input': {
+    padding: theme.spacing(1.2, 1.2, 1.2, 0),
+    paddingLeft: `calc(1em + ${theme.spacing(4)})`,
+    transition: theme.transitions.create('width'),
+    width: '100%',
+  },
+}));
 
 const TeacherNavbar: React.FC<TeacherNavbarProps> = ({
   onToggleDrawer,
@@ -33,47 +78,53 @@ const TeacherNavbar: React.FC<TeacherNavbarProps> = ({
   sidebarWidth = 240,
   collapsedWidth = 72,
   title,
+  showSearch = true,
+  rightActions,
+  showBack = false,
 }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const isSmDown = useMediaQuery(theme.breakpoints.down('sm'));
   const { user, logout } = useAuth();
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const openMenu = Boolean(anchorEl);
+  const open = Boolean(anchorEl);
 
-  // Đồng hồ thời gian thực
-  const [now, setNow] = useState('');
+  // Realtime clock
+  const [now, setNow] = useState<string>('');
   useEffect(() => {
-    const update = () => {
+    const fmt = () => {
       const d = new Date();
       const s = d.toLocaleTimeString('vi-VN', { hour12: false });
       const date = d.toLocaleDateString('vi-VN');
       setNow(`${s} • ${date}`);
     };
-    update();
-    const id = setInterval(update, 1000);
+    fmt();
+    const id = setInterval(fmt, 1000);
     return () => clearInterval(id);
   }, []);
 
-  // Tự động tạo tiêu đề theo URL nếu không truyền prop
   const computedTitle = useMemo(() => {
     if (title) return title;
     const parts = location.pathname.split('/').filter(Boolean);
-    if (parts.length <= 1) return 'Bảng điều khiển';
+    if (parts.length <= 1) return 'Teacher Panel';
     const last = parts[parts.length - 1];
     return last.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
   }, [location.pathname, title]);
 
-  const appBarWidth = isSidebarOpen
-    ? `calc(100% - ${sidebarWidth}px)`
-    : `calc(100% - ${collapsedWidth}px)`;
+  const appBarWidth = isSidebarOpen ? `calc(100% - ${sidebarWidth}px)` : `calc(100% - ${collapsedWidth}px)`;
   const marginLeft = isSidebarOpen ? `${sidebarWidth}px` : `${collapsedWidth}px`;
 
   const handleLogout = () => {
     logout?.();
     navigate('/login');
   };
+
+  const handleOpenMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+  const handleCloseMenu = () => setAnchorEl(null);
 
   return (
     <AppBar
@@ -90,24 +141,47 @@ const TeacherNavbar: React.FC<TeacherNavbarProps> = ({
         }),
       }}
     >
-      <Toolbar sx={{ justifyContent: 'space-between' }}>
-        {/* Nút toggle Sidebar + Tiêu đề */}
+      <Toolbar>
+        {/* Left controls */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          {showBack && (
+            <Tooltip title="Quay lại">
+              <IconButton edge="start" color="inherit" onClick={() => navigate(-1)}>
+                <ArrowBackIcon />
+              </IconButton>
+            </Tooltip>
+          )}
           <Tooltip title={isSidebarOpen ? 'Thu gọn menu' : 'Mở rộng menu'}>
             <IconButton edge="start" color="inherit" onClick={onToggleDrawer}>
               <MenuIcon />
             </IconButton>
           </Tooltip>
-          <Typography variant="h6" fontWeight={700} noWrap>
+          <Typography variant={isSmDown ? 'subtitle1' : 'h6'} fontWeight={700} noWrap sx={{ ml: 0.5 }}>
             {computedTitle}
           </Typography>
         </Box>
 
-        {/* Bên phải */}
+        <Box sx={{ flexGrow: 1 }} />
+
+        {showSearch && !isSmDown && (
+          <Search>
+            <SearchIconWrapper>
+              <SearchIcon />
+            </SearchIconWrapper>
+            <StyledInputBase placeholder="Tìm kiếm…" inputProps={{ 'aria-label': 'search' }} />
+          </Search>
+        )}
+
+        <Box sx={{ flexGrow: 1 }} />
+
+        {/* Right actions */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          {/* Realtime clock */}
           <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', md: 'block' } }}>
             {now}
           </Typography>
+
+          {rightActions}
 
           <Tooltip title="Thông báo">
             <IconButton color="inherit">
@@ -123,31 +197,28 @@ const TeacherNavbar: React.FC<TeacherNavbarProps> = ({
             </IconButton>
           </Tooltip>
 
-          {/* Menu người dùng */}
-          <Tooltip title={user?.fullName || 'Tài khoản'}>
-            <IconButton color="inherit" onClick={(e) => setAnchorEl(e.currentTarget)}>
-              <Avatar
-                alt={user?.fullName || 'User'}
-                src={user?.avatarUrl}
-                sx={{ width: 32, height: 32 }}
-              />
+          {/* Profile */}
+          <Tooltip title={user?.name || 'Tài khoản'}>
+            <IconButton color="inherit" onClick={handleOpenMenu} sx={{ ml: 0.5 }}>
+              <Avatar alt={user?.name || 'User'} src={user?.avatar} sx={{ width: 32, height: 32 }} />
             </IconButton>
           </Tooltip>
 
           <Menu
             anchorEl={anchorEl}
-            open={openMenu}
-            onClose={() => setAnchorEl(null)}
+            open={open}
+            onClose={handleCloseMenu}
             transformOrigin={{ horizontal: 'right', vertical: 'top' }}
             anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+            keepMounted
           >
             <MenuItem disabled>
               <Box>
-                <Typography fontWeight={600}>{user?.fullName || 'User'}</Typography>
+                <Typography fontWeight={600}>{user?.name || 'User'}</Typography>
                 <Typography variant="caption" color="text.secondary">{user?.email}</Typography>
               </Box>
             </MenuItem>
-            <MenuItem onClick={() => { navigate('/teacher/profile'); setAnchorEl(null); }}>
+            <MenuItem onClick={() => { navigate('/teacher/profile'); handleCloseMenu(); }}>
               <SettingsOutlinedIcon fontSize="small" style={{ marginRight: 8 }} /> Hồ sơ
             </MenuItem>
             <MenuItem onClick={handleLogout}>
@@ -156,6 +227,17 @@ const TeacherNavbar: React.FC<TeacherNavbarProps> = ({
           </Menu>
         </Box>
       </Toolbar>
+
+      {showSearch && isSmDown && (
+        <Box px={2} pb={1.5}>
+          <Search>
+            <SearchIconWrapper>
+              <SearchIcon />
+            </SearchIconWrapper>
+            <StyledInputBase placeholder="Tìm kiếm…" inputProps={{ 'aria-label': 'search' }} />
+          </Search>
+        </Box>
+      )}
     </AppBar>
   );
 };
