@@ -8,8 +8,8 @@ import AdminLayout from "../pages/dashboard/Layout/AdminLayout";
 import TeacherLayout from "../pages/dashboard/Layout/TeacherLayout";
 
 import ProfilePage from "../pages/my-account/ProfilePage";
-import  MyCoursesPage from "../pages/my-account/MyCoursesPage";
-import  OrderHistoryPage  from "../pages/my-account/OrderHistoryPage.tsx";
+import MyCoursesPage from "../pages/my-account/MyCoursesPage";
+import OrderHistoryPage from "../pages/my-account/OrderHistoryPage.tsx";
 
 // 🔹 Public pages
 import about from "../pages/user/about.tsx";
@@ -42,6 +42,9 @@ import CourseManageDetail from "../pages/dashboard/Admin/CourseManageDetail";
 import ManageReviewsPage from "../pages/dashboard/Admin/ManageReviewsPage";
 import LessonManageDetail from "../pages/dashboard/Admin/LessonManageDetail";
 
+// 🔹 Teacher dashboard pages
+import ViewTeacher from "../pages/dashboard/Shared/ViewTeacher";
+
 // 🔹 Protected route
 import ProtectedRoute from "./ProtectedRoute";
 import About from "../pages/user/about.tsx";
@@ -60,11 +63,11 @@ const AppRoutes: React.FC = () => {
         <Route path="/courses/:slug" element={<CourseDetail />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/courses" element={<CoursePage />} />
-      <Route path="/profile" element={<ProfilePage />} />
-      
-      <Route path="/about" element={<About />} />
+        <Route path="/profile" element={<ProfilePage />} />
+
+        <Route path="/about" element={<About />} />
         <Route path="/my-courses" element={<MyCoursesPage />} />
-<Route path="/my-orders" element={<OrderHistoryPage />} /> 
+        <Route path="/my-orders" element={<OrderHistoryPage />} />
 
         {/* Payment callbacks */}
         <Route path="/payment-success" element={<PaymentSuccessPage />} />
@@ -83,7 +86,7 @@ const AppRoutes: React.FC = () => {
       <Route
         path="/dashboard"
         element={
-          <ProtectedRoute allowedRoles={["admin", "teacher"]}>
+          <ProtectedRoute allowedRoles={["admin"]}>
             <AdminLayout />
           </ProtectedRoute>
         }
@@ -121,7 +124,7 @@ const AppRoutes: React.FC = () => {
         <Route
           path="manage-courses"
           element={
-            <ProtectedRoute allowedRoles={["admin", "teacher"]}>
+            <ProtectedRoute allowedRoles={["admin"]}>
               <ManageCoursesPage />
             </ProtectedRoute>
           }
@@ -129,7 +132,7 @@ const AppRoutes: React.FC = () => {
         <Route
           path="manage-courses/:courseId"
           element={
-            <ProtectedRoute allowedRoles={["admin", "teacher"]}>
+            <ProtectedRoute allowedRoles={["admin"]}>
               <CourseManageDetail />
             </ProtectedRoute>
           }
@@ -137,7 +140,7 @@ const AppRoutes: React.FC = () => {
         <Route
           path="manage-courses/:courseId/lessons/:lessonId"
           element={
-            <ProtectedRoute allowedRoles={["admin", "teacher"]}>
+            <ProtectedRoute allowedRoles={["admin"]}>
               <LessonManageDetail />
             </ProtectedRoute>
           }
@@ -160,17 +163,22 @@ const AppRoutes: React.FC = () => {
             </ProtectedRoute>
           }
         />
-
-        {/* 👨‍🏫 Teacher routes */}
-        <Route
-          path="teacher"
-          element={
-            <ProtectedRoute allowedRoles={["teacher"]}>
-              <TeacherLayout />
-            </ProtectedRoute>
-          }
-        />
       </Route>
+
+      {/* 👨‍🏫 Teacher routes */}
+      <Route
+        path="/teacher"
+        element={
+          <ProtectedRoute allowedRoles={["teacher"]}>
+            <TeacherLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<ViewTeacher />} />
+        
+      </Route>
+
+
     </Routes>
   );
 };

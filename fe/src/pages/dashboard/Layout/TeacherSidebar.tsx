@@ -1,24 +1,27 @@
+
 import React from 'react';
+import { styled, useTheme } from '@mui/material/styles';
 import {
   Drawer,
   List,
   Divider,
+  IconButton,
   ListItem,
   ListItemButton,
   ListItemIcon,
   ListItemText,
   Toolbar,
-  IconButton,
 } from '@mui/material';
 import {
   Home as HomeIcon,
-  School as SchoolIcon,
   People as PeopleIcon,
-  Assignment as AssignmentIcon,
+  ShoppingCart as ShoppingCartIcon,
+  Article as ArticleIcon,
+  Category as CategoryIcon,
+  Reviews as ReviewsIcon,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
 } from '@mui/icons-material';
-import { styled, useTheme } from '@mui/material/styles';
 import { NavLink } from 'react-router-dom';
 
 type SidebarProps = {
@@ -39,7 +42,7 @@ const DrawerHeader = styled('div')(({ theme }) => ({
   justifyContent: 'flex-end',
 }));
 
-const TeacherSidebar: React.FC<SidebarProps> = ({
+const MuiSidebar: React.FC<SidebarProps> = ({
   open,
   onToggle,
   sidebarWidth = drawerWidth,
@@ -48,11 +51,16 @@ const TeacherSidebar: React.FC<SidebarProps> = ({
   const theme = useTheme();
 
   const items = [
-    { label: 'Tổng quan', path: '/teacher/dashboard', icon: HomeIcon },
-    { label: 'Lớp học của tôi', path: '/teacher/classes', icon: SchoolIcon },
-    { label: 'Học sinh', path: '/teacher/students', icon: PeopleIcon },
-    { label: 'Bài tập / Đánh giá', path: '/teacher/assignments', icon: AssignmentIcon },
-  ];
+    { label: 'Dashboard', path: '/dashboard', icon: HomeIcon },
+    { label: 'Tài khoản', path: 'manage-users', icon: PeopleIcon },
+    { label: 'Sách ', path: 'manage-books', icon: ArticleIcon },
+    { label: 'Đơn hàng', path: 'manage-orders', icon: ShoppingCartIcon },
+    { label: 'Khóa học', path: 'manage-courses', icon: ArticleIcon },
+    { label: 'Danh mục', path: 'manage-categories', icon: CategoryIcon },
+    { label: 'Đánh giá', path: 'manage-reviews', icon: ReviewsIcon },
+
+    
+  ] as const;
 
   return (
     <Drawer
@@ -68,10 +76,12 @@ const TeacherSidebar: React.FC<SidebarProps> = ({
             duration: theme.transitions.duration.enteringScreen,
           }),
           overflowX: 'hidden',
+          borderRight: `1px solid ${theme.palette.divider}`,
         },
       }}
       open={open}
     >
+      {/* Keep space for AppBar */}
       <Toolbar />
       <Divider />
       <List sx={{ px: 1 }}>
@@ -98,6 +108,7 @@ const TeacherSidebar: React.FC<SidebarProps> = ({
                     minWidth: 0,
                     mr: open ? 2 : 'auto',
                     justifyContent: 'center',
+                    color: 'text.secondary',
                   }}
                 >
                   <Icon />
@@ -111,6 +122,7 @@ const TeacherSidebar: React.FC<SidebarProps> = ({
           );
         })}
       </List>
+
       <Divider sx={{ mt: 'auto' }} />
       <DrawerHeader>
         <IconButton onClick={onToggle}>
@@ -121,4 +133,4 @@ const TeacherSidebar: React.FC<SidebarProps> = ({
   );
 };
 
-export default TeacherSidebar;
+export default MuiSidebar;
