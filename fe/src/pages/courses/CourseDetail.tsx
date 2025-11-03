@@ -45,6 +45,16 @@ export default function CourseDetail() {
 
   const { addCourse, courses, removeCourse } = useCart();
 
+  // Normalize various Mongo-like ID shapes to a string id
+  const toId = (val: any): string => {
+    if (val == null) return "";
+    if (typeof val === "object") {
+      if ((val as any).$oid) return String((val as any).$oid);
+      if ((val as any)._id) return String((val as any)._id);
+    }
+    return String(val);
+  };
+
   // Load course by slug when direct access
   useEffect(() => {
     (async () => {
@@ -65,7 +75,7 @@ export default function CourseDetail() {
       try {
         if (!course) return;
         const ids = await enrollmentApi.getMyEnrolledCourseIds();
-        setIsEnrolled(ids.has(String((course as any)._id)));
+        setIsEnrolled(ids.has(toId((course as any)._id)));
       } catch {
         setIsEnrolled(false);
       }
@@ -78,7 +88,7 @@ export default function CourseDetail() {
       if (!course?._id) return;
       try {
         setLoadingLessons(true);
-        const list = await lessonApi.listByCourse(String((course as any)._id));
+        const list = await lessonApi.listByCourse(toId((course as any)._id));
         const arr = Array.isArray(list) ? list : [];
         setLessons(arr);
         if (arr.length > 0) setSelectedLessonId(arr[0]._id);
@@ -109,6 +119,33 @@ export default function CourseDetail() {
     })();
   }, [selectedLessonId, isEnrolled]);
 
+  // Load reviews + summary for course
+  useEffect(() => {
+    (async () => {
+      const id = toId((course as any)?._id);
+      if (!id) return;
+      try {
+        setLoadingReviews(true);
+        const [listRes, sumRes] = await Promise.allSettled([
+          reviewClient.listForCourse(id),
+          reviewClient.getCourseSummary(id),
+        ]);
+        if (listRes.status === "fulfilled" && Array.isArray(listRes.value)) {
+          setReviews(listRes.value);
+        } else {
+          setReviews([]);
+        }
+        if (sumRes.status === "fulfilled" && sumRes.value) {
+          setReviewSummary(sumRes.value as any);
+        } else {
+          setReviewSummary(null);
+        }
+      } finally {
+        setLoadingReviews(false);
+      }
+    })();
+  }, [course?._id]);
+
   // Auto-load saved subtitles for this lesson
   useEffect(() => {
     (async () => {
@@ -135,12 +172,12 @@ export default function CourseDetail() {
   }, [playbackUrl]);
 
   const isInCart = courses.some((c) => (c as any)._id === (course as any)?._id);
-  const formatVND = (n: number) => `${n.toLocaleString("vi-VN")} VND`;
+  const formatVND = (n: number) => `${n.toLocaleString("vi-VN")} ₫`;
 
   const categoryName = useMemo(() => {
     const cat = (course as any)?.category;
-    if (Array.isArray(cat) && cat.length > 0) return cat[0]?.name || "No category";
-    return "No category";
+    if (Array.isArray(cat) && cat.length > 0) return cat[0]?.name || "Chưa có danh mục";
+    return "Chưa có danh mục";
   }, [course]);
 
   // Helpers: parse VTT/SRT on FE (for native VI upload)
@@ -397,7 +434,7 @@ export default function CourseDetail() {
         to="/courses"
         className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-6"
       >
-        <ArrowLeft className="w-4 h-4" /> Back to courses
+        <ArrowLeft className="w-4 h-4" /> Quay lại danh sách
       </Link>
 
       {/* Course card */}
@@ -412,7 +449,7 @@ export default function CourseDetail() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">{course.title}</h1>
 
           <p className="text-sm md:text-base font-semibold text-blue-500 mb-2">
-            Instructor: <span className="text-gray-700">
+            Giảng viên: <span className="text-gray-700">
               {course.teacherNames && course.teacherNames.length > 0
                 ? course.teacherNames.join(", ")
                 : "Admin"}
@@ -442,7 +479,7 @@ export default function CourseDetail() {
           </div>
 
           <p className="text-gray-700 mb-6 leading-relaxed">
-            {course.description || "No detailed description."}
+            {course.description || "Không có mô tả chi tiết."}
           </p>
 
           {/* Price hidden if enrolled */}
@@ -461,13 +498,13 @@ export default function CourseDetail() {
                     to="/cart"
                     className="bg-gray-100 text-gray-800 px-5 py-2.5 rounded-lg font-semibold border border-gray-300 hover:bg-gray-200 transition"
                   >
-                    In cart
+                    Đã trong giỏ hàng
                   </Link>
                   <button
                     onClick={() => removeCourse((course as any)._id)}
                     className="bg-red-100 text-red-600 px-4 py-2.5 rounded-lg font-semibold border border-red-300 hover:bg-red-200 transition"
                   >
-                    Remove
+                    Xóa khỏi giỏ
                   </button>
                 </>
               ) : (
@@ -475,7 +512,7 @@ export default function CourseDetail() {
                   className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition"
                   onClick={() => addCourse(course)}
                 >
-                  Enroll now
+                  Đăng ký học ngay
                 </button>
               )}
             </div>
@@ -487,11 +524,11 @@ export default function CourseDetail() {
       <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Video / Preview */}
         <div className="lg:col-span-2 bg-white shadow border border-gray-100 rounded-2xl p-4">
-          <h3 className="text-lg font-semibold mb-3">Lesson content</h3>
+          <h3 className="text-lg font-semibold mb-3">Nội dung bài học</h3>
 
           {/* Subtitles toolbar */}
           <div className="flex flex-wrap items-center gap-2 mb-3">
-            {/* Upload EN (translate to VI) */}
+            {/* Tải EN (dịch sang VI) */}
             <input
               ref={fileInputEnRef}
               type="file"
@@ -508,10 +545,10 @@ export default function CourseDetail() {
               onClick={() => fileInputEnRef.current?.click()}
               className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1.5 rounded border"
             >
-              Upload EN VTT/SRT (translate)
+              Tải EN VTT/SRT (dịch)
             </button>
 
-            {/* Upload VI (no translation) */}
+            {/* Tải VI (không dịch) */}
             <input
               ref={fileInputViRef}
               type="file"
@@ -528,16 +565,16 @@ export default function CourseDetail() {
               onClick={() => fileInputViRef.current?.click()}
               className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1.5 rounded border"
             >
-              Upload VI VTT/SRT (no translate)
+              Tải VI VTT/SRT (không dịch)
             </button>
 
-            {/* Auto-generate from audio */}
+            {/* Tự tạo phụ đề từ audio */}
             <button
               disabled={!isEnrolled || !playbackUrl || loadingSubs}
               onClick={handleAutoGenerateViOnly}
               className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1.5 rounded border"
             >
-              Auto-generate (VI only)
+              Tự tạo phụ đề (chỉ VI)
             </button>
 
             <select
@@ -545,22 +582,22 @@ export default function CourseDetail() {
               onChange={(e) => setSubMode((e.target as HTMLSelectElement).value as any)}
               className="border rounded px-2 py-1"
             >
-              <option value="both">Bilingual</option>
-              <option value="en">English</option>
-              <option value="vi">Vietnamese</option>
+              <option value="both">Song ngữ</option>
+              <option value="en">Tiếng Anh</option>
+              <option value="vi">Tiếng Việt</option>
             </select>
             <button
               disabled={subCues.length === 0}
               onClick={() => setSubVisible((v) => !v)}
               className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1.5 rounded border"
             >
-              {subVisible ? "Hide subtitles" : "Show subtitles"}
+              {subVisible ? "Ẩn phụ đề" : "Hiện phụ đề"}
             </button>
-            {loadingSubs && <span className="text-sm text-gray-500">Processing subtitles...</span>}
+            {loadingSubs && <span className="text-sm text-gray-500">Đang xử lý phụ đề...</span>}
           </div>
 
           {loadingPlayback ? (
-            <div className="h-64 flex items-center justify-center">Loading video...</div>
+            <div className="h-64 flex items-center justify-center">Đang tải video...</div>
           ) : selectedLessonId ? (
             isEnrolled ? (
               playbackUrl ? (
@@ -569,16 +606,16 @@ export default function CourseDetail() {
                   <BilingualSubtitles videoRef={videoRef} cues={subCues} mode={subMode} visible={subVisible} />
                 </div>
               ) : (
-                <div className="h-64 flex items-center justify-center text-gray-500">No playback URL available for this lesson.</div>
+                <div className="h-64 flex items-center justify-center text-gray-500">Không có URL phát cho bài học này.</div>
               )
             ) : (
               <div className="h-64 flex flex-col items-center justify-center text-gray-500 gap-2">
                 <Lock className="w-6 h-6" />
-                <div>You need to enroll to watch the video.</div>
+                <div>Bạn cần mua khóa học để xem video.</div>
               </div>
             )
           ) : (
-            <div className="h-64 flex items-center justify-center text-gray-500">No lesson selected.</div>
+            <div className="h-64 flex items-center justify-center text-gray-500">Chưa chọn bài học.</div>
           )}
 
           {selectedLessonId && (
@@ -590,11 +627,11 @@ export default function CourseDetail() {
 
         {/* Lesson list */}
         <aside className="bg-white shadow border border-gray-100 rounded-2xl p-4">
-          <h3 className="text-lg font-semibold mb-3">Lessons</h3>
+          <h3 className="text-lg font-semibold mb-3">Danh sách bài học</h3>
           {loadingLessons ? (
-            <div>Loading list...</div>
+            <div>Đang tải danh sách...</div>
           ) : lessons.length === 0 ? (
-            <div>No lessons yet.</div>
+            <div>Chưa có bài học nào.</div>
           ) : (
             <ul className="divide-y divide-gray-100">
               {lessons.map((ls) => (
@@ -620,7 +657,7 @@ export default function CourseDetail() {
 
       {/* Reviews */}
       <section className="mt-8 bg-white shadow border border-gray-100 rounded-2xl p-6">
-        <h3 className="text-xl font-semibold mb-4">Course reviews</h3>
+        <h3 className="text-xl font-semibold mb-4">Đánh giá khóa học</h3>
 
         {/* Summary + Histogram */}
         <div className="flex flex-col gap-2 mb-4">
@@ -663,9 +700,9 @@ export default function CourseDetail() {
         {/* Write review (only when enrolled) */}
         {isEnrolled && (
           <div className="mb-6 border rounded-xl p-4 bg-gray-50">
-            <h4 className="font-semibold mb-2">Write your review</h4>
+            <h4 className="font-semibold mb-2">Viết đánh giá của bạn</h4>
             <div className="flex items-center gap-3 mb-3">
-              <label className="text-sm text-gray-700">Rating:</label>
+              <label className="text-sm text-gray-700">Chấm điểm:</label>
               <select
                 value={ratingInput}
                 onChange={(e) => setRatingInput(Number(e.target.value))}
@@ -677,7 +714,7 @@ export default function CourseDetail() {
               </select>
             </div>
             <textarea
-              placeholder="Share your thoughts about the course..."
+              placeholder="Chia sẻ cảm nhận của bạn về khóa học..."
               value={commentInput}
               onChange={(e) => setCommentInput(e.target.value)}
               className="w-full border rounded-lg p-3 min-h-[100px]"
@@ -690,19 +727,19 @@ export default function CourseDetail() {
                   setSubmittingReview(true);
                   setReviewMessage("");
                   try {
-                    await reviewClient.createCourseReview(String((course as any)._id), ratingInput, commentInput);
+                    await reviewClient.createCourseReview(toId((course as any)._id), ratingInput, commentInput);
                     setCommentInput("");
                     setRatingInput(5);
-                    setReviewMessage("Review submitted for approval.");
+                    setReviewMessage("Đã gửi đánh giá, chờ duyệt.");
                   } catch (e: any) {
-                    setReviewMessage(e?.message || "Failed to submit review. Please sign in and try again.");
+                    setReviewMessage(e?.message || "Không thể gửi đánh giá. Vui lòng đăng nhập và thử lại.");
                   } finally {
                     setSubmittingReview(false);
                   }
                 }}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-60"
               >
-                Submit review
+                Gửi đánh giá
               </button>
               {reviewMessage && (
                 <span className="text-sm text-gray-600">{reviewMessage}</span>
@@ -713,9 +750,9 @@ export default function CourseDetail() {
 
         {/* Review list */}
         {loadingReviews ? (
-          <div className="text-gray-500">Loading reviews...</div>
+          <div className="text-gray-500">Đang tải đánh giá...</div>
         ) : reviews.length === 0 ? (
-          <div className="text-gray-500">No reviews yet.</div>
+          <div className="text-gray-500">Chưa có đánh giá nào.</div>
         ) : (
           <ul className="space-y-4">
             {reviews.map((rv) => {
@@ -723,14 +760,14 @@ export default function CourseDetail() {
               const nameRaw = typeof userRaw === "object" ? (userRaw?.name ?? "") : "";
               const displayName = (typeof nameRaw === "string" && nameRaw.trim().length > 0)
                 ? nameRaw.trim()
-                : "User";
+                : "Người dùng";
               return (
                 <li key={rv._id} className="border rounded-xl p-4">
                   <div className="flex items-center justify-between mb-1">
                     <div className="font-semibold text-gray-800 flex items-center gap-2">
                       {displayName}
                       {(rv as any).verified && (
-                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Purchased</span>
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full"></span>
                       )}
                     </div>
                     <div className="flex items-center gap-1 text-amber-500">
