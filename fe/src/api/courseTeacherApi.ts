@@ -5,8 +5,8 @@ const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8888/api";
 
 // Auth header handled by axios interceptor in ./axios via accessToken
 
-const courseAdminApi = {
-  // Admin list should use the admin endpoint to include all courses
+const courseTeacherApi = {
+  // Teacher list: only courses owned by the authenticated teacher
   getAll: (params?: Record<string, unknown>) =>
     axios.get(`${BASE_URL}/courses/teacher/all`, { params }),
 
@@ -20,4 +20,4 @@ const courseAdminApi = {
   delete: (id: string) => axios.delete(`${BASE_URL}/courses/${id}`),
 };
 
-export default courseAdminApi;
+export default courseTeacherApi;

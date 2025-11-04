@@ -96,6 +96,29 @@ export const getAllCoursesForAdmin = async (req: Request, res: Response) => {
   }
 };
 
+// List courses of the authenticated teacher
+export const getAllCoursesForTeacher = async (req: AuthRequest, res: Response) => {
+  try {
+    const user: any = req.user || {};
+    const uid = user?._id?.toString?.() || user?.id?.toString?.();
+    if (!uid) return res.status(401).json({ message: "Unauthenticated" });
+
+    const filter: any = { teacher: uid };
+    if (req.query?.status) {
+      filter.status = req.query.status;
+    }
+
+    const courses = await CourseModel.find(filter)
+      .populate("category", "name slug")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return res.status(200).json(courses);
+  } catch (error: any) {
+    return res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
 export const updateCourseStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;

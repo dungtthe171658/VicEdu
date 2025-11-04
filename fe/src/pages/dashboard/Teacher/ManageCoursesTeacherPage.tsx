@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import courseAdminApi from "../../../api/courseAdminApi";
+import courseTeacherApi from "../../../api/courseTeacherApi";
 import type { Course } from "../../../types/course";
 import CourseForm from "../../../components/courses/CourseForm";
-import "./ManageCoursesPage.css";
+import "../Admin/ManageCoursesPage.css";
 
-const ManageCoursesPage = () => {
+const ManageCoursesTeacherPage = () => {
   const navigate = useNavigate();
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<Partial<Course> | null>(null);
@@ -13,11 +13,11 @@ const ManageCoursesPage = () => {
 
   const loadCourses = async () => {
     try {
-      const res = await courseAdminApi.getAll();
+      const res = await courseTeacherApi.getAll();
       setCourses(res.data ?? res);
     } catch (error) {
       console.error("Error loading courses:", error);
-      alert("Không thể tải danh sách khóa học");
+      alert("Khong the tai danh sach khoa hoc");
     }
   };
 
@@ -28,16 +28,16 @@ const ManageCoursesPage = () => {
   const handleSave = async (data: Partial<Course>) => {
     try {
       if (selectedCourse?._id) {
-        await courseAdminApi.update(selectedCourse._id, data);
+        await courseTeacherApi.update(selectedCourse._id, data);
       } else {
-        await courseAdminApi.create(data);
+        await courseTeacherApi.create(data);
       }
       setShowModal(false);
       setSelectedCourse(null);
       loadCourses();
     } catch (error) {
       console.error("Error saving course:", error);
-      alert("Lưu khóa học thất bại. Vui lòng kiểm tra dữ liệu.");
+      alert("Luu khoa hoc that bai. Vui long kiem tra du lieu.");
     }
   };
 
@@ -52,13 +52,13 @@ const ManageCoursesPage = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Bạn chắc chắn muốn xóa khóa học này?")) {
+    if (confirm("Ban chac chan muon xoa khoa hoc nay?")) {
       try {
-        await courseAdminApi.delete(id);
+        await courseTeacherApi.delete(id);
         loadCourses();
       } catch (error) {
         console.error("Error deleting course:", error);
-        alert("Không thể xóa khóa học.");
+        alert("Khong the xoa khoa hoc.");
       }
     }
   };
@@ -66,8 +66,8 @@ const ManageCoursesPage = () => {
   return (
     <div className="course-management-container">
       <div className="header">
-        <h2>Quản lý khóa học</h2>
-        <button className="add-btn" onClick={handleAdd}>+ Thêm khóa học</button>
+        <h2>Quan ly khoa hoc</h2>
+        <button className="add-btn" onClick={handleAdd}>+ Them khoa hoc</button>
       </div>
 
       <ul className="course-list">
@@ -75,14 +75,15 @@ const ManageCoursesPage = () => {
           <li key={course._id}>
             <div className="course-info">
               <strong>{course.title}</strong>
-              <span>{course.category?.name || "Chưa có danh mục"}</span>
+              <span>{course.category?.name || "Chua co danh muc"}</span>
               <span>{course.price_cents.toLocaleString()} VND</span>
-              <span className={`status ${course.status}`}>{course.status}</span>
+              {/* <span className={`status ${course.status}`}>{course.status}</span> */}
             </div>
             <div className="actions">
-              <button className="detail-btn" onClick={() => navigate(`/dashboard/manage-courses/${course._id}`)}>Chi tiết</button>
-              <button className="edit-btn" onClick={() => handleEdit(course)}>Sửa</button>
-              <button className="delete-btn" onClick={() => handleDelete(course._id)}>Xóa</button>
+              {/* Detail view for teacher is not implemented yet */}
+              <button className="detail-btn" onClick={() => navigate(`/teacher/manage-courses/${course._id}`)}>Chi tiet</button>
+              <button className="edit-btn" onClick={() => handleEdit(course)}>Sua</button>
+              <button className="delete-btn" onClick={() => handleDelete(course._id)}>Xoa</button>
             </div>
           </li>
         ))}
@@ -91,9 +92,9 @@ const ManageCoursesPage = () => {
       {showModal && (
         <div className="modal">
           <div className="modal-content">
-            <h3>{selectedCourse ? "Chỉnh sửa khóa học" : "Thêm khóa học mới"}</h3>
+            <h3>{selectedCourse ? "Chinh sua khoa hoc" : "Them khoa hoc moi"}</h3>
             <CourseForm initialData={selectedCourse || {}} onSubmit={handleSave} />
-            <button className="close-btn" onClick={() => setShowModal(false)}>Đóng</button>
+            <button className="close-btn" onClick={() => setShowModal(false)}>Dong</button>
           </div>
         </div>
       )}
@@ -101,4 +102,4 @@ const ManageCoursesPage = () => {
   );
 };
 
-export default ManageCoursesPage;
+export default ManageCoursesTeacherPage;

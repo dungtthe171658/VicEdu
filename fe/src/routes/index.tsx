@@ -43,7 +43,11 @@ import ManageReviewsPage from "../pages/dashboard/Admin/ManageReviewsPage";
 import LessonManageDetail from "../pages/dashboard/Admin/LessonManageDetail";
 
 // 🔹 Teacher dashboard pages
-import ViewTeacher from "../pages/dashboard/Shared/ViewTeacher";
+import DashboardTeacherPage from "../pages/dashboard/Teacher/DashboardTeacherPage";
+import ManageCoursesTeacherPage from "../pages/dashboard/Teacher/ManageCoursesTeacherPage";
+import ManageStudentsPage from "../pages/dashboard/Teacher/ManageStudentsPage";
+import CourseManageDetailTeacher from "../pages/dashboard/Teacher/CourseManageDetailTeacher";
+import LessonManageDetailTeacher from "../pages/dashboard/Teacher/LessonManageDetailTeacher";
 
 // 🔹 Protected route
 import ProtectedRoute from "./ProtectedRoute";
@@ -174,8 +178,11 @@ const AppRoutes: React.FC = () => {
           </ProtectedRoute>
         }
       >
-        <Route index element={<ViewTeacher />} />
-        
+        <Route index element={<DashboardTeacherPage />} />
+        <Route path="manage-courses" element={<ManageCoursesTeacherPage />} />
+        <Route path="manage-courses/:courseId" element={<CourseManageDetailTeacher />} />
+        <Route path="manage-courses/:courseId/lessons/:lessonId" element={<LessonManageDetailTeacher />} />
+        <Route path="manage-students" element={<ManageStudentsPage />} />
       </Route>
 
 

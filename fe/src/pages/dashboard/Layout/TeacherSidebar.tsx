@@ -52,11 +52,8 @@ const MuiSidebar: React.FC<SidebarProps> = ({
 
   const items = [
     { label: 'Dashboard', path: '/dashboard', icon: HomeIcon },
-    { label: 'Tài khoản', path: 'manage-users', icon: PeopleIcon },
-    { label: 'Sách ', path: 'manage-books', icon: ArticleIcon },
-    { label: 'Đơn hàng', path: 'manage-orders', icon: ShoppingCartIcon },
+    { label: 'Đơn hàng cho teacher', path: 'manage-orders', icon: ShoppingCartIcon },
     { label: 'Khóa học', path: 'manage-courses', icon: ArticleIcon },
-    { label: 'Danh mục', path: 'manage-categories', icon: CategoryIcon },
     { label: 'Đánh giá', path: 'manage-reviews', icon: ReviewsIcon },
 
     

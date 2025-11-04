@@ -11,6 +11,7 @@ router.get("/:slug", courseController.getCourseBySlug);
 
 router.post("/", authenticateToken, checkRole(['admin', 'teacher']), courseController.createCourse);
 router.get("/admin/all", authenticateToken, checkRole(['admin']), courseController.getAllCoursesForAdmin);
+router.get("/teacher/all", authenticateToken, checkRole(['teacher']), courseController.getAllCoursesForTeacher);
 router.patch("/:id/status", authenticateToken, checkRole(['admin']), courseController.updateCourseStatus);
 router.put("/:id", authenticateToken, checkRole(['admin','teacher']), courseController.updateCourse);
 
