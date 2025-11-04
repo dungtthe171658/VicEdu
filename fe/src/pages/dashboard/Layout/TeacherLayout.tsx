@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Box } from '@mui/material';
 import { Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '../../../hooks/useAuth';
-import MuiSidebar from '../Layout/MuiSidebar';
+import MuiSidebar from '../Layout/TeacherSidebar';
 import TeacherNavbar from '../Layout/TeacherNavbar';
 
 const SIDEBAR_WIDTH = 240;
