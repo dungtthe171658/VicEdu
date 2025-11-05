@@ -46,6 +46,26 @@ export default function CourseManageDetail() {
     }
   };
 
+  const handleStatus = async (status: 'approved' | 'rejected' | 'pending') => {
+    if (!courseId) return;
+    try {
+      await courseAdminApi.updateStatus(courseId, status as any);
+      await load();
+    } catch (e: any) {
+      setError(e?.message || 'Cap nhat trang thai that bai');
+    }
+  };
+
+  const handlePublish = async (publish: boolean) => {
+    if (!courseId) return;
+    try {
+      await courseAdminApi.update(courseId, { is_published: publish } as any);
+      await load();
+    } catch (e: any) {
+      setError(e?.message || 'Cap nhat publish that bai');
+    }
+  };
+
   return (
     <div className="p-4">
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
@@ -63,9 +83,31 @@ export default function CourseManageDetail() {
         <div>Không tìm thấy khóa học.</div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 20 }}>
+          <div style={{ gridColumn: '1 / -1', background: '#fff', borderRadius: 12, padding: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
+            <strong>Quick actions:</strong>
+            <button onClick={() => handleStatus('approved')}>Approve</button>
+            <button onClick={() => handleStatus('rejected')}>Reject</button>
+            {((course as any)?.is_published ? (
+              <button onClick={() => handlePublish(false)}>Hide</button>
+            ) : (
+              <button onClick={() => handlePublish(true)}>Publish</button>
+            ))}
+            <span style={{ marginLeft: 'auto', fontSize: 12, color: '#6b7280' }}>
+              Status: {course.status} • {((course as any)?.is_published ? 'published' : 'unpublished')}
+            </span>
+          </div>
           <div style={{ background: "#fff", borderRadius: 12, padding: 16 }}>
             <h3 style={{ marginTop: 0 }}>Thông tin khóa học</h3>
-            <CourseForm initialData={course} onSubmit={handleSave} />
+            <CourseForm
+              initialData={{
+                ...course,
+                teacher_ids: Array.isArray((course as any)?.teacher)
+                  ? ((course as any).teacher as any[]).map((t: any) => t?._id).filter(Boolean)
+                  : [],
+              }}
+              onSubmit={handleSave}
+              showTeacherAssign
+            />
             {saving && <div style={{ marginTop: 8 }}>Đang lưu...</div>}
           </div>
           <div style={{ background: "#fff", borderRadius: 12, padding: 16 }}>
@@ -76,4 +118,3 @@ export default function CourseManageDetail() {
     </div>
   );
 }
-

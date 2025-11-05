@@ -4,14 +4,16 @@ import type { Course } from "../../types/course";
 import type { Category } from "../../types/category";
 import categoryApi from "../../api/categoryApi";
 import axios from "../../api/axios";
+import type { UserDto } from "../../types/user.d";
 import "./CourseForm.css";
 
 interface CourseFormProps {
   initialData?: Partial<Course>;
   onSubmit: (data: Partial<Course>) => void;
+  showTeacherAssign?: boolean;
 }
 
-const CourseForm = ({ initialData = {}, onSubmit }: CourseFormProps) => {
+const CourseForm = ({ initialData = {}, onSubmit, showTeacherAssign = false }: CourseFormProps) => {
   const [formData, setFormData] = useState<Partial<Course>>({
     ...initialData,
     category_id:
@@ -24,6 +26,14 @@ const CourseForm = ({ initialData = {}, onSubmit }: CourseFormProps) => {
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
   const [uploadingThumb, setUploadingThumb] = useState(false);
+  const [teacherOptions, setTeacherOptions] = useState<UserDto[]>([]);
+  const [loadingTeachers, setLoadingTeachers] = useState(false);
+  const [teacherIds, setTeacherIds] = useState<string[]>(
+    Array.isArray((initialData as any)?.teacher_ids)
+      ? ((initialData as any).teacher_ids as string[])
+      : []
+  );
+  const [teacherTouched, setTeacherTouched] = useState(false);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -49,6 +59,28 @@ const CourseForm = ({ initialData = {}, onSubmit }: CourseFormProps) => {
     fetchCategories();
   }, []);
 
+  useEffect(() => {
+    if (!showTeacherAssign) return;
+    const run = async () => {
+      try {
+        setLoadingTeachers(true);
+        const res = await axios.get("/users", { params: { role: "teacher", limit: 1000 } });
+        const list = Array.isArray((res as any)?.data)
+          ? (res as any).data
+          : Array.isArray(res)
+            ? (res as any)
+            : Array.isArray((res as any)?.data?.data)
+              ? (res as any).data.data
+              : [];
+        setTeacherOptions(list as UserDto[]);
+      } catch (e) {
+        setTeacherOptions([]);
+      } finally {
+        setLoadingTeachers(false);
+      }
+    };
+    run();
+  }, [showTeacherAssign]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -74,6 +106,10 @@ const CourseForm = ({ initialData = {}, onSubmit }: CourseFormProps) => {
       price_cents: Number(formData.price_cents) || 0,
       is_published: !!formData.is_published,
     };
+
+    if (showTeacherAssign && teacherTouched) {
+      (payload as any).teacher_ids = teacherIds;
+    }
 
     onSubmit(payload);
   };
@@ -147,6 +183,34 @@ const CourseForm = ({ initialData = {}, onSubmit }: CourseFormProps) => {
           required
         />
       </div>
+
+      {showTeacherAssign && (
+        <div className="form-group">
+          <label htmlFor="teacher_ids">Assigned Teachers</label>
+          <select
+            id="teacher_ids"
+            multiple
+            value={teacherIds}
+            onChange={(e) => {
+              const values = Array.from(e.target.selectedOptions).map((o) => o.value);
+              setTeacherIds(values);
+              setTeacherTouched(true);
+            }}
+          >
+            {loadingTeachers ? (
+              <option value="">Loading teachers...</option>
+            ) : teacherOptions.length === 0 ? (
+              <option value="">No teachers found</option>
+            ) : (
+              teacherOptions.map((t) => (
+                <option key={t._id} value={t._id}>
+                  {t.name || t.email}
+                </option>
+              ))
+            )}
+          </select>
+        </div>
+      )}
 
       <div className="form-group">
         <label htmlFor="description">Mô tả</label>

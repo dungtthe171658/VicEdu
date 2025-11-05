@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import courseAdminApi from "../../../api/courseAdminApi";
+import courseTeacherApi from "../../../api/courseTeacherApi";
 import type { Course } from "../../../types/course";
 import CourseForm from "../../../components/courses/CourseForm";
 import LessonManager from "../../../components/courses/LessonManager";
@@ -18,7 +18,7 @@ export default function CourseManageDetail() {
     setLoading(true);
     setError(null);
     try {
-      const res = await courseAdminApi.getById(courseId);
+      const res = await courseTeacherApi.getById(courseId);
       setCourse(res.data ?? res); // support either shape
     } catch (e: any) {
       setError(e?.message || "Không tải được khóa học");
@@ -37,7 +37,7 @@ export default function CourseManageDetail() {
     setSaving(true);
     setError(null);
     try {
-      await courseAdminApi.update(courseId, data);
+      await courseTeacherApi.update(courseId, data);
       await load();
     } catch (e: any) {
       setError(e?.message || "Lưu khóa học thất bại");
@@ -49,7 +49,7 @@ export default function CourseManageDetail() {
   return (
     <div className="p-4">
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-        <button onClick={() => navigate("/dashboard/manage-courses")}>
+        <button onClick={() => navigate("/teacher/manage-courses")}>
           ← Quay lại
         </button>
         <h2 style={{ margin: 0 }}>Thiết kế khóa học</h2>

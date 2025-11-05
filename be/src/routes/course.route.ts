@@ -14,6 +14,7 @@ router.get("/admin/all", authenticateToken, checkRole(['admin']), courseControll
 router.get("/teacher/all", authenticateToken, checkRole(['teacher']), courseController.getAllCoursesForTeacher);
 router.patch("/:id/status", authenticateToken, checkRole(['admin']), courseController.updateCourseStatus);
 router.put("/:id", authenticateToken, checkRole(['admin','teacher']), courseController.updateCourse);
+router.delete("/:id", authenticateToken, checkRole(['admin']), courseController.deleteCourse);
 
 // Nested routes
 router.use("/:courseId/lessons", lessonRoutes);

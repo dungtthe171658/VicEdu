@@ -10,6 +10,7 @@ export interface Course {
   price_cents: number;
   thumbnail_url?: string;
   teacher_id: string;
+  teacher_ids?: string[];
   category_id: string;
   is_published: boolean;
   status: CourseStatus;
