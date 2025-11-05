@@ -95,6 +95,9 @@ const ManageCoursesPage = () => {
           <li key={course._id}>
             <div className="course-info">
               <strong>{course.title}</strong>
+              {(course as any)?.has_pending_changes && (
+                <span style={{ marginLeft: 8, padding: '2px 6px', borderRadius: 6, background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412', fontSize: 12 }}>Pending edits</span>
+              )}
               <span>{course.category?.name || "Chưa có danh mục"}</span>
               <span>{course.price_cents.toLocaleString()} VND</span>
               <span className={`status ${course.status}`}>{course.status}</span>

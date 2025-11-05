@@ -41,6 +41,7 @@ import ManageCoursesPage from "../pages/dashboard/Admin/ManageCoursesPage";
 import CourseManageDetail from "../pages/dashboard/Admin/CourseManageDetail";
 import ManageReviewsPage from "../pages/dashboard/Admin/ManageReviewsPage";
 import LessonManageDetail from "../pages/dashboard/Admin/LessonManageDetail";
+import PendingEditsAdmin from "../pages/dashboard/Admin/PendingEditsAdmin";
 
 // 🔹 Teacher dashboard pages
 import DashboardTeacherPage from "../pages/dashboard/Teacher/DashboardTeacherPage";
@@ -48,6 +49,7 @@ import ManageCoursesTeacherPage from "../pages/dashboard/Teacher/ManageCoursesTe
 import ManageStudentsPage from "../pages/dashboard/Teacher/ManageStudentsPage";
 import CourseManageDetailTeacher from "../pages/dashboard/Teacher/CourseManageDetailTeacher";
 import LessonManageDetailTeacher from "../pages/dashboard/Teacher/LessonManageDetailTeacher";
+import PendingEditsTeacher from "../pages/dashboard/Teacher/PendingEditsTeacher";
 
 // 🔹 Protected route
 import ProtectedRoute from "./ProtectedRoute";
@@ -167,6 +169,14 @@ const AppRoutes: React.FC = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="pending-edits"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <PendingEditsAdmin />
+            </ProtectedRoute>
+          }
+        />
       </Route>
 
       {/* 👨‍🏫 Teacher routes */}
@@ -183,6 +193,7 @@ const AppRoutes: React.FC = () => {
         <Route path="manage-courses/:courseId" element={<CourseManageDetailTeacher />} />
         <Route path="manage-courses/:courseId/lessons/:lessonId" element={<LessonManageDetailTeacher />} />
         <Route path="manage-students" element={<ManageStudentsPage />} />
+        <Route path="pending-edits" element={<PendingEditsTeacher />} />
       </Route>
 
 

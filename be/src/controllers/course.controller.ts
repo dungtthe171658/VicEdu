@@ -3,6 +3,9 @@ import { AuthRequest } from "../middlewares/auth";
 import CourseModel from "../models/course.model";
 import slugify from "slugify";
 import mongoose from "mongoose";
+import UserModel from "../models/user.model";
+import { SendEmail } from "../utils/send-email";
+import { config } from "../config/config";
 import LessonModel from "../models/lesson.model";
 
 export const getPublicCourses = async (req: Request, res: Response) => {
@@ -171,8 +174,47 @@ export const updateCourse = async (req: AuthRequest, res: Response) => {
       const teachers = Array.isArray((found as any).teacher) ? (found as any).teacher : [];
       const owns = teachers.some((t: any) => String(t) === String(uid));
       if (!owns) return res.status(403).json({ message: 'You are not the owner of this course' });
+      // Collect draft changes (content-only)
+      const draft: any = {};
+      if (body.title !== undefined) draft.title = String(body.title);
+      if (body.description !== undefined) draft.description = String(body.description);
+      if (body.thumbnail_url !== undefined) draft.thumbnail_url = String(body.thumbnail_url);
+      if (body.category_id) draft.category_id = String(body.category_id);
+
+      const updated = await CourseModel.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            draft,
+            has_pending_changes: true,
+            pending_by: uid ? new mongoose.Types.ObjectId(uid) : null,
+            pending_at: new Date(),
+          },
+        },
+        { new: true }
+      );
+      if (!updated) return res.status(404).json({ message: 'Course not found' });
+
+      // Notify admins by email (best-effort)
+      try {
+        const admins = await UserModel.find({ role: 'admin' }).select('email').lean();
+        const emails = admins.map((a: any) => a.email).filter(Boolean);
+        const link = `${config.frontend_url || ''}/dashboard/manage-courses/${id}`;
+        await Promise.all(
+          emails.map((to) =>
+            SendEmail.sendBasicEmail({
+              to,
+              subject: `[VicEdu] Pending Course Changes: ${draft.title || 'Course #' + id}`,
+              text: `A teacher submitted course edits. Review at ${link}.`,
+            })
+          )
+        );
+      } catch {}
+
+      return res.json(updated);
     }
 
+    // Admin flow (live updates allowed)
     if (body.title !== undefined) {
       updates.title = body.title;
       // re-generate slug when title changes
@@ -230,6 +272,56 @@ export const updateCourse = async (req: AuthRequest, res: Response) => {
     return res.json(updated);
   } catch (error: any) {
     return res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
+export const approveCourseChanges = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params as { id: string };
+    const course: any = await CourseModel.findById(id);
+    if (!course) return res.status(404).json({ message: 'Course not found' });
+    const draft = course.draft || {};
+    if (!course.has_pending_changes || !draft) {
+      return res.status(400).json({ message: 'No pending changes' });
+    }
+    if (draft.title !== undefined) course.title = draft.title;
+    if (draft.description !== undefined) course.description = draft.description;
+    if (draft.thumbnail_url !== undefined) course.thumbnail_url = draft.thumbnail_url;
+    if (draft.category_id) {
+      try { course.category = [new mongoose.Types.ObjectId(String(draft.category_id))]; } catch {}
+    }
+    course.draft = undefined;
+    course.has_pending_changes = false;
+    course.pending_by = null;
+    course.pending_at = null;
+    await course.save();
+    return res.json(course);
+  } catch (error: any) {
+    return res.status(500).json({ message: error.message || 'Server error' });
+  }
+};
+
+export const rejectCourseChanges = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params as { id: string };
+    const updated = await CourseModel.findByIdAndUpdate(
+      id,
+      { $unset: { draft: 1 }, $set: { has_pending_changes: false, pending_by: null, pending_at: null } },
+      { new: true }
+    );
+    if (!updated) return res.status(404).json({ message: 'Course not found' });
+    return res.json(updated);
+  } catch (error: any) {
+    return res.status(500).json({ message: error.message || 'Server error' });
+  }
+};
+
+export const getPendingCourses = async (_req: Request, res: Response) => {
+  try {
+    const items = await CourseModel.find({ has_pending_changes: true }).select('title pending_at').lean();
+    return res.json({ data: items, count: items.length });
+  } catch (error: any) {
+    return res.status(500).json({ message: error.message || 'Server error' });
   }
 };
 

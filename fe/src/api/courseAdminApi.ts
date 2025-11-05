@@ -21,6 +21,11 @@ const courseAdminApi = {
 
   updateStatus: (id: string, status: 'approved' | 'rejected' | 'pending') =>
     axios.patch(`${BASE_URL}/courses/${id}/status`, { status }),
+
+  // Moderation (admin)
+  approveChanges: (id: string) => axios.post(`${BASE_URL}/courses/${id}/approve-changes`),
+  rejectChanges: (id: string) => axios.post(`${BASE_URL}/courses/${id}/reject-changes`),
+  getPending: () => axios.get(`${BASE_URL}/courses/admin/pending`),
 };
 
 export default courseAdminApi;

@@ -7,10 +7,16 @@ import {
   updateLesson,
   deleteLesson,
   getLessonPlayback,
+  approveLessonChanges,
+  rejectLessonChanges,
+  getPendingLessons,
 } from "../controllers/lesson.controller";
 import { authenticateToken, checkRole } from "../middlewares/auth";
 
 const router = express.Router({ mergeParams: true });
+
+// Admin: list pending lesson edits (define before dynamic routes)
+router.get("/pending", authenticateToken, checkRole(["admin"]), getPendingLessons);
 
 // 📌 Lấy danh sách lessons của course
 router.get("/courses/:courseId/lessons", getLessonsOfCourse);
@@ -44,5 +50,19 @@ router.delete(
 
 // 📌 Lấy playback URL (học viên đã enroll)
 router.get("/:lessonId/playback", authenticateToken, getLessonPlayback);
+
+// Admin approve/reject lesson edits
+router.post(
+  "/:lessonId/approve-changes",
+  authenticateToken,
+  checkRole(["admin"]),
+  approveLessonChanges
+);
+router.post(
+  "/:lessonId/reject-changes",
+  authenticateToken,
+  checkRole(["admin"]),
+  rejectLessonChanges
+);
 
 export default router;

@@ -3,6 +3,9 @@ import { Request, Response } from "express";
 import mongoose from "mongoose";
 import crypto from "crypto";
 import LessonModel from "../models/lesson.model";
+import UserModel from "../models/user.model";
+import { SendEmail } from "../utils/send-email";
+import { config } from "../config/config";
 import CourseModel from "../models/course.model";
 import EnrollmentModel from "../models/enrollment.model";
 import { AuthRequest } from "../middlewares/auth";
@@ -169,8 +172,50 @@ export const updateLesson = async (req: AuthRequest, res: Response) => {
     const lid = toObjectId(lessonId);
     if (!lid) return res.status(400).json({ message: "Invalid lessonId" });
 
+    const { title, video_url, duration_minutes, position, description, storage_provider, storage_bucket, storage_path, playback_url } = req.body as any;
+
+    const role = (req.user as any)?.role || '';
+    const uid = getUserId(req);
+
+    if (role === 'teacher') {
+      const draft: any = {};
+      if (title !== undefined) draft.title = title;
+      if (video_url !== undefined) draft.video_url = video_url;
+      if (duration_minutes !== undefined) draft.duration_minutes = Number(duration_minutes);
+      if (position !== undefined) draft.position = Number(position);
+      if (description !== undefined) draft.description = description;
+      if (storage_provider !== undefined) draft.storage_provider = storage_provider;
+      if (storage_bucket !== undefined) draft.storage_bucket = storage_bucket;
+      if (storage_path !== undefined) draft.storage_path = storage_path;
+      if (playback_url !== undefined) draft.playback_url = playback_url;
+
+      const updated = await LessonModel.findByIdAndUpdate(lid, {
+        $set: {
+          draft,
+          has_pending_changes: true,
+          pending_by: uid ? new mongoose.Types.ObjectId(uid) : null,
+          pending_at: new Date(),
+        },
+      }, { new: true, runValidators: true });
+      if (!updated) return res.status(404).json({ message: 'Lesson not found' });
+
+      // notify admins
+      try {
+        const admins = await UserModel.find({ role: 'admin' }).select('email').lean();
+        const emails = admins.map((a: any) => a.email).filter(Boolean);
+        const link = `${config.frontend_url || ''}/dashboard/manage-courses/${(updated as any).course_id}`;
+        await Promise.all(
+          emails.map((to) =>
+            SendEmail.sendBasicEmail({ to, subject: `[VicEdu] Pending Lesson Changes`, text: `A teacher submitted lesson edits. Review course: ${link}` })
+          )
+        );
+      } catch {}
+
+      return res.json(updated);
+    }
+
+    // Admin: live update
     const payload: any = {};
-    const { title, video_url, duration_minutes, position, description, storage_provider, storage_bucket, storage_path, playback_url } = req.body;
     if (title !== undefined) payload.title = title;
     if (video_url !== undefined) payload.video_url = video_url;
     if (duration_minutes !== undefined) payload.duration_minutes = Number(duration_minutes);
@@ -181,15 +226,62 @@ export const updateLesson = async (req: AuthRequest, res: Response) => {
     if (storage_path !== undefined) payload.storage_path = storage_path;
     if (playback_url !== undefined) payload.playback_url = playback_url;
 
-    const updated = await LessonModel.findByIdAndUpdate(lid, payload, {
-      new: true,
-      runValidators: true,
-    });
-    if (!updated) return res.status(404).json({ message: "Lesson not found" });
-
+    const updated = await LessonModel.findByIdAndUpdate(lid, payload, { new: true, runValidators: true });
+    if (!updated) return res.status(404).json({ message: 'Lesson not found' });
     return res.json(updated);
   } catch (error: any) {
     return res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
+export const approveLessonChanges = async (req: AuthRequest, res: Response) => {
+  try {
+    const { lessonId } = req.params as any;
+    const lid = toObjectId(lessonId);
+    if (!lid) return res.status(400).json({ message: 'Invalid lessonId' });
+    const lesson: any = await LessonModel.findById(lid);
+    if (!lesson) return res.status(404).json({ message: 'Lesson not found' });
+    const draft = lesson.draft || {};
+    if (!lesson.has_pending_changes || !draft) return res.status(400).json({ message: 'No pending changes' });
+    Object.assign(lesson, {
+      title: draft.title !== undefined ? draft.title : lesson.title,
+      description: draft.description !== undefined ? draft.description : lesson.description,
+      video_url: draft.video_url !== undefined ? draft.video_url : lesson.video_url,
+      playback_url: draft.playback_url !== undefined ? draft.playback_url : lesson.playback_url,
+      storage_provider: draft.storage_provider !== undefined ? draft.storage_provider : lesson.storage_provider,
+      storage_bucket: draft.storage_bucket !== undefined ? draft.storage_bucket : lesson.storage_bucket,
+      storage_path: draft.storage_path !== undefined ? draft.storage_path : lesson.storage_path,
+      draft: undefined,
+      has_pending_changes: false,
+      pending_by: null,
+      pending_at: null,
+    });
+    await lesson.save();
+    return res.json(lesson);
+  } catch (error: any) {
+    return res.status(500).json({ message: error.message || 'Server error' });
+  }
+};
+
+export const rejectLessonChanges = async (req: AuthRequest, res: Response) => {
+  try {
+    const { lessonId } = req.params as any;
+    const lid = toObjectId(lessonId);
+    if (!lid) return res.status(400).json({ message: 'Invalid lessonId' });
+    const updated = await LessonModel.findByIdAndUpdate(lid, { $unset: { draft: 1 }, $set: { has_pending_changes: false, pending_by: null, pending_at: null } }, { new: true });
+    if (!updated) return res.status(404).json({ message: 'Lesson not found' });
+    return res.json(updated);
+  } catch (error: any) {
+    return res.status(500).json({ message: error.message || 'Server error' });
+  }
+};
+
+export const getPendingLessons = async (_req: Request, res: Response) => {
+  try {
+    const items = await LessonModel.find({ has_pending_changes: true }).select('title course_id pending_at').lean();
+    return res.json({ data: items, count: items.length });
+  } catch (error: any) {
+    return res.status(500).json({ message: error.message || 'Server error' });
   }
 };
 
@@ -282,5 +374,8 @@ export default {
   updateLesson,
   deleteLesson,
   getLessonPlayback,
+  approveLessonChanges,
+  rejectLessonChanges,
+  getPendingLessons,
 };
 

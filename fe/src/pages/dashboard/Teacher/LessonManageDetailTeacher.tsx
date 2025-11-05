@@ -90,6 +90,11 @@ export default function LessonManageDetail() {
 
   return (
     <div className="p-4">
+      {(lesson as any)?.has_pending_changes && (
+        <div style={{ background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412', padding: 8, borderRadius: 8, marginBottom: 12 }}>
+          Thay đổi bài học của bạn đang chờ Admin phê duyệt.
+        </div>
+      )}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
         <button onClick={() => navigate(`/dashboard/manage-courses/${courseId}`)}>← Quay lại</button>
         <h2 style={{ margin: 0 }}>Quản trị bài học</h2>
