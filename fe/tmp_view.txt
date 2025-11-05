@@ -1,146 +1,140 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import courseAdminApi from "../../../api/courseAdminApi";
 import type { Course } from "../../../types/course";
 import CourseForm from "../../../components/courses/CourseForm";
-import "./ManageCoursesPage.css";
+import LessonManager from "../../../components/courses/LessonManager";
 
-const ManageCoursesPage = () => {
+export default function CourseManageDetail() {
+  const { courseId } = useParams();
   const navigate = useNavigate();
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [selectedCourse, setSelectedCourse] = useState<Partial<Course> | null>(null);
-  const [showModal, setShowModal] = useState(false);
-  // Detail view moved to dedicated route
+  const [course, setCourse] = useState<Course | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const loadCourses = async () => {
+  const load = async () => {
+    if (!courseId) return;
+    setLoading(true);
+    setError(null);
     try {
-      const res = await courseAdminApi.getAll();
-      setCourses(res.data);
-    } catch (error) {
-      console.error("Error loading courses:", error);
-      alert("Không thể tải danh sách khóa học!");
+      const res = await courseAdminApi.getById(courseId);
+      setCourse(res.data ?? res); // support either shape
+    } catch (e: any) {
+      setError(e?.message || "Không tải được khóa học");
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadCourses();
-  }, []);
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courseId]);
 
   const handleSave = async (data: Partial<Course>) => {
+    if (!courseId) return;
+    setSaving(true);
+    setError(null);
     try {
-      if (selectedCourse?._id) {
-        await courseAdminApi.update(selectedCourse._id, data);
-      } else {
-        await courseAdminApi.create(data);
-      }
-      setShowModal(false);
-      setSelectedCourse(null);
-      loadCourses();
-    } catch (error) {
-      console.error("Error saving course:", error);
-      alert("Lưu khóa học thất bại. Vui lòng kiểm tra dữ liệu.");
+      await courseAdminApi.update(courseId, data);
+      await load();
+    } catch (e: any) {
+      setError(e?.message || "Lưu khóa học thất bại");
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleEdit = (course: Course) => {
-    setSelectedCourse(course);
-    setShowModal(true);
+  const handleStatus = async (status: 'approved' | 'rejected' | 'pending') => {
+    if (!courseId) return;
+    try {
+      await courseAdminApi.updateStatus(courseId, status as any);
+      await load();
+    } catch (e: any) {
+      setError(e?.message || 'Cap nhat trang thai that bai');
+    }
   };
 
-  const handleAdd = () => {
-    setSelectedCourse(null);
-    setShowModal(true);
+  const handlePublish = async (publish: boolean) => {
+    if (!courseId) return;
+    try {
+      await courseAdminApi.update(courseId, { is_published: publish } as any);
+      await load();
+    } catch (e: any) {
+      setError(e?.message || 'Cap nhat publish that bai');
+    }
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Bạn chắc chắn muốn xóa khóa học này?")) {
-      try {
-        await courseAdminApi.delete(id);
-        loadCourses();
-      } catch (error) {
-        console.error("Error deleting course:", error);
-        alert("Không thể xóa khóa học.");
-      }
+  const handleApproveChanges = async () => {
+    if (!courseId) return;
+    try {
+      await courseAdminApi.approveChanges(courseId);
+      await load();
+    } catch (e: any) {
+      setError(e?.message || 'Duyệt chỉnh sửa thất bại');
+    }
+  };
+
+  const handleRejectChanges = async () => {
+    if (!courseId) return;
+    try {
+      await courseAdminApi.rejectChanges(courseId);
+      await load();
+    } catch (e: any) {
+      setError(e?.message || 'Từ chối chỉnh sửa thất bại');
     }
   };
 
   return (
-    <div className="course-management-container">
-      <div className="header">
-        <h2>Quản lý khóa học</h2>
-        <button className="add-btn" onClick={handleAdd}>
-          + Thêm khóa học
+    <div className="p-4">
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+        <button onClick={() => navigate("/dashboard/manage-courses")}>
+          ← Quay lại
         </button>
+        <h2 style={{ margin: 0 }}>Thiết kế khóa học</h2>
       </div>
 
-      <ul className="course-list">
-        {courses.map((course) => (
-          <li key={course._id}>
-            <div className="course-info">
-              <strong>{course.title}</strong>
-              <span>{course.category?.name || "Chưa có danh mục"}</span>
-              <span>{(course.price_cents / 100).toLocaleString()} VND</span>
-              <span className={`status ${course.status}`}>{course.status}</span>
-            </div>
-            <div className="actions">
-              <button className="detail-btn" onClick={() => navigate(`/dashboard/manage-courses/${course._id}`)}>Chi tiết</button>
-              <button className="edit-btn" onClick={() => handleEdit(course)}>
-                Sửa
-              </button>
-              <button className="delete-btn" onClick={() => handleDelete(course._id)}>
-                Xóa
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      {showModal && (
-        <div className="modal">
-          <div className="modal-content">
-            <h3>{selectedCourse ? "Chỉnh sửa khóa học" : "Thêm khóa học mới"}</h3>
-            <CourseForm initialData={selectedCourse || {}} onSubmit={handleSave} />
-            <button className="close-btn" onClick={() => setShowModal(false)}>
-              Đóng
-            </button>
+      {loading ? (
+        <div>Đang tải khóa học...</div>
+      ) : error ? (
+        <div style={{ color: "red" }}>{error}</div>
+      ) : !course ? (
+        <div>Không tìm thấy khóa học.</div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 20 }}>
+          <div style={{ gridColumn: '1 / -1', background: '#fff', borderRadius: 12, padding: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
+            <strong>Quick actions:</strong>
+            <button onClick={() => handleStatus('approved')}>Approve</button>
+            <button onClick={() => handleStatus('rejected')}>Reject</button>
+            {((course as any)?.is_published ? (
+              <button onClick={() => handlePublish(false)}>Hide</button>
+            ) : (
+              <button onClick={() => handlePublish(true)}>Publish</button>
+            ))}
+            <span style={{ marginLeft: 'auto', fontSize: 12, color: '#6b7280' }}>
+              Status: {course.status} • {((course as any)?.is_published ? 'published' : 'unpublished')}
+            </span>
           </div>
-        </div>
-      )}
-
-      {detailCourse && (
-        <div className="modal">
-          <div className="modal-content" style={{ maxWidth: 900 }}>
-            <h3>Chi tiết khóa học</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16 }}>
-              <div>
-                <div style={{ marginBottom: 8 }}>
-                  <strong>Tiêu đề:</strong> {detailCourse.title}
-                </div>
-                <div style={{ marginBottom: 8 }}>
-                  <strong>Mô tả:</strong> {detailCourse.description}
-                </div>
-                <div style={{ marginBottom: 8 }}>
-                  <strong>Danh mục:</strong> {detailCourse.category?.name || "—"}
-                </div>
-                <div style={{ marginBottom: 8 }}>
-                  <strong>Giá:</strong> {(detailCourse.price_cents / 100).toLocaleString()} VND
-                </div>
-                <div style={{ marginBottom: 8 }}>
-                  <strong>Trạng thái:</strong> {detailCourse.status}
-                </div>
-              </div>
-              <div>
-                <LessonManager courseId={detailCourse._id} />
-              </div>
-            </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
-              <button className="close-btn" onClick={() => setDetailCourse(null)}>Đóng</button>
-            </div>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 16 }}>
+            <h3 style={{ marginTop: 0 }}>Thông tin khóa học</h3>
+            <CourseForm
+              initialData={{
+                ...course,
+                teacher_ids: Array.isArray((course as any)?.teacher)
+                  ? ((course as any).teacher as any[]).map((t: any) => t?._id).filter(Boolean)
+                  : [],
+              }}
+              onSubmit={handleSave}
+              showTeacherAssign
+            />
+            {saving && <div style={{ marginTop: 8 }}>Đang lưu...</div>}
+          </div>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 16 }}>
+            <LessonManager courseId={course._id} />
           </div>
         </div>
       )}
     </div>
   );
-};
-
-export default ManageCoursesPage;
+}

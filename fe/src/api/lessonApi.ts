@@ -25,6 +25,11 @@ const lessonApi = {
 
   playback: (lessonId: string): Promise<{ playbackUrl: string; expiresIn?: number }> =>
     axios.get(`/lesson/${lessonId}/playback`),
+
+  // Admin moderation
+  approveChanges: (lessonId: string) => axios.post(`/lesson/${lessonId}/approve-changes`),
+  rejectChanges: (lessonId: string) => axios.post(`/lesson/${lessonId}/reject-changes`),
+  getPending: (): Promise<{ data: any[]; count: number }> => axios.get(`/lesson/pending`),
 };
 
 export default lessonApi;

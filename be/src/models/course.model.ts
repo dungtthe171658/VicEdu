@@ -10,6 +10,10 @@ export interface ICourse extends Document {
   category: mongoose.Types.ObjectId | mongoose.Types.ObjectId[];
   status: "pending" | "approved" | "rejected";
   is_published?: boolean;
+  draft?: Record<string, any> | undefined;
+  has_pending_changes?: boolean;
+  pending_by?: mongoose.Types.ObjectId | null;
+  pending_at?: Date | null;
   lessons: mongoose.Types.ObjectId[];
 
 
@@ -34,6 +38,10 @@ const courseSchema = new Schema<ICourse>(
     is_published: { type: Boolean, default: false, index: true },
 
     lessons: [{ type: Schema.Types.ObjectId, ref: "Lesson" }],
+    draft: { type: Schema.Types.Mixed, default: undefined },
+    has_pending_changes: { type: Boolean, default: false, index: true },
+    pending_by: { type: Schema.Types.ObjectId, ref: "User", default: null },
+    pending_at: { type: Date, default: null },
   },
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" }, collection: "courses" }
 );

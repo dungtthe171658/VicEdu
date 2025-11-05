@@ -66,6 +66,26 @@ export default function CourseManageDetail() {
     }
   };
 
+  const handleApproveChanges = async () => {
+    if (!courseId) return;
+    try {
+      await courseAdminApi.approveChanges(courseId);
+      await load();
+    } catch (e: any) {
+      setError(e?.message || 'Duyệt chỉnh sửa thất bại');
+    }
+  };
+
+  const handleRejectChanges = async () => {
+    if (!courseId) return;
+    try {
+      await courseAdminApi.rejectChanges(courseId);
+      await load();
+    } catch (e: any) {
+      setError(e?.message || 'Từ chối chỉnh sửa thất bại');
+    }
+  };
+
   return (
     <div className="p-4">
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
@@ -85,6 +105,12 @@ export default function CourseManageDetail() {
         <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 20 }}>
           <div style={{ gridColumn: '1 / -1', background: '#fff', borderRadius: 12, padding: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
             <strong>Quick actions:</strong>
+            {(course as any)?.has_pending_changes && (
+              <>
+                <button onClick={handleApproveChanges}>Approve changes</button>
+                <button onClick={handleRejectChanges}>Reject changes</button>
+              </>
+            )}
             <button onClick={() => handleStatus('approved')}>Approve</button>
             <button onClick={() => handleStatus('rejected')}>Reject</button>
             {((course as any)?.is_published ? (

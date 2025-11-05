@@ -11,10 +11,13 @@ router.get("/:slug", courseController.getCourseBySlug);
 
 router.post("/", authenticateToken, checkRole(['admin', 'teacher']), courseController.createCourse);
 router.get("/admin/all", authenticateToken, checkRole(['admin']), courseController.getAllCoursesForAdmin);
+router.get("/admin/pending", authenticateToken, checkRole(['admin']), courseController.getPendingCourses);
 router.get("/teacher/all", authenticateToken, checkRole(['teacher']), courseController.getAllCoursesForTeacher);
 router.patch("/:id/status", authenticateToken, checkRole(['admin']), courseController.updateCourseStatus);
 router.put("/:id", authenticateToken, checkRole(['admin','teacher']), courseController.updateCourse);
 router.delete("/:id", authenticateToken, checkRole(['admin']), courseController.deleteCourse);
+router.post("/:id/approve-changes", authenticateToken, checkRole(['admin']), courseController.approveCourseChanges);
+router.post("/:id/reject-changes", authenticateToken, checkRole(['admin']), courseController.rejectCourseChanges);
 
 // Nested routes
 router.use("/:courseId/lessons", lessonRoutes);

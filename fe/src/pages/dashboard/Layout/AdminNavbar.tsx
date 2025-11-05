@@ -22,6 +22,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../hooks/useAuth';
+import axios from '../../../api/axios';
 
 type AdminNavbarProps = {
   onToggleDrawer: () => void;
@@ -90,6 +91,24 @@ const AdminNavbar: React.FC<AdminNavbarProps> = ({
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
+
+  // Pending edits count (courses + lessons)
+  const [pendingCount, setPendingCount] = useState<number>(0);
+  useEffect(() => {
+    const load = async () => {
+      try {
+        if (user?.role !== 'admin') return;
+        const [courses, lessons] = await Promise.all([
+          axios.get('/courses/admin/pending').catch(() => ({ count: 0 })),
+          axios.get('/lesson/pending').catch(() => ({ count: 0 })),
+        ]);
+        const c = (courses as any)?.count ?? (courses as any)?.data?.count ?? 0;
+        const l = (lessons as any)?.count ?? (lessons as any)?.data?.count ?? 0;
+        setPendingCount(Number(c) + Number(l));
+      } catch {}
+    };
+    load();
+  }, [user?.role]);
 
   // Realtime clock
   const [now, setNow] = useState<string>('');
@@ -185,7 +204,7 @@ const AdminNavbar: React.FC<AdminNavbarProps> = ({
 
           <Tooltip title="Thông báo">
             <IconButton color="inherit">
-              <Badge color="error" variant="dot">
+              <Badge color="error" badgeContent={pendingCount}>
                 <NotificationsIcon />
               </Badge>
             </IconButton>

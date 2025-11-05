@@ -18,6 +18,12 @@ export interface ILesson extends Document {
 
   status?: "pending" | "uploading" | "processing" | "ready" | "failed";
 
+  // Moderation draft and flags
+  draft?: Record<string, any> | undefined;
+  has_pending_changes?: boolean;
+  pending_by?: mongoose.Types.ObjectId | null;
+  pending_at?: Date | null;
+
   // Legacy (AWS/HLS)
   source_key?: string;
   output_prefix?: string;
@@ -71,6 +77,12 @@ const lessonSchema = new Schema<ILesson>(
     storage_path: { type: String, trim: true },
 
     reviews: [reviewSubSchema],
+
+    // Moderation fields
+    draft: { type: Schema.Types.Mixed, default: undefined },
+    has_pending_changes: { type: Boolean, default: false, index: true },
+    pending_by: { type: Schema.Types.ObjectId, ref: "User", default: null },
+    pending_at: { type: Date, default: null },
   },
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
