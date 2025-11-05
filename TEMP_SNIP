@@ -1,0 +1,41 @@
+export const deleteLesson = async (req: AuthRequest, res: Response) => {
+  try {
+    const { lessonId } = req.params;
+    const lid = toObjectId(lessonId);
+    if (!lid) return res.status(400).json({ message: "Invalid lessonId" });
+
+    const lesson = await LessonModel.findById(lid);
+    if (!lesson) return res.status(404).json({ message: "Lesson not found" });
+
+    // Xoá lesson
+    await LessonModel.deleteOne({ _id: lid });
+
+    // Gỡ khỏi course.lessons
+    await CourseModel.updateOne(
+      { _id: lesson.course_id },
+      { $pull: { lessons: lid } }
+    );
+
+    return res.json({ message: "Lesson deleted" });
+  } catch (error: any) {
+    return res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
+/**
+ * GET /api/lessons/:lessonId/playback
+ * Trả về URL phát video cho học viên đã enroll
+ * - Nếu bạn đã thêm các field HLS như playback_url/status: sẽ ưu tiên playback_url & check status==='ready'
+ * - Nếu chưa, sẽ fallback dùng lesson.video_url
+ */
+export const getLessonPlayback = async (req: AuthRequest, res: Response) => {
+  try {
+    const uid = getUserId(req);
+    if (!uid) return res.status(401).json({ message: "Unauthenticated" });
+
+    const { lessonId } = req.params;
+    const lid = toObjectId(lessonId);
+    if (!lid) return res.status(400).json({ message: "Invalid lessonId" });
+
+    const lesson = await LessonModel.findById(lid).lean();
+    if (!lesson) return res.status(404).json({ message: "Lesson not found" });

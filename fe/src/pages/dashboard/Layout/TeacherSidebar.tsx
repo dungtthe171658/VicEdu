@@ -57,7 +57,7 @@ const MuiSidebar: React.FC<SidebarProps> = ({
     { label: 'Đánh giá', path: 'manage-reviews', icon: ReviewsIcon },
 
     
-    { label: 'Pending edits', path: 'pending-edits', icon: ArticleIcon },
+    // { label: 'Pending edits', path: 'pending-edits', icon: ArticleIcon },
 
   ] as const;
 
