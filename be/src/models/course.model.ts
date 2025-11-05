@@ -9,6 +9,7 @@ export interface ICourse extends Document {
   teacher: mongoose.Types.ObjectId | mongoose.Types.ObjectId[];
   category: mongoose.Types.ObjectId | mongoose.Types.ObjectId[];
   status: "pending" | "approved" | "rejected";
+  is_published?: boolean;
   lessons: mongoose.Types.ObjectId[];
 
 
@@ -29,6 +30,8 @@ const courseSchema = new Schema<ICourse>(
       enum: ["pending", "approved", "rejected"],
       default: "pending",
     },
+
+    is_published: { type: Boolean, default: false, index: true },
 
     lessons: [{ type: Schema.Types.ObjectId, ref: "Lesson" }],
   },

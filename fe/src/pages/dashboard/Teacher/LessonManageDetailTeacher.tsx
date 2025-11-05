@@ -80,7 +80,7 @@ export default function LessonManageDetail() {
     setDeleting(true);
     try {
       await lessonApi.delete(lessonId);
-      navigate(`/dashboard/manage-courses/${courseId}`);
+      navigate(`/teacher/manage-courses/${courseId}`);
     } catch (e: any) {
       setError(e?.message || "Xóa bài học thất bại");
     } finally {

@@ -3,6 +3,7 @@ import { AuthRequest } from "../middlewares/auth";
 import CourseModel from "../models/course.model";
 import slugify from "slugify";
 import mongoose from "mongoose";
+import LessonModel from "../models/lesson.model";
 
 export const getPublicCourses = async (req: Request, res: Response) => {
   try {
@@ -49,7 +50,7 @@ export const getCourseById = async (req: Request, res: Response) => {
     }
 
     const course = await CourseModel.findById(id)
-      .populate("teacher", "full_name avatar_url -_id")
+      .populate("teacher", "full_name avatar_url")
       .populate("category", "name slug")
       .lean();
 
@@ -66,9 +67,20 @@ export const getCourseById = async (req: Request, res: Response) => {
 
 export const createCourse = async (req: AuthRequest, res: Response) => {
   try {
-    const { title, description, price, price_cents, category, category_id, thumbnail_url } = req.body as any;
-    const teacher = req.user;
+    const { title, description, price, price_cents, category, category_id, thumbnail_url, teacher_ids } = req.body as any;
+    const user: any = req.user || {};
     const slug = slugify(title, { lower: true, strict: true });
+
+    // Determine teacher list
+    let teachers: any[] = [];
+    if (Array.isArray(teacher_ids) && teacher_ids.length > 0 && user?.role === 'admin') {
+      teachers = teacher_ids
+        .filter((id: any) => id)
+        .map((id: any) => new mongoose.Types.ObjectId(String(id)));
+    } else {
+      const uid = user?._id?.toString?.() || user?.id?.toString?.();
+      if (uid) teachers = [new mongoose.Types.ObjectId(uid)];
+    }
 
     const newCourse = await CourseModel.create({
       title,
@@ -77,7 +89,7 @@ export const createCourse = async (req: AuthRequest, res: Response) => {
       price: price !== undefined ? Number(price) : (price_cents !== undefined ? Number(price_cents) / 100 : 0),
       thumbnail_url,
       category: category ?? (category_id ? [category_id] : undefined),
-      teacher,
+      teacher: teachers,
     });
     res.status(201).json(newCourse);
   } catch (error: any) {
@@ -148,6 +160,18 @@ export const updateCourse = async (req: AuthRequest, res: Response) => {
 
     const body = req.body || {};
     const updates: any = {};
+    const user: any = req.user || {};
+    const uid = user?._id?.toString?.() || user?.id?.toString?.();
+    const role = String(user?.role || "");
+
+    // Teachers must own the course to update
+    if (role === 'teacher') {
+      const found = await CourseModel.findById(id).select('teacher').lean();
+      if (!found) return res.status(404).json({ message: 'Course not found' });
+      const teachers = Array.isArray((found as any).teacher) ? (found as any).teacher : [];
+      const owns = teachers.some((t: any) => String(t) === String(uid));
+      if (!owns) return res.status(403).json({ message: 'You are not the owner of this course' });
+    }
 
     if (body.title !== undefined) {
       updates.title = body.title;
@@ -157,11 +181,13 @@ export const updateCourse = async (req: AuthRequest, res: Response) => {
     if (body.description !== undefined) updates.description = body.description;
     if (body.thumbnail_url !== undefined) updates.thumbnail_url = body.thumbnail_url;
 
-    // price handling: accept either price (number) or price_cents (VND*100 pattern from FE)
-    if (body.price !== undefined) updates.price = Number(body.price);
-    if (body.price_cents !== undefined && (body.price === undefined)) {
-      // Convert cents-like to basic unit
-      updates.price = Number(body.price_cents) / 100;
+    // price handling (admin only)
+    if (role === 'admin') {
+      if (body.price !== undefined) updates.price = Number(body.price);
+      if (body.price_cents !== undefined && (body.price === undefined)) {
+        // Convert cents-like to basic unit
+        updates.price = Number(body.price_cents) / 100;
+      }
     }
 
     if (body.category_id) {
@@ -171,9 +197,28 @@ export const updateCourse = async (req: AuthRequest, res: Response) => {
       } catch {}
     }
 
-    if (body.status !== undefined) {
-      if (["pending", "approved", "rejected"].includes(String(body.status))) {
-        updates.status = body.status;
+    // Admin-only: assign teachers
+    try {
+      if (role === 'admin') {
+        if (Array.isArray(body.teacher_ids)) {
+          updates.teacher = body.teacher_ids
+            .filter((id: any) => id)
+            .map((id: any) => new mongoose.Types.ObjectId(String(id)));
+        } else if (body.teacher_id) {
+          updates.teacher = [new mongoose.Types.ObjectId(String(body.teacher_id))];
+        }
+      }
+    } catch {}
+
+    // Admin-only: status & publish flag
+    if (role === 'admin') {
+      if (body.status !== undefined) {
+        if (["pending", "approved", "rejected"].includes(String(body.status))) {
+          updates.status = body.status;
+        }
+      }
+      if (body.is_published !== undefined) {
+        updates.is_published = Boolean(body.is_published);
       }
     }
 
@@ -183,6 +228,29 @@ export const updateCourse = async (req: AuthRequest, res: Response) => {
     });
     if (!updated) return res.status(404).json({ message: "Course not found" });
     return res.json(updated);
+  } catch (error: any) {
+    return res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
+// Admin: delete a course and its lessons
+export const deleteCourse = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params as { id: string };
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid id" });
+    }
+
+    const course = await CourseModel.findById(id);
+    if (!course) return res.status(404).json({ message: "Course not found" });
+
+    // Delete lessons of this course
+    await LessonModel.deleteMany({ course_id: new mongoose.Types.ObjectId(id) });
+
+    // Delete the course
+    await CourseModel.deleteOne({ _id: id });
+
+    return res.json({ message: "Course deleted" });
   } catch (error: any) {
     return res.status(500).json({ message: error.message || "Server error" });
   }

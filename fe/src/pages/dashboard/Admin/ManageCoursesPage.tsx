@@ -63,6 +63,26 @@ const ManageCoursesPage = () => {
     }
   };
 
+  const handleStatus = async (id: string, status: 'approved' | 'rejected' | 'pending') => {
+    try {
+      await courseAdminApi.updateStatus(id, status);
+      loadCourses();
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('Cap nhat trang thai that bai');
+    }
+  };
+
+  const handlePublish = async (id: string, publish: boolean) => {
+    try {
+      await courseAdminApi.update(id, { is_published: publish } as any);
+      loadCourses();
+    } catch (error) {
+      console.error('Error updating publish:', error);
+      alert('Cap nhat publish that bai');
+    }
+  };
+
   return (
     <div className="course-management-container">
       <div className="header">
@@ -78,6 +98,20 @@ const ManageCoursesPage = () => {
               <span>{course.category?.name || "Chưa có danh mục"}</span>
               <span>{course.price_cents.toLocaleString()} VND</span>
               <span className={`status ${course.status}`}>{course.status}</span>
+              <span className={`status ${((course as any).is_published ? 'published' : 'unpublished')}`}>
+                {((course as any).is_published ? 'published' : 'unpublished')}
+              </span>
+              <span>
+                <div style={{ display: 'inline-flex', gap: 8, marginLeft: 12 }}>
+                  <button onClick={() => handleStatus(course._id, 'approved')}>Approve</button>
+                  <button onClick={() => handleStatus(course._id, 'rejected')}>Reject</button>
+                  {((course as any).is_published ? (
+                    <button onClick={() => handlePublish(course._id, false)}>Hide</button>
+                  ) : (
+                    <button onClick={() => handlePublish(course._id, true)}>Publish</button>
+                  ))}
+                </div>
+              </span>
             </div>
             <div className="actions">
               <button className="detail-btn" onClick={() => navigate(`/dashboard/manage-courses/${course._id}`)}>Chi tiết</button>
@@ -92,7 +126,7 @@ const ManageCoursesPage = () => {
         <div className="modal">
           <div className="modal-content">
             <h3>{selectedCourse ? "Chỉnh sửa khóa học" : "Thêm khóa học mới"}</h3>
-            <CourseForm initialData={selectedCourse || {}} onSubmit={handleSave} />
+            <CourseForm initialData={selectedCourse || {}} onSubmit={handleSave} showTeacherAssign />
             <button className="close-btn" onClick={() => setShowModal(false)}>Đóng</button>
           </div>
         </div>

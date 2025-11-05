@@ -18,6 +18,9 @@ const courseAdminApi = {
   update: (id: string, data: Partial<Course>) => axios.put(`${BASE_URL}/courses/${id}`, data),
 
   delete: (id: string) => axios.delete(`${BASE_URL}/courses/${id}`),
+
+  updateStatus: (id: string, status: 'approved' | 'rejected' | 'pending') =>
+    axios.patch(`${BASE_URL}/courses/${id}/status`, { status }),
 };
 
 export default courseAdminApi;
