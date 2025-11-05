@@ -18,6 +18,12 @@ router.put("/:id", authenticateToken, checkRole(['admin','teacher']), courseCont
 router.delete("/:id", authenticateToken, checkRole(['admin']), courseController.deleteCourse);
 router.post("/:id/approve-changes", authenticateToken, checkRole(['admin']), courseController.approveCourseChanges);
 router.post("/:id/reject-changes", authenticateToken, checkRole(['admin']), courseController.rejectCourseChanges);
+// Publish flow
+router.post("/:id/request-publish", authenticateToken, checkRole(['teacher','admin']), courseController.requestPublish);
+router.post("/:id/approve-publish", authenticateToken, checkRole(['admin']), courseController.approvePublish);
+router.post("/:id/reject-publish", authenticateToken, checkRole(['admin']), courseController.rejectPublish);
+// Delete request (teacher)
+router.post("/:id/request-delete", authenticateToken, checkRole(['teacher','admin']), courseController.requestDeleteCourse);
 
 // Nested routes
 router.use("/:courseId/lessons", lessonRoutes);

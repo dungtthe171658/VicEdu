@@ -26,6 +26,10 @@ const courseAdminApi = {
   approveChanges: (id: string) => axios.post(`${BASE_URL}/courses/${id}/approve-changes`),
   rejectChanges: (id: string) => axios.post(`${BASE_URL}/courses/${id}/reject-changes`),
   getPending: () => axios.get(`${BASE_URL}/courses/admin/pending`),
+
+  // Publish approval
+  approvePublish: (id: string) => axios.post(`${BASE_URL}/courses/${id}/approve-publish`),
+  rejectPublish: (id: string) => axios.post(`${BASE_URL}/courses/${id}/reject-publish`),
 };
 
 export default courseAdminApi;

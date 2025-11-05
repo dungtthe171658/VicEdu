@@ -9,6 +9,7 @@ import { config } from "../config/config";
 import CourseModel from "../models/course.model";
 import EnrollmentModel from "../models/enrollment.model";
 import { AuthRequest } from "../middlewares/auth";
+import EditHistory from "../models/editHistory.model";
 
 // -------------------------------
 // Helpers
@@ -23,6 +24,17 @@ function getUserId(req: Request & { user?: any; userId?: any; user_id?: any }): 
   if (req.userId) return String(req.userId);
   if (req.user_id) return String(req.user_id);
   return null;
+}
+
+function buildChanges(before: any, after: any, keys: string[]) {
+  const changes: Record<string, { from: any; to: any }> = {};
+  for (const k of keys) {
+    const b = (before as any)?.[k];
+    const a = (after as any)?.[k];
+    const eq = JSON.stringify(b) === JSON.stringify(a);
+    if (!eq) changes[k] = { from: b, to: a };
+  }
+  return changes;
 }
 
 /**
@@ -156,6 +168,18 @@ export const createLesson = async (req: AuthRequest, res: Response) => {
     (course.lessons as any[]).push(newLesson._id);
     await course.save();
 
+    try {
+      await EditHistory.create({
+        target_type: 'lesson',
+        target_id: newLesson._id,
+        submitted_by: new mongoose.Types.ObjectId(String(getUserId(req) || '000000000000000000000000')),
+        submitted_role: ((req.user as any)?.role === 'teacher') ? 'teacher' : 'system',
+        status: 'applied',
+        before: {},
+        after: { title, video_url, duration_minutes: Number(duration_minutes || 0), description, storage_provider, storage_bucket, storage_path, playback_url },
+        changes: { title: { from: undefined, to: title } },
+      });
+    } catch {}
     return res.status(201).json(newLesson);
   } catch (error: any) {
     return res.status(500).json({ message: error.message || "Server error" });
@@ -178,39 +202,31 @@ export const updateLesson = async (req: AuthRequest, res: Response) => {
     const uid = getUserId(req);
 
     if (role === 'teacher') {
-      const draft: any = {};
-      if (title !== undefined) draft.title = title;
-      if (video_url !== undefined) draft.video_url = video_url;
-      if (duration_minutes !== undefined) draft.duration_minutes = Number(duration_minutes);
-      if (position !== undefined) draft.position = Number(position);
-      if (description !== undefined) draft.description = description;
-      if (storage_provider !== undefined) draft.storage_provider = storage_provider;
-      if (storage_bucket !== undefined) draft.storage_bucket = storage_bucket;
-      if (storage_path !== undefined) draft.storage_path = storage_path;
-      if (playback_url !== undefined) draft.playback_url = playback_url;
+      // Always apply teacher edits directly (except delete handled elsewhere)
+      const currentLesson = await LessonModel.findById(lid).lean();
+      if (!currentLesson) return res.status(404).json({ message: 'Lesson not found' });
 
-      const updated = await LessonModel.findByIdAndUpdate(lid, {
-        $set: {
-          draft,
-          has_pending_changes: true,
-          pending_by: uid ? new mongoose.Types.ObjectId(uid) : null,
-          pending_at: new Date(),
-        },
-      }, { new: true, runValidators: true });
+      const payload: any = {};
+      if (title !== undefined) payload.title = title;
+      if (video_url !== undefined) payload.video_url = video_url;
+      if (duration_minutes !== undefined) payload.duration_minutes = Number(duration_minutes);
+      if (position !== undefined) payload.position = Number(position);
+      if (description !== undefined) payload.description = description;
+      if (storage_provider !== undefined) payload.storage_provider = storage_provider;
+      if (storage_bucket !== undefined) payload.storage_bucket = storage_bucket;
+      if (storage_path !== undefined) payload.storage_path = storage_path;
+      if (playback_url !== undefined) payload.playback_url = playback_url;
+
+      const updated = await LessonModel.findByIdAndUpdate(lid, payload, { new: true, runValidators: true });
       if (!updated) return res.status(404).json({ message: 'Lesson not found' });
-
-      // notify admins
       try {
-        const admins = await UserModel.find({ role: 'admin' }).select('email').lean();
-        const emails = admins.map((a: any) => a.email).filter(Boolean);
-        const link = `${config.frontend_url || ''}/dashboard/manage-courses/${(updated as any).course_id}`;
-        await Promise.all(
-          emails.map((to) =>
-            SendEmail.sendBasicEmail({ to, subject: `[VicEdu] Pending Lesson Changes`, text: `A teacher submitted lesson edits. Review course: ${link}` })
-          )
-        );
+        const before: any = {}; const after: any = {};
+        Object.keys(payload).forEach((k) => { before[k] = (currentLesson as any)?.[k]; after[k] = (payload as any)[k]; });
+        const changed = buildChanges(before, after, Object.keys(after));
+        if (Object.keys(changed).length > 0) {
+          await EditHistory.create({ target_type: 'lesson', target_id: lid, submitted_by: new mongoose.Types.ObjectId(uid || undefined as any), submitted_role: 'teacher', status: 'applied', before, after, changes: changed });
+        }
       } catch {}
-
       return res.json(updated);
     }
 
@@ -226,8 +242,33 @@ export const updateLesson = async (req: AuthRequest, res: Response) => {
     if (storage_path !== undefined) payload.storage_path = storage_path;
     if (playback_url !== undefined) payload.playback_url = playback_url;
 
+    const current = await LessonModel.findById(lid).lean();
     const updated = await LessonModel.findByIdAndUpdate(lid, payload, { new: true, runValidators: true });
     if (!updated) return res.status(404).json({ message: 'Lesson not found' });
+
+    // History: admin applied edit
+    try {
+      const before: any = {};
+      const after: any = {};
+      Object.keys(payload).forEach((k) => {
+        before[k] = (current as any)?.[k];
+        after[k] = (payload as any)?.[k];
+      });
+      const changed = buildChanges(before, after, Object.keys(after));
+      const uidStr = getUserId(req);
+      if (Object.keys(changed).length > 0) {
+        await EditHistory.create({
+          target_type: "lesson",
+          target_id: lid,
+          submitted_by: uidStr ? new mongoose.Types.ObjectId(uidStr) : new mongoose.Types.ObjectId(),
+          submitted_role: role === 'admin' ? 'admin' : 'system',
+          status: "applied",
+          before,
+          after,
+          changes: changed,
+        });
+      }
+    } catch {}
     return res.json(updated);
   } catch (error: any) {
     return res.status(500).json({ message: error.message || "Server error" });
@@ -243,20 +284,36 @@ export const approveLessonChanges = async (req: AuthRequest, res: Response) => {
     if (!lesson) return res.status(404).json({ message: 'Lesson not found' });
     const draft = lesson.draft || {};
     if (!lesson.has_pending_changes || !draft) return res.status(400).json({ message: 'No pending changes' });
-    Object.assign(lesson, {
-      title: draft.title !== undefined ? draft.title : lesson.title,
-      description: draft.description !== undefined ? draft.description : lesson.description,
-      video_url: draft.video_url !== undefined ? draft.video_url : lesson.video_url,
-      playback_url: draft.playback_url !== undefined ? draft.playback_url : lesson.playback_url,
-      storage_provider: draft.storage_provider !== undefined ? draft.storage_provider : lesson.storage_provider,
-      storage_bucket: draft.storage_bucket !== undefined ? draft.storage_bucket : lesson.storage_bucket,
-      storage_path: draft.storage_path !== undefined ? draft.storage_path : lesson.storage_path,
-      draft: undefined,
-      has_pending_changes: false,
-      pending_by: null,
-      pending_at: null,
-    });
-    await lesson.save();
+    if ((draft as any).__action === 'delete') {
+      const courseId = lesson.course_id;
+      await LessonModel.deleteOne({ _id: lesson._id });
+      await CourseModel.updateOne({ _id: courseId }, { $pull: { lessons: lesson._id } });
+    } else {
+      Object.assign(lesson, {
+        title: draft.title !== undefined ? draft.title : lesson.title,
+        description: draft.description !== undefined ? draft.description : lesson.description,
+        video_url: draft.video_url !== undefined ? draft.video_url : lesson.video_url,
+        playback_url: draft.playback_url !== undefined ? draft.playback_url : lesson.playback_url,
+        storage_provider: draft.storage_provider !== undefined ? draft.storage_provider : lesson.storage_provider,
+        storage_bucket: draft.storage_bucket !== undefined ? draft.storage_bucket : lesson.storage_bucket,
+        storage_path: draft.storage_path !== undefined ? draft.storage_path : lesson.storage_path,
+        draft: undefined,
+        has_pending_changes: false,
+        pending_by: null,
+        pending_at: null,
+      });
+      await lesson.save();
+    }
+    // Mark latest pending history as approved
+    try {
+      const latest = await EditHistory.findOne({ target_type: 'lesson', target_id: lid, status: 'pending' }).sort({ created_at: -1 });
+      if (latest) {
+        latest.status = 'approved';
+        latest.approved_by = getUserId(req) ? new mongoose.Types.ObjectId(String(getUserId(req))) : null;
+        latest.approved_at = new Date();
+        await latest.save();
+      }
+    } catch {}
     return res.json(lesson);
   } catch (error: any) {
     return res.status(500).json({ message: error.message || 'Server error' });
@@ -270,6 +327,17 @@ export const rejectLessonChanges = async (req: AuthRequest, res: Response) => {
     if (!lid) return res.status(400).json({ message: 'Invalid lessonId' });
     const updated = await LessonModel.findByIdAndUpdate(lid, { $unset: { draft: 1 }, $set: { has_pending_changes: false, pending_by: null, pending_at: null } }, { new: true });
     if (!updated) return res.status(404).json({ message: 'Lesson not found' });
+    // Mark latest pending history as rejected
+    try {
+      const latest = await EditHistory.findOne({ target_type: 'lesson', target_id: lid, status: 'pending' }).sort({ created_at: -1 });
+      if (latest) {
+        latest.status = 'rejected';
+        latest.approved_by = getUserId(req) ? new mongoose.Types.ObjectId(String(getUserId(req))) : null;
+        latest.approved_at = new Date();
+        (latest as any).reason = (req.body as any)?.reason;
+        await latest.save();
+      }
+    } catch {}
     return res.json(updated);
   } catch (error: any) {
     return res.status(500).json({ message: error.message || 'Server error' });
@@ -278,7 +346,9 @@ export const rejectLessonChanges = async (req: AuthRequest, res: Response) => {
 
 export const getPendingLessons = async (_req: Request, res: Response) => {
   try {
-    const items = await LessonModel.find({ has_pending_changes: true }).select('title course_id pending_at').lean();
+    const items = await LessonModel.find({ has_pending_changes: true })
+      .select('title course_id pending_at draft')
+      .lean();
     return res.json({ data: items, count: items.length });
   } catch (error: any) {
     return res.status(500).json({ message: error.message || 'Server error' });
@@ -297,6 +367,33 @@ export const deleteLesson = async (req: AuthRequest, res: Response) => {
 
     const lesson = await LessonModel.findById(lid);
     if (!lesson) return res.status(404).json({ message: "Lesson not found" });
+
+    // If teacher deletes lesson of a published course, create a pending delete instead
+    const role = (req.user as any)?.role || '';
+    const courseDoc = await CourseModel.findById((lesson as any).course_id).select('is_published').lean();
+    if (role === 'teacher' && (courseDoc as any)?.is_published) {
+      const updated = await LessonModel.findByIdAndUpdate(lid, {
+        $set: {
+          draft: { __action: 'delete' },
+          has_pending_changes: true,
+          pending_by: getUserId(req) ? new mongoose.Types.ObjectId(String(getUserId(req))) : null,
+          pending_at: new Date(),
+        },
+      }, { new: true });
+      try {
+        await EditHistory.create({
+          target_type: 'lesson',
+          target_id: lid,
+          submitted_by: new mongoose.Types.ObjectId(String(getUserId(req) || '000000000000000000000000')),
+          submitted_role: 'teacher',
+          status: 'pending',
+          before: { deleted: false },
+          after: { deleted: true },
+          changes: { deleted: { from: false, to: true } },
+        });
+      } catch {}
+      return res.json({ message: 'Delete request submitted', lesson: updated });
+    }
 
     // Xoá lesson
     await LessonModel.deleteOne({ _id: lid });

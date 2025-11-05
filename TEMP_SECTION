@@ -1,0 +1,110 @@
+<section>
+            <h3>Courses</h3>
+            {courses.length === 0 ? (
+              <div>Không có yêu cầu chỉnh sửa.</div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'left' }}>Tiêu đề</th>
+                    <th>Thời gian</th>
+                    <th>Hành động</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {courses.map((c) => (
+                    <tr key={c._id}>
+                      <td>
+                        <div><strong>Trước:</strong> {c.title}</div>
+                        {c?.draft?.title !== undefined && (
+                          <div><strong>Sau:</strong> {String(c.draft.title)}</div>
+                        )}
+                        <div style={{ marginTop: 4 }}>
+                          <Link to={`/dashboard/manage-courses/${c._id}`}>Chi tiết</Link>
+                        </div>
+                      </td>
+                      <td style={{ textAlign: 'center' }}>{fmt((c as any)?.pending_at)}</td>
+                      <td style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                        <button onClick={() => approveCourse(c._id)}>Approve</button>
+                        <button onClick={() => rejectCourse(c._id)} style={{ color: '#b91c1c' }}>Reject</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
+
+          <section>
+            <h3>Lessons</h3>
+            {lessons.length === 0 ? (
+              <div>Không có yêu cầu chỉnh sửa.</div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'left' }}>Tiêu đề</th>
+                    <th>Khóa học</th>
+                    <th>Thời gian</th>
+                    <th>Hành động</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lessons.map((l) => (
+                    <tr key={l._id}>
+                      <td>
+                        <div><strong>Trước:</strong> {l.title}</div>
+                        {l?.draft?.title !== undefined && (
+                          <div><strong>Sau:</strong> {String(l.draft.title)}</div>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <Link to={`/dashboard/manage-courses/${l.course_id}/lessons/${l._id}`}>Xem</Link>
+                      </td>
+                      <td style={{ textAlign: 'center' }}>{fmt((l as any)?.pending_at)}</td>
+                      <td style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                        <button onClick={() => approveLesson(l._id)}>Approve</button>
+                        <button onClick={() => rejectLesson(l._id)} style={{ color: '#b91c1c' }}>Reject</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
+
+          <section>
+            <h3>Recent changes</h3>
+            {recent.length === 0 ? (
+              <div>Chưa có lịch sử gần đây.</div>
+            ) : (
+              <div style={{ display: 'grid', gap: 12 }}>
+                {recent.map((h) => (
+                  <div key={h._id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <span>{h.target_type.toUpperCase()}</span>
+                      <span style={{ color: '#6b7280' }}>{h.created_at ? new Date(h.created_at).toLocaleString('vi-VN') : ''}</span>
+                      <span style={{ marginLeft: 'auto' }}>{h.status}</span>
+                    </div>
+                    <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
+                      <div style={{ fontWeight: 600 }}>Field</div>
+                      <div style={{ fontWeight: 600 }}>Before</div>
+                      <div style={{ fontWeight: 600 }}>After</div>
+                      {Object.entries(h.changes || {}).map(([k, v]) => (
+                        <>
+                          <div key={h._id + k + 'f'} style={{ fontFamily: 'monospace' }}>{k}</div>
+                          <div key={h._id + k + 'b'} style={{ whiteSpace: 'pre-wrap' }}>{String((v as any).from ?? '')}</div>
+                          <div key={h._id + k + 'a'} style={{ whiteSpace: 'pre-wrap' }}>{String((v as any).to ?? '')}</div>
+                        </>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}

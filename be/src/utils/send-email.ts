@@ -1,8 +1,19 @@
-import {config} from "../config"
-import sgMail from '@sendgrid/mail'
+import {config} from "../config";
+import sgMail from '@sendgrid/mail';
 import {logger} from "./logger";
 
-sgMail.setApiKey(config.send_grid.api_key as string)
+let emailEnabled = false;
+try {
+  const key = (config.send_grid.api_key || '') as string;
+  if (key && key.startsWith('SG.')) {
+    sgMail.setApiKey(key);
+    emailEnabled = true;
+  } else {
+    logger.warn('SendGrid disabled: missing or invalid API key');
+  }
+} catch (err) {
+  logger.warn('SendGrid initialization failed; email sending disabled');
+}
 export const SendEmail = {
     sendBasicEmail: async ({ to, subject, text, html }: { to: string, subject: string, text?: string, html?: string }) => {
         try {
@@ -19,8 +30,9 @@ export const SendEmail = {
             if (typeof html === 'string') mailData.html = html;
             else if (typeof text === 'string') mailData.html = text;
 
-            await sgMail.send(mailData)
-            logger.log('Email sent to: ', to)
+            if (!emailEnabled) return false;
+            await sgMail.send(mailData);
+            logger.log('Email sent to: ', to);
             return true
         } catch (error: any) {
             logger.error(error)
@@ -42,6 +54,7 @@ export const SendEmail = {
             },
         })
 
+        if (!emailEnabled) return false;
         return sgMail
             .send({
                 to,

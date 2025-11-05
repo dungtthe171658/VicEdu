@@ -46,6 +46,16 @@ export default function CourseManageDetail() {
     }
   };
 
+  const submitForPublish = async () => {
+    if (!courseId) return;
+    try {
+      await courseTeacherApi.requestPublish(courseId);
+      await load();
+    } catch (e: any) {
+      alert(e?.message || 'Gửi yêu cầu publish thất bại');
+    }
+  };
+
   return (
     <div className="p-4">
       {(course as any)?.has_pending_changes && (
@@ -68,11 +78,40 @@ export default function CourseManageDetail() {
         <div>Không tìm thấy khóa học.</div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 20 }}>
+          {!((course as any)?.is_published) && (
+            <div style={{ gridColumn: '1 / -1', background: '#fff', borderRadius: 12, padding: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
+              {(course as any)?.publish_requested_at ? (
+                <span>Đã gửi yêu cầu publish lúc {(course as any)?.publish_requested_at ? new Date((course as any).publish_requested_at).toLocaleString('vi-VN') : ''}</span>
+              ) : (
+                <button onClick={submitForPublish}>Gửi yêu cầu publish</button>
+              )}
+            </div>
+          )}
           <div style={{ background: "#fff", borderRadius: 12, padding: 16 }}>
             <h3 style={{ marginTop: 0 }}>Thông tin khóa học</h3>
             <CourseForm initialData={course} onSubmit={handleSave} />
             {saving && <div style={{ marginTop: 8 }}>Đang lưu...</div>}
           </div>
+          {(course as any)?.has_pending_changes && (course as any)?.draft && (
+            <div style={{ background: '#fff', borderRadius: 12, padding: 16 }}>
+              <h3 style={{ marginTop: 0 }}>Bản nháp đang chờ duyệt</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                <div style={{ fontWeight: 600 }}>Field</div>
+                <div style={{ fontWeight: 600 }}>Before</div>
+                <div style={{ fontWeight: 600 }}>After (draft)</div>
+                {Object.entries((course as any).draft).map(([k, v]) => (
+                  <>
+                    <div key={k + '-f'} style={{ fontFamily: 'monospace' }}>{k}</div>
+                    <div key={k + '-b'} style={{ whiteSpace: 'pre-wrap' }}>{String(((course as any)[k] !== undefined ? (course as any)[k] : ''))}</div>
+                    <div key={k + '-a'} style={{ whiteSpace: 'pre-wrap' }}>{String(v as any)}</div>
+                  </>
+                ))}
+              </div>
+              <div style={{ marginTop: 8, color: '#6b7280', fontSize: 12 }}>
+                Gửi lúc: {((course as any).pending_at ? new Date((course as any).pending_at).toLocaleString() : '')}
+              </div>
+            </div>
+          )}
           <div style={{ background: "#fff", borderRadius: 12, padding: 16 }}>
             <LessonManager courseId={course._id} />
           </div>

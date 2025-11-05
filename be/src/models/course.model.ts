@@ -14,6 +14,9 @@ export interface ICourse extends Document {
   has_pending_changes?: boolean;
   pending_by?: mongoose.Types.ObjectId | null;
   pending_at?: Date | null;
+  publish_requested_at?: Date | null;
+  publish_requested_by?: mongoose.Types.ObjectId | null;
+  published_at?: Date | null;
   lessons: mongoose.Types.ObjectId[];
 
 
@@ -42,6 +45,9 @@ const courseSchema = new Schema<ICourse>(
     has_pending_changes: { type: Boolean, default: false, index: true },
     pending_by: { type: Schema.Types.ObjectId, ref: "User", default: null },
     pending_at: { type: Date, default: null },
+    publish_requested_at: { type: Date, default: null, index: true },
+    publish_requested_by: { type: Schema.Types.ObjectId, ref: "User", default: null },
+    published_at: { type: Date, default: null, index: true },
   },
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" }, collection: "courses" }
 );
