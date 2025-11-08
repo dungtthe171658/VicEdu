@@ -13,6 +13,7 @@ import userRoutes from "./user.route";
 import homeRoutes from "./home.routes";
 import chatRoutes from "./chat.route";
 import subtitleRoutes from "./subtitle.route";
+import commentRoutes from "./comment.route";
 
 const router = express.Router();
 
@@ -29,6 +30,7 @@ router.use("/user", userRoutes);
 router.use("/uploads", uploadRoutes);
 router.use("/chat", chatRoutes);
 router.use("/subtitles", subtitleRoutes);
+router.use("/comments", commentRoutes);
 
 export default router;
 

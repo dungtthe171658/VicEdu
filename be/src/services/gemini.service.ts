@@ -4,6 +4,9 @@ import CourseModel from "../models/course.model";
 import BookModel from "../models/book.model";
 import UserModel from "../models/user.model";
 import EnrollmentModel from "../models/enrollment.model";
+import mongoose from "mongoose";
+import OrderModel from "../models/order.model";
+import OrderItemModel from "../models/order_item.model";
 
 export interface ChatContext {
   userRole: string;
