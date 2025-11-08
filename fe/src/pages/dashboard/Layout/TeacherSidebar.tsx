@@ -19,6 +19,7 @@ import {
   Article as ArticleIcon,
   Category as CategoryIcon,
   Reviews as ReviewsIcon,
+  QuestionAnswer as QuestionAnswerIcon,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
 } from '@mui/icons-material';
@@ -51,10 +52,11 @@ const MuiSidebar: React.FC<SidebarProps> = ({
   const theme = useTheme();
 
   const items = [
-    { label: 'Dashboard', path: '/dashboard', icon: HomeIcon },
-    { label: 'Đơn hàng cho teacher', path: 'manage-orders', icon: ShoppingCartIcon },
+    { label: 'Dashboard', path: '/teacher', icon: HomeIcon },
+    { label: 'Theo dõi học viên', path: 'manage-student', icon: ShoppingCartIcon },
     { label: 'Khóa học', path: 'manage-courses', icon: ArticleIcon },
-    { label: 'Đánh giá', path: 'manage-reviews', icon: ReviewsIcon },
+    { label: 'Bình luận', path: 'manage-reviews', icon: ReviewsIcon },
+    { label: 'Hỏi đáp bài học', path: 'manage-comments', icon: QuestionAnswerIcon },
 
     
     // { label: 'Pending edits', path: 'pending-edits', icon: ArticleIcon },

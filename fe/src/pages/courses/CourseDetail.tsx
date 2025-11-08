@@ -1,4 +1,4 @@
-﻿import { useLocation, useParams, Link } from "react-router-dom";
+import { useLocation, useParams, Link } from "react-router-dom";
 import { ArrowLeft, BookOpen, Star, Lock } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import courseApi from "../../api/courseApi";
@@ -10,10 +10,14 @@ import type { Lesson } from "../../types/lesson";
 import reviewClient, { type ReviewDto } from "../../api/reviewClient";
 import BilingualSubtitles from "../../components/video/BilingualSubtitles";
 import { subtitleApi, type SubtitleFormat, type BilingualCue } from "../../api/subtitleApi";
+import { useAuth } from "../../hooks/useAuth";
+import commentApi from "../../api/commentApi";
+import type { LessonComment } from "../../types/comment";
 
 export default function CourseDetail() {
   const { slug } = useParams();
   const location = useLocation();
+  const { user } = useAuth();
 
   const [course, setCourse] = useState<Course | null>((location.state as any)?.course || null);
   const [isEnrolled, setIsEnrolled] = useState<boolean>(false);
@@ -43,6 +47,18 @@ export default function CourseDetail() {
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewMessage, setReviewMessage] = useState<string>("");
 
+  // Lesson discussions
+  const [threads, setThreads] = useState<LessonComment[]>([]);
+  const [loadingThreads, setLoadingThreads] = useState(false);
+  const [questionInput, setQuestionInput] = useState("");
+  const [postingQuestion, setPostingQuestion] = useState(false);
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
+  const [replying, setReplying] = useState<Record<string, boolean>>({});
+  const [threadFilter, setThreadFilter] = useState<"all" | "open" | "resolved">("all");
+  const [discussionMessage, setDiscussionMessage] = useState<string>("");
+
+  // Tabs: Q&A vs Reviews
+  const [activeTab, setActiveTab] = useState<"qa" | "reviews">("qa");
   const { addCourse, courses, removeCourse } = useCart();
 
   // Normalize various Mongo-like ID shapes to a string id
@@ -171,8 +187,41 @@ export default function CourseDetail() {
     setSubVisible(false);
   }, [playbackUrl]);
 
+  // Load discussion threads when lesson changes
+  useEffect(() => {
+    setReplyDrafts({});
+    if (!selectedLessonId) {
+      setThreads([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoadingThreads(true);
+      setDiscussionMessage("");
+      try {
+        const params = threadFilter === "all" ? undefined : { status: threadFilter };
+        const res = await commentApi.listByLesson(selectedLessonId, params);
+        if (!cancelled) {
+          setThreads(Array.isArray(res?.data) ? res.data : []);
+        }
+      } catch (error: any) {
+        if (!cancelled) {
+          setThreads([]);
+          setDiscussionMessage(error?.message || "Không thể tải hỏi đáp cho bài học này.");
+        }
+      } finally {
+        if (!cancelled) setLoadingThreads(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedLessonId, threadFilter]);
+
   const isInCart = courses.some((c) => (c as any)._id === (course as any)?._id);
-  const formatVND = (n: number) => `${n.toLocaleString("vi-VN")} ₫`;
+
+  const formatVND = (n: number) =>
+    new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n);
 
   const categoryName = useMemo(() => {
     const cat = (course as any)?.category;
@@ -180,14 +229,102 @@ export default function CourseDetail() {
     return "Chưa có danh mục";
   }, [course]);
 
+  const selectedLesson = useMemo(
+    () => lessons.find((ls) => ls._id === selectedLessonId) || null,
+    [lessons, selectedLessonId]
+  );
+
+  const canParticipate = Boolean(user && (isEnrolled || user?.role === "teacher" || user?.role === "admin"));
+  const canModerate = Boolean(user && (user?.role === "teacher" || user?.role === "admin"));
+
+  const formatTimestamp = (iso?: string) => {
+    if (!iso) return "";
+    const date = new Date(iso);
+    if (Number.isNaN(date.valueOf())) return "";
+    return date.toLocaleString("vi-VN");
+  };
+
+  const handleAskQuestion = async () => {
+    if (!selectedLessonId) return;
+    const message = questionInput.trim();
+    if (!message) return;
+    setPostingQuestion(true);
+    setDiscussionMessage("");
+    try {
+      const created = await commentApi.create({ lesson_id: selectedLessonId, content: message });
+      setThreads((prev) => [{ ...created, replies: created.replies || [] }, ...prev]);
+      setQuestionInput("");
+    } catch (error: any) {
+      setDiscussionMessage(error?.message || "Không thể gửi câu hỏi. Vui lòng thử lại.");
+    } finally {
+      setPostingQuestion(false);
+    }
+  };
+
+  const handleReplySubmit = async (thread: LessonComment) => {
+    const text = replyDrafts[thread._id]?.trim();
+    if (!text) return;
+    const lessonId = thread.lesson?._id || selectedLessonId;
+    if (!lessonId) return;
+    setReplying((prev) => ({ ...prev, [thread._id]: true }));
+    setDiscussionMessage("");
+    try {
+      const created = await commentApi.create({ lesson_id: lessonId, parent_id: thread._id, content: text });
+      setThreads((prev) =>
+        prev.map((item) =>
+          item._id === thread._id
+            ? {
+                ...item,
+                replies: [...(item.replies || []), created],
+                reply_count: (item.reply_count || 0) + 1,
+                teacher_reply_count:
+                  created.user?.role === "teacher" || created.user?.role === "admin"
+                    ? (item.teacher_reply_count || 0) + 1
+                    : item.teacher_reply_count,
+                last_activity_at: created.created_at || item.last_activity_at,
+              }
+            : item
+        )
+      );
+      setReplyDrafts((prev) => ({ ...prev, [thread._id]: "" }));
+    } catch (error: any) {
+      setDiscussionMessage(error?.message || "Không thể gửi phản hồi.");
+    } finally {
+      setReplying((prev) => ({ ...prev, [thread._id]: false }));
+    }
+  };
+
+  const handleToggleThreadStatus = async (thread: LessonComment) => {
+    const nextStatus = thread.status === "resolved" ? "open" : "resolved";
+    try {
+      const updated = await commentApi.updateStatus(thread._id, nextStatus);
+      setThreads((prev) =>
+        prev.map((item) =>
+          item._id === thread._id ? { ...item, status: updated.status, resolved_at: updated.resolved_at } : item
+        )
+      );
+    } catch (error: any) {
+      setDiscussionMessage(error?.message || "Không thể cập nhật trạng thái câu hỏi.");
+    }
+  };
+
   // Helpers: parse VTT/SRT on FE (for native VI upload)
   const parseTime = (s: string): number => {
     const val = s.trim().replace(",", ".");
     const parts = val.split(":");
-    let h = 0, m = 0, rest = "0";
-    if (parts.length === 3) { h = Number(parts[0]) || 0; m = Number(parts[1]) || 0; rest = parts[2]; }
-    else if (parts.length === 2) { m = Number(parts[0]) || 0; rest = parts[1]; }
-    else { rest = parts[0]; }
+    let h = 0,
+      m = 0,
+      rest = "0";
+    if (parts.length === 3) {
+      h = Number(parts[0]) || 0;
+      m = Number(parts[1]) || 0;
+      rest = parts[2];
+    } else if (parts.length === 2) {
+      m = Number(parts[0]) || 0;
+      rest = parts[1];
+    } else {
+      rest = parts[0];
+    }
     const sec = Number(rest) || 0;
     return h * 3600 + m * 60 + sec;
   };
@@ -202,13 +339,21 @@ export default function CourseDetail() {
       if (i >= lines.length) break;
       if (lines[i] && !lines[i].includes("-->") && lines[i + 1] && lines[i + 1].includes("-->")) i++;
       const tl = lines[i] || "";
-      const m = tl.match(/(\d{1,2}:[\d:]{1,7}[\.,]\d{1,3}|\d{1,2}:[\d:]{1,7})\s*-->\s*(\d{1,2}:[\d:]{1,7}[\.,]\d{1,3}|\d{1,2}:[\d:]{1,7})/);
-      if (!m) { i++; continue; }
+      const m = tl.match(
+        /(\d{1,2}:[\d:]{1,7}[\.,]\d{1,3}|\d{1,2}:[\d:]{1,7})\s*-->\s*(\d{1,2}:[\d:]{1,7}[\.,]\d{1,3}|\d{1,2}:[\d:]{1,7})/
+      );
+      if (!m) {
+        i++;
+        continue;
+      }
       const start = parseTime(m[1]);
       const end = parseTime(m[2]);
       i++;
       const textLines: string[] = [];
-      while (i < lines.length && lines[i].trim() !== "") { textLines.push(lines[i]); i++; }
+      while (i < lines.length && lines[i].trim() !== "") {
+        textLines.push(lines[i]);
+        i++;
+      }
       cues.push({ start, end, text: textLines.join("\n") });
     }
     return cues;
@@ -223,13 +368,21 @@ export default function CourseDetail() {
       if (i >= lines.length) break;
       if (/^\d+$/.test(lines[i].trim())) i++;
       const tl = lines[i] || "";
-      const m = tl.match(/(\d{1,2}:[\d:]{1,7}[\.,]\d{1,3}|\d{1,2}:[\d:]{1,7})\s*-->\s*(\d{1,2}:[\d:]{1,7}[\.,]\d{1,3}|\d{1,2}:[\d:]{1,7})/);
-      if (!m) { i++; continue; }
+      const m = tl.match(
+        /(\d{1,2}:[\d:]{1,7}[\.,]\d{1,3}|\d{1,2}:[\d:]{1,7})\s*-->\s*(\d{1,2}:[\d:]{1,7}[\.,]\d{1,3}|\d{1,2}:[\d:]{1,7})/
+      );
+      if (!m) {
+        i++;
+        continue;
+      }
       const start = parseTime(m[1]);
       const end = parseTime(m[2]);
       i++;
       const textLines: string[] = [];
-      while (i < lines.length && lines[i].trim() !== "") { textLines.push(lines[i]); i++; }
+      while (i < lines.length && lines[i].trim() !== "") {
+        textLines.push(lines[i]);
+        i++;
+      }
       cues.push({ start, end, text: textLines.join("\n") });
     }
     return cues;
@@ -243,7 +396,7 @@ export default function CourseDetail() {
       const lower = file.name.toLowerCase();
       const isSrt = lower.endsWith(".srt");
       const isVtt = lower.endsWith(".vtt") || text.trim().toUpperCase().startsWith("WEBVTT");
-      const fmt: SubtitleFormat = isSrt ? "srt" : (isVtt ? "vtt" : "vtt");
+      const fmt: SubtitleFormat = isSrt ? "srt" : isVtt ? "vtt" : "vtt";
       const resp = await subtitleApi.translate(text, fmt, "en", "vi");
       const cues = resp.cues || [];
       setSubCues(cues);
@@ -277,7 +430,7 @@ export default function CourseDetail() {
     }
   };
 
-  // 👇 Sửa gọn: hàm riêng cho nút "Auto-generate (VI only)"
+  // Tự tạo phụ đề (VI only)
   const handleAutoGenerateViOnly = async () => {
     try {
       setLoadingSubs(true);
@@ -526,10 +679,9 @@ export default function CourseDetail() {
         <div className="lg:col-span-2 bg-white shadow border border-gray-100 rounded-2xl p-4">
           <h3 className="text-lg font-semibold mb-3">Nội dung bài học</h3>
 
-          {/* Subtitles toolbar */}
           <div className="flex flex-wrap items-center gap-2 mb-3">
-            {/* Tải EN (dịch sang VI) */}
-            <input
+            {/* Nếu muốn bật upload phụ đề, bỏ comment 2 nút dưới */}
+            {/* <input
               ref={fileInputEnRef}
               type="file"
               accept=".vtt,.srt"
@@ -548,7 +700,6 @@ export default function CourseDetail() {
               Tải EN VTT/SRT (dịch)
             </button>
 
-            {/* Tải VI (không dịch) */}
             <input
               ref={fileInputViRef}
               type="file"
@@ -566,9 +717,8 @@ export default function CourseDetail() {
               className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1.5 rounded border"
             >
               Tải VI VTT/SRT (không dịch)
-            </button>
+            </button> */}
 
-            {/* Tự tạo phụ đề từ audio */}
             <button
               disabled={!isEnrolled || !playbackUrl || loadingSubs}
               onClick={handleAutoGenerateViOnly}
@@ -620,7 +770,7 @@ export default function CourseDetail() {
 
           {selectedLessonId && (
             <div className="mt-4 text-sm text-gray-700 whitespace-pre-wrap">
-              {lessons.find((l) => l._id === selectedLessonId)?.description || ""}
+              {selectedLesson?.description || ""}
             </div>
           )}
         </div>
@@ -638,10 +788,14 @@ export default function CourseDetail() {
                 <li key={ls._id}>
                   <button
                     onClick={() => setSelectedLessonId(ls._id)}
-                    className={`w-full text-left p-3 hover:bg-gray-50 transition ${selectedLessonId === ls._id ? "bg-blue-50" : ""}`}
+                    className={`w-full text-left p-3 hover:bg-gray-50 transition ${
+                      selectedLessonId === ls._id ? "bg-blue-50" : ""
+                    }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-medium">{ls.position}. {ls.title}</span>
+                      <span className="font-medium">
+                        {ls.position}. {ls.title}
+                      </span>
                       {!isEnrolled && <Lock className="w-4 h-4 text-gray-400" />}
                     </div>
                     {ls.description && (
@@ -655,140 +809,292 @@ export default function CourseDetail() {
         </aside>
       </div>
 
-      {/* Reviews */}
-      <section className="mt-8 bg-white shadow border border-gray-100 rounded-2xl p-6">
-        <h3 className="text-xl font-semibold mb-4">Đánh giá khóa học</h3>
+      {/* Tabs: Hỏi đáp / Đánh giá */}
+      <section className="mt-8 bg-white shadow border border-gray-100 rounded-2xl">
+        {/* Tab header */}
+        <div className="border-b flex items-center gap-2 px-4">
+          {(["qa", "reviews"] as const).map((key) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className={`relative px-4 py-3 text-sm font-medium transition border-b-2 -mb-px ${
+                activeTab === key ? "border-blue-600 text-blue-700" : "border-transparent text-gray-600 hover:text-gray-800"
+              }`}
+            >
+              {key === "qa" ? "Hỏi đáp khóa học" : "Đánh giá khóa học"}
+            </button>
+          ))}
+        </div>
+        {/* Tab body */}
+        <div className="p-6">
+          {activeTab === "qa" ? (
+            <>
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h3 className="text-xl font-semibold">Hỏi đáp bài học</h3>
+                  <p className="text-sm text-gray-500">
+                    {selectedLesson
+                      ? `Đang xem: ${selectedLesson.position ? `Bài ${selectedLesson.position} - ` : ""}${selectedLesson.title}`
+                      : "Chọn một bài học ở danh sách bên để xem hỏi đáp."}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <span>Trạng thái</span>
+                  <select
+                    value={threadFilter}
+                    onChange={(e) => setThreadFilter(e.target.value as any)}
+                    className="border rounded-lg px-3 py-1.5"
+                  >
+                    <option value="all">Tất cả</option>
+                    <option value="open">Đang mở</option>
+                    <option value="resolved">Đã giải quyết</option>
+                  </select>
+                </div>
+              </div>
 
-        {/* Summary + Histogram */}
-        <div className="flex flex-col gap-2 mb-4">
-          <div className="flex items-center gap-3">
-            {(() => {
-              const avg = reviewSummary?.average ?? 0;
-              const count = reviewSummary?.count ?? reviews.length;
-              return (
+              {!selectedLessonId ? (
+                <div className="mt-4 text-gray-500">Hãy chọn một bài học để xem hoặc đặt câu hỏi.</div>
+              ) : (
                 <>
-                  <div className="flex items-center text-amber-500">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className={`w-5 h-5 ${i < Math.round(avg) ? "fill-current" : ""}`} />
-                    ))}
-                  </div>
-                  <span className="text-sm text-gray-600">{avg} / 5 – {count} reviews</span>
-                </>
-              );
-            })()}
-          </div>
-          {reviewSummary && (
-            <div className="space-y-1">
-              {[5,4,3,2,1].map((r) => {
-                const total = reviewSummary.count || 1;
-                const c = reviewSummary.breakdown[String(r)] || 0;
-                const pct = Math.round((c / total) * 100);
-                return (
-                  <div key={r} className="flex items-center gap-2 text-sm">
-                    <span className="w-8 text-gray-600">{r}★</span>
-                    <div className="flex-1 h-2 bg-gray-200 rounded">
-                      <div className="h-2 bg-amber-500 rounded" style={{ width: `${pct}%` }} />
+                  {canParticipate ? (
+                    <div className="mt-4 border rounded-2xl p-4 bg-gray-50">
+                      <h4 className="font-semibold text-gray-800 mb-2">Đặt câu hỏi mới</h4>
+                      <textarea
+                        value={questionInput}
+                        onChange={(e) => setQuestionInput(e.target.value)}
+                        placeholder="Bạn cần thắc mắc gì về bài học này?"
+                        className="w-full border rounded-xl p-3 text-sm min-h-[90px] focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      />
+                      <div className="mt-3 flex items-center gap-3">
+                        <button
+                          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                          onClick={handleAskQuestion}
+                          disabled={postingQuestion || !questionInput.trim()}
+                        >
+                          {postingQuestion ? "Đang gửi..." : "Gửi câu hỏi"}
+                        </button>
+                        <span className="text-xs text-gray-500">
+                          Chỉ giáo viên và học viên đã ghi danh mới có thể hỏi đáp.
+                        </span>
+                      </div>
                     </div>
-                    <span className="w-10 text-right text-gray-600">{c}</span>
+                  ) : (
+                    <div className="mt-4 rounded-2xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-900">
+                      Đăng nhập và ghi danh khóa học để tham gia đặt câu hỏi, phản hồi.
+                    </div>
+                  )}
+
+                  {discussionMessage && <div className="mt-3 text-sm text-red-600">{discussionMessage}</div>}
+
+                  {loadingThreads ? (
+                    <div className="mt-6 text-gray-500">Đang tải câu hỏi...</div>
+                  ) : threads.length === 0 ? (
+                    <div className="mt-6 text-gray-500">Chưa có câu hỏi nào cho bài học này.</div>
+                  ) : (
+                    <ul className="mt-6 space-y-4">
+                      {threads.map((thread) => (
+                        <li key={thread._id} className="border rounded-2xl p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="font-semibold text-gray-900">{thread.user?.name || "Người học"}</div>
+                              <div className="text-xs text-gray-500">{formatTimestamp(thread.created_at)}</div>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs">
+                              <span
+                                className={`px-2 py-0.5 rounded-full ${
+                                  thread.status === "resolved"
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-amber-100 text-amber-700"
+                                }`}
+                              >
+                                {thread.status === "resolved" ? "Đã giải quyết" : "Đang mở"}
+                              </span>
+                              {canModerate && (
+                                <button
+                                  onClick={() => handleToggleThreadStatus(thread)}
+                                  className="text-blue-600 hover:text-blue-700"
+                                >
+                                  {thread.status === "resolved" ? "Mở lại" : "Đánh dấu giải quyết"}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <p className="mt-3 text-sm text-gray-800 whitespace-pre-wrap">{thread.content}</p>
+                          {thread.replies && thread.replies.length > 0 ? (
+                            <ul className="mt-4 space-y-2">
+                              {thread.replies.map((reply) => (
+                                <li key={reply._id} className="rounded-xl bg-gray-50 p-3">
+                                  <div className="flex items-center justify-between text-xs text-gray-500">
+                                    <span className="font-medium text-gray-800">{reply.user?.name || "Người dùng"}</span>
+                                    <span>{formatTimestamp(reply.created_at)}</span>
+                                  </div>
+                                  <p className="mt-2 text-sm text-gray-700 whitespace-pre-wrap">{reply.content}</p>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <div className="mt-4 text-xs text-gray-500">Chưa có phản hồi nào.</div>
+                          )}
+                          {canParticipate && (
+                            <div className="mt-4">
+                              <textarea
+                                value={replyDrafts[thread._id] || ""}
+                                onChange={(e) =>
+                                  setReplyDrafts((prev) => ({ ...prev, [thread._id]: e.target.value }))
+                                }
+                                placeholder="Phản hồi của bạn..."
+                                className="w-full border rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100"
+                              />
+                              <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                                <button
+                                  onClick={() => handleReplySubmit(thread)}
+                                  disabled={replying[thread._id] || !replyDrafts[thread._id]?.trim()}
+                                  className="bg-gray-900 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed"
+                                >
+                                  {replying[thread._id] ? "Đang gửi..." : "Trả lời"}
+                                </button>
+                                <span>{thread.reply_count || 0} phản hồi</span>
+                              </div>
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              <h3 className="text-xl font-semibold mb-4">Đánh giá khóa học</h3>
+              <div className="flex flex-col gap-2 mb-4">
+                <div className="flex items-center gap-3">
+                  {(() => {
+                    const avg = reviewSummary?.average ?? 0;
+                    const count = reviewSummary?.count ?? reviews.length;
+                    return (
+                      <>
+                        <div className="flex items-center text-amber-500">
+                          {[...Array(5)].map((_, i) => (
+                            <Star key={i} className={`w-5 h-5 ${i < Math.round(avg) ? "fill-current" : ""}`} />
+                          ))}
+                        </div>
+                        <span className="text-sm text-gray-600">
+                          {Number(avg).toFixed(1)} / 5 - {count} reviews
+                        </span>
+                      </>
+                    );
+                  })()}
+                </div>
+                {reviewSummary && (
+                  <div className="space-y-1">
+                    {[5, 4, 3, 2, 1].map((r) => {
+                      const total = reviewSummary.count || 1;
+                      const c = reviewSummary.breakdown[String(r)] || 0;
+                      const pct = Math.round((c / total) * 100);
+                      return (
+                        <div key={r} className="flex items-center gap-2 text-sm">
+                          <span className="w-8 text-gray-600">{r}★</span>
+                          <div className="flex-1 h-2 bg-gray-200 rounded">
+                            <div className="h-2 bg-amber-500 rounded" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="w-10 text-right text-gray-600">{c}</span>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
+                )}
+              </div>
+              {isEnrolled && (
+                <div className="mb-6 border rounded-xl p-4 bg-gray-50">
+                  <h4 className="font-semibold mb-2">Viết đánh giá của bạn</h4>
+                  <div className="flex items-center gap-3 mb-3">
+                    <label className="text-sm text-gray-700">Chấm điểm:</label>
+                    <select
+                      value={ratingInput}
+                      onChange={(e) => setRatingInput(Number(e.target.value))}
+                      className="border rounded-lg p-2"
+                    >
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <textarea
+                    placeholder="Chia sẻ cảm nhận của bạn về khóa học..."
+                    value={commentInput}
+                    onChange={(e) => setCommentInput(e.target.value)}
+                    className="w-full border rounded-lg p-3 min-h-[100px]"
+                  />
+                  <div className="mt-3 flex items-center gap-3">
+                    <button
+                      disabled={submittingReview}
+                      onClick={async () => {
+                        if (!course?._id) return;
+                        setSubmittingReview(true);
+                        setReviewMessage("");
+                        try {
+                          await reviewClient.createCourseReview(toId((course as any)._id), ratingInput, commentInput);
+                          setCommentInput("");
+                          setRatingInput(5);
+                          setReviewMessage("Đã gửi đánh giá, chờ duyệt.");
+                        } catch (e: any) {
+                          setReviewMessage(e?.message || "Không thể gửi đánh giá. Vui lòng đăng nhập và thử lại.");
+                        } finally {
+                          setSubmittingReview(false);
+                        }
+                      }}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-60"
+                    >
+                      Gửi đánh giá
+                    </button>
+                    {reviewMessage && <span className="text-sm text-gray-600">{reviewMessage}</span>}
+                  </div>
+                </div>
+              )}
+              {loadingReviews ? (
+                <div className="text-gray-500">Đang tải đánh giá...</div>
+              ) : reviews.length === 0 ? (
+                <div className="text-gray-500">Chưa có đánh giá nào.</div>
+              ) : (
+                <ul className="space-y-4">
+                  {reviews.map((rv) => {
+                    const userRaw = (rv as any).user_id || (rv as any).user;
+                    const nameRaw = typeof userRaw === "object" ? userRaw?.name ?? "" : "";
+                    const displayName = typeof nameRaw === "string" && nameRaw.trim().length > 0 ? nameRaw.trim() : "Người dùng";
+                    return (
+                      <li key={rv._id} className="border rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="font-semibold text-gray-800 flex items-center gap-2">
+                            {displayName}
+                            {(rv as any).verified && (
+                              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Đã xác minh</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 text-amber-500">
+                            {[...Array(5)].map((_, i) => (
+                              <Star key={i} className={`w-4 h-4 ${i < Number((rv as any).rating || 0) ? "fill-current" : ""}`} />
+                            ))}
+                          </div>
+                        </div>
+                        {(rv as any).comment && (
+                          <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">{(rv as any).comment}</p>
+                        )}
+                        {(rv as any).created_at && (
+                          <div className="text-xs text-gray-400 mt-2">
+                            {new Date((rv as any).created_at as any).toLocaleString("vi-VN")}
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </>
           )}
         </div>
-
-        {/* Write review (only when enrolled) */}
-        {isEnrolled && (
-          <div className="mb-6 border rounded-xl p-4 bg-gray-50">
-            <h4 className="font-semibold mb-2">Viết đánh giá của bạn</h4>
-            <div className="flex items-center gap-3 mb-3">
-              <label className="text-sm text-gray-700">Chấm điểm:</label>
-              <select
-                value={ratingInput}
-                onChange={(e) => setRatingInput(Number(e.target.value))}
-                className="border rounded-lg p-2"
-              >
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </select>
-            </div>
-            <textarea
-              placeholder="Chia sẻ cảm nhận của bạn về khóa học..."
-              value={commentInput}
-              onChange={(e) => setCommentInput(e.target.value)}
-              className="w-full border rounded-lg p-3 min-h-[100px]"
-            />
-            <div className="mt-3 flex items-center gap-3">
-              <button
-                disabled={submittingReview}
-                onClick={async () => {
-                  if (!course?._id) return;
-                  setSubmittingReview(true);
-                  setReviewMessage("");
-                  try {
-                    await reviewClient.createCourseReview(toId((course as any)._id), ratingInput, commentInput);
-                    setCommentInput("");
-                    setRatingInput(5);
-                    setReviewMessage("Đã gửi đánh giá, chờ duyệt.");
-                  } catch (e: any) {
-                    setReviewMessage(e?.message || "Không thể gửi đánh giá. Vui lòng đăng nhập và thử lại.");
-                  } finally {
-                    setSubmittingReview(false);
-                  }
-                }}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-60"
-              >
-                Gửi đánh giá
-              </button>
-              {reviewMessage && (
-                <span className="text-sm text-gray-600">{reviewMessage}</span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Review list */}
-        {loadingReviews ? (
-          <div className="text-gray-500">Đang tải đánh giá...</div>
-        ) : reviews.length === 0 ? (
-          <div className="text-gray-500">Chưa có đánh giá nào.</div>
-        ) : (
-          <ul className="space-y-4">
-            {reviews.map((rv) => {
-              const userRaw = (rv as any).user_id || (rv as any).user;
-              const nameRaw = typeof userRaw === "object" ? (userRaw?.name ?? "") : "";
-              const displayName = (typeof nameRaw === "string" && nameRaw.trim().length > 0)
-                ? nameRaw.trim()
-                : "Người dùng";
-              return (
-                <li key={rv._id} className="border rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="font-semibold text-gray-800 flex items-center gap-2">
-                      {displayName}
-                      {(rv as any).verified && (
-                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full"></span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 text-amber-500">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} className={`w-4 h-4 ${i < Number((rv as any).rating || 0) ? "fill-current" : ""}`} />
-                      ))}
-                    </div>
-                  </div>
-                  {(rv as any).comment && (
-                    <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">{(rv as any).comment}</p>
-                  )}
-                  {(rv as any).created_at && (
-                    <div className="text-xs text-gray-400 mt-2">
-                      {new Date((rv as any).created_at as any).toLocaleString("vi-VN")}
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
       </section>
     </div>
   );
