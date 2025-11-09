@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import courseTeacherApi from "../../../api/courseTeacherApi";
 import type { Course } from "../../../types/course";
@@ -21,7 +21,7 @@ export default function CourseManageDetail() {
       const res = await courseTeacherApi.getById(courseId);
       setCourse(res.data ?? res); // support either shape
     } catch (e: any) {
-      setError(e?.message || "Không tải được khóa học");
+      setError(e?.message || "KhÃ´ng táº£i Ä‘Æ°á»£c khÃ³a há»c");
     } finally {
       setLoading(false);
     }
@@ -40,7 +40,7 @@ export default function CourseManageDetail() {
       await courseTeacherApi.update(courseId, data);
       await load();
     } catch (e: any) {
-      setError(e?.message || "Lưu khóa học thất bại");
+      setError(e?.message || "LÆ°u khÃ³a há»c tháº¥t báº¡i");
     } finally {
       setSaving(false);
     }
@@ -52,7 +52,7 @@ export default function CourseManageDetail() {
       await courseTeacherApi.requestPublish(courseId);
       await load();
     } catch (e: any) {
-      alert(e?.message || 'Gửi yêu cầu publish thất bại');
+      alert(e?.message || 'Gá»­i yÃªu cáº§u publish tháº¥t báº¡i');
     }
   };
 
@@ -60,53 +60,41 @@ export default function CourseManageDetail() {
     <div className="p-4">
       {(course as any)?.has_pending_changes && (
         <div style={{ background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412', padding: 8, borderRadius: 8, marginBottom: 12 }}>
-          Thay đổi của bạn đang chờ Admin phê duyệt.
+          Thay Ä‘á»•i cá»§a báº¡n Ä‘ang chá» Admin phÃª duyá»‡t.
         </div>
       )}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
         <button onClick={() => navigate("/teacher/manage-courses")}>
-          ← Quay lại
+          â† Quay láº¡i
         </button>
-        <h2 style={{ margin: 0 }}>Thiết kế khóa học</h2>
+        <h2 style={{ margin: 0 }}>Thiáº¿t káº¿ khÃ³a há»c</h2>
       </div>
 
       {loading ? (
-        <div>Đang tải khóa học...</div>
+        <div>Äang táº£i khÃ³a há»c...</div>
       ) : error ? (
         <div style={{ color: "red" }}>{error}</div>
       ) : !course ? (
-        <div>Không tìm thấy khóa học.</div>
+        <div>KhÃ´ng tÃ¬m tháº¥y khÃ³a há»c.</div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 20 }}>
           {!((course as any)?.is_published) && (
             <div style={{ gridColumn: '1 / -1', background: '#fff', borderRadius: 12, padding: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
               {(course as any)?.publish_requested_at ? (
-                <span>Đã gửi yêu cầu publish lúc {(course as any)?.publish_requested_at ? new Date((course as any).publish_requested_at).toLocaleString('vi-VN') : ''}</span>
+                <span>ÄÃ£ gá»­i yÃªu cáº§u publish lÃºc {(course as any)?.publish_requested_at ? new Date((course as any).publish_requested_at).toLocaleString('vi-VN') : ''}</span>
               ) : (
-                <button onClick={submitForPublish}>Gửi yêu cầu publish</button>
+                <button onClick={submitForPublish}>Gá»­i yÃªu cáº§u publish</button>
               )}
             </div>
           )}
           <div style={{ background: "#fff", borderRadius: 12, padding: 16 }}>
-            <h3 style={{ marginTop: 0 }}>Thông tin khóa học</h3>
-            <CourseForm
-              initialData={{
-                ...course,
-                // Preselect current category
-                category_id: (() => {
-                  const cat = (course as any)?.category;
-                  if (Array.isArray(cat) && cat.length > 0) return String(cat[0]?._id || cat[0]);
-                  if ((course as any)?.category_id) return String((course as any).category_id);
-                  return "";
-                })(),
-              }}
-              onSubmit={handleSave}
-            />
-            {saving && <div style={{ marginTop: 8 }}>Đang lưu...</div>}
+            <h3 style={{ marginTop: 0 }}>ThÃ´ng tin khÃ³a há»c</h3>
+            <CourseForm\n              initialData={{\n                ...course,\n                category_id: (() => {\n                  const cat = (course as any)?.category;\n                  if (Array.isArray(cat) && cat.length > 0) return String(cat[0]?._id || cat[0]);\n                  if ((course as any)?.category_id) return String((course as any).category_id);\n                  return "";\n                })(),\n              }}\n              onSubmit={handleSave}\n            />
+            {saving && <div style={{ marginTop: 8 }}>Äang lÆ°u...</div>}
           </div>
           {(course as any)?.has_pending_changes && (course as any)?.draft && (
             <div style={{ background: '#fff', borderRadius: 12, padding: 16 }}>
-              <h3 style={{ marginTop: 0 }}>Bản nháp đang chờ duyệt</h3>
+              <h3 style={{ marginTop: 0 }}>Báº£n nhÃ¡p Ä‘ang chá» duyá»‡t</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
                 <div style={{ fontWeight: 600 }}>Field</div>
                 <div style={{ fontWeight: 600 }}>Before</div>
@@ -120,7 +108,7 @@ export default function CourseManageDetail() {
                 ))}
               </div>
               <div style={{ marginTop: 8, color: '#6b7280', fontSize: 12 }}>
-                Gửi lúc: {((course as any).pending_at ? new Date((course as any).pending_at).toLocaleString() : '')}
+                Gá»­i lÃºc: {((course as any).pending_at ? new Date((course as any).pending_at).toLocaleString() : '')}
               </div>
             </div>
           )}
@@ -132,4 +120,5 @@ export default function CourseManageDetail() {
     </div>
   );
 }
+
 

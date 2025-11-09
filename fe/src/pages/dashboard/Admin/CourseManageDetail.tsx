@@ -167,6 +167,14 @@ export default function CourseManageDetail() {
             <CourseForm
               initialData={{
                 ...course,
+                // Preselect current category
+                category_id: (() => {
+                  const cat = (course as any)?.category;
+                  if (Array.isArray(cat) && cat.length > 0) return String(cat[0]?._id || cat[0]);
+                  if ((course as any)?.category_id) return String((course as any).category_id);
+                  return "";
+                })(),
+                // Preselect assigned teachers
                 teacher_ids: Array.isArray((course as any)?.teacher)
                   ? ((course as any).teacher as any[]).map((t: any) => t?._id).filter(Boolean)
                   : [],

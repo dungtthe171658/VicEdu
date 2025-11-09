@@ -7,6 +7,7 @@ import { FaUsers, FaBookOpen, FaMoneyBillWave } from "react-icons/fa";
 import { useAuth } from "../../../hooks/useAuth";
 import courseTeacherApi from "../../../api/courseTeacherApi";
 import orderApi from "../../../api/orderApi";
+import dashboardApi from "../../../api/dashboardApi";
 import type { Course } from "../../../types/course";
 import type { OrderDto } from "../../../types/order";
 
@@ -60,10 +61,13 @@ function toId(val: any): string {
   if (typeof val === "object") {
     if ((val as any).$oid) return String((val as any).$oid);
     if ((val as any)._id) return String((val as any)._id);
-    if ((val as any).id) return String((val as any).id);
+  if ((val as any).id) return String((val as any).id);
   }
   return String(val);
 }
+
+const formatCurrency = (n: number) =>
+  Number(n || 0).toLocaleString("vi-VN", { style: "currency", currency: "VND" });
 
 const formatVND = (n: number) => (Number(n || 0)).toLocaleString("vi-VN") + " ₫";
 
@@ -127,7 +131,20 @@ const ViewTeacher: React.FC = () => {
           }
         }
 
-        setStats({ students: uniqueStudents.size, revenue, activeCourses });
+        // Prefer server-side aggregated stats when available
+        let studentsCount = uniqueStudents.size;
+        try {
+          const serverStats = await dashboardApi.getTeacherStats();
+          const apiStats = (serverStats as any)?.data ?? serverStats;
+          if (apiStats && (apiStats as any).revenue != null) {
+            revenue = Number((apiStats as any).revenue);
+          }
+          if (apiStats && (apiStats as any).students != null) {
+            studentsCount = Number((apiStats as any).students);
+          }
+        } catch {}
+
+        setStats({ students: studentsCount, revenue, activeCourses });
       } catch (err) {
         console.error("Failed to fetch teacher dashboard:", err);
       } finally {
@@ -154,7 +171,7 @@ const ViewTeacher: React.FC = () => {
 
       <Grid container spacing={3}>
         <StatCard icon={<FaUsers size={22} />} title="Học viên theo học" value={stats.students} color="rgba(59, 130, 246, 1)" />
-        <StatCard icon={<FaMoneyBillWave size={22} />} title="Doanh thu (ước tính)" value={formatVND(stats.revenue)} color="rgba(16, 185, 129, 1)" />
+        <StatCard icon={<FaMoneyBillWave size={22} />} title="Doanh thu (ước tính)" value={formatCurrency(stats.revenue)} color="rgba(16, 185, 129, 1)" />
         <StatCard icon={<FaBookOpen size={22} />} title="Khóa học đang hoạt động" value={stats.activeCourses} color="rgba(168, 85, 247, 1)" />
       </Grid>
     </Box>
@@ -162,4 +179,3 @@ const ViewTeacher: React.FC = () => {
 };
 
 export default ViewTeacher;
-

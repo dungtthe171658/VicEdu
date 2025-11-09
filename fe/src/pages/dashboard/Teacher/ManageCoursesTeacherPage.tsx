@@ -71,22 +71,25 @@ const ManageCoursesTeacherPage = () => {
       </div>
 
       <ul className="course-list">
-        {courses.map((course) => (
-          <li key={course._id}>
-            <div className="course-info">
-              <strong>{course.title}</strong>
-              <span>{course.category?.name || "Chua co danh muc"}</span>
-              <span>{course.price_cents.toLocaleString()} VND</span>
-              {/* <span className={`status ${course.status}`}>{course.status}</span> */}
-            </div>
-            <div className="actions">
-              {/* Detail view for teacher is not implemented yet */}
-              <button className="detail-btn" onClick={() => navigate(`/teacher/manage-courses/${course._id}`)}>Chi tiet</button>
-              <button className="edit-btn" onClick={() => handleEdit(course)}>Sua</button>
-              <button className="delete-btn" onClick={() => handleDelete(course._id)}>Xoa</button>
-            </div>
-          </li>
-        ))}
+        {courses.map((course) => {
+          const cat = (course as any)?.category;
+          const categoryName = Array.isArray(cat) ? cat[0]?.name : cat?.name;
+          return (
+            <li key={course._id}>
+              <div className="course-info">
+                <strong>{course.title}</strong>
+                <span>{categoryName || "Chua co danh muc"}</span>
+                <span>{course.price_cents.toLocaleString()} VND</span>
+                {/* <span className={`status ${course.status}`}>{course.status}</span> */}
+              </div>
+              <div className="actions">
+                <button className="detail-btn" onClick={() => navigate(`/teacher/manage-courses/${course._id}`)}>Chi tiet</button>
+                <button className="edit-btn" onClick={() => handleEdit(course)}>Sua</button>
+                <button className="delete-btn" onClick={() => handleDelete(course._id)}>Xoa</button>
+              </div>
+            </li>
+          );
+        })}
       </ul>
 
       {showModal && (
