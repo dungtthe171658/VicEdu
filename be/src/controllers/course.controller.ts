@@ -116,6 +116,7 @@ export const getAllCoursesForAdmin = async (req: Request, res: Response) => {
   try {
     const courses = await CourseModel.find()
       .populate("teacher", "fullName")
+      .populate("category", "name slug").lean()
       .sort({ createdAt: -1 });
     res.status(200).json(courses);
   } catch (error: any) {

@@ -14,10 +14,10 @@ const ManageCoursesPage = () => {
   const loadCourses = async () => {
     try {
       const res = await courseAdminApi.getAll();
-      setCourses(res.data ?? res);
+      setCourses((res as any).data ?? res);
     } catch (error) {
       console.error("Error loading courses:", error);
-      alert("Không thể tải danh sách khóa học");
+      alert("Không thể tải danh sách khóa học.");
     }
   };
 
@@ -52,7 +52,7 @@ const ManageCoursesPage = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Bạn chắc chắn muốn xóa khóa học này?")) {
+    if (window.confirm("Bạn chắc chắn muốn xóa khóa học này?")) {
       try {
         await courseAdminApi.delete(id);
         loadCourses();
@@ -63,13 +63,13 @@ const ManageCoursesPage = () => {
     }
   };
 
-  const handleStatus = async (id: string, status: 'approved' | 'rejected' | 'pending') => {
+  const handleStatus = async (id: string, status: "approved" | "rejected" | "pending") => {
     try {
       await courseAdminApi.updateStatus(id, status);
       loadCourses();
     } catch (error) {
-      console.error('Error updating status:', error);
-      alert('Cap nhat trang thai that bai');
+      console.error("Error updating status:", error);
+      alert("Cập nhật trạng thái thất bại.");
     }
   };
 
@@ -78,10 +78,18 @@ const ManageCoursesPage = () => {
       await courseAdminApi.update(id, { is_published: publish } as any);
       loadCourses();
     } catch (error) {
-      console.error('Error updating publish:', error);
-      alert('Cap nhat publish that bai');
+      console.error("Error updating publish:", error);
+      alert("Cập nhật hiển thị thất bại.");
     }
   };
+
+  const getCategoryName = (course: any) => {
+    const cat = course?.category;
+    if (Array.isArray(cat)) return cat[0]?.name || "Chưa có danh mục";
+    return cat?.name || "Chưa có danh mục";
+  };
+
+  const formatVND = (n: number) => n.toLocaleString("vi-VN") + " ₫";
 
   return (
     <div className="course-management-container">
@@ -95,29 +103,47 @@ const ManageCoursesPage = () => {
           <li key={course._id}>
             <div className="course-info">
               <strong>{course.title}</strong>
+
               {(course as any)?.has_pending_changes && (
-                <span style={{ marginLeft: 8, padding: '2px 6px', borderRadius: 6, background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412', fontSize: 12 }}>Pending edits</span>
+                <span
+                  style={{
+                    marginLeft: 8,
+                    padding: "2px 6px",
+                    borderRadius: 6,
+                    background: "#fff7ed",
+                    border: "1px solid #fdba74",
+                    color: "#9a3412",
+                    fontSize: 12
+                  }}
+                >
+                  Đang chờ duyệt chỉnh sửa
+                </span>
               )}
-              <span>{course.category?.name || "Chưa có danh mục"}</span>
-              <span>{course.price_cents.toLocaleString()} VND</span>
-              <span className={`status ${course.status}`}>{course.status}</span>
-              <span className={`status ${((course as any).is_published ? 'published' : 'unpublished')}`}>
-                {((course as any).is_published ? 'published' : 'unpublished')}
+
+              <span>{getCategoryName(course as any)}</span>
+              <span>{formatVND((course as any).price_cents ?? 0)}</span>
+
+              <span className={`status ${(course as any).is_published ? "published" : "unpublished"}`}>
+                {(course as any).is_published ? "Đang hiển thị" : "Đang ẩn"}
               </span>
+
               <span>
-                <div style={{ display: 'inline-flex', gap: 8, marginLeft: 12 }}>
-                  <button onClick={() => handleStatus(course._id, 'approved')}>Approve</button>
-                  <button onClick={() => handleStatus(course._id, 'rejected')}>Reject</button>
-                  {((course as any).is_published ? (
-                    <button onClick={() => handlePublish(course._id, false)}>Hide</button>
+                <div style={{ display: "inline-flex", gap: 8, marginLeft: 12 }}>
+                  <button onClick={() => handleStatus(course._id, "approved")}>Duyệt</button>
+                  <button onClick={() => handleStatus(course._id, "rejected")}>Từ chối</button>
+                  {(course as any).is_published ? (
+                    <button onClick={() => handlePublish(course._id, false)}>Ẩn</button>
                   ) : (
-                    <button onClick={() => handlePublish(course._id, true)}>Publish</button>
-                  ))}
+                    <button onClick={() => handlePublish(course._id, true)}>Hiển thị</button>
+                  )}
                 </div>
               </span>
             </div>
+
             <div className="actions">
-              <button className="detail-btn" onClick={() => navigate(`/dashboard/manage-courses/${course._id}`)}>Chi tiết</button>
+              <button className="detail-btn" onClick={() => navigate(`/dashboard/manage-courses/${course._id}`)}>
+                Chi tiết
+              </button>
               <button className="edit-btn" onClick={() => handleEdit(course)}>Sửa</button>
               <button className="delete-btn" onClick={() => handleDelete(course._id)}>Xóa</button>
             </div>
