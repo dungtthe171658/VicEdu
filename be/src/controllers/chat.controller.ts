@@ -46,12 +46,16 @@ export class ChatController {
 
       // Lấy dữ liệu hệ thống dựa trên quyền
       const systemData = await geminiService.getSystemData(user.role);
+      let systemDataExtra: any = {};
+      if (user.role === "teacher") {
+        systemDataExtra = await geminiService.getTeacherSystemData(userId);
+      }
 
       // Tạo context cho AI
       const context = {
         userRole: user.role,
         userId: userId,
-        systemData,
+        systemData: { ...(systemData || {}), ...(systemDataExtra || {}) },
       };
 
       // Gọi Gemini API
