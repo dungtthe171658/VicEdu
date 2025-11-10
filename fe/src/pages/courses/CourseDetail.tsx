@@ -56,6 +56,7 @@ export default function CourseDetail() {
   const [replying, setReplying] = useState<Record<string, boolean>>({});
   const [threadFilter, setThreadFilter] = useState<"all" | "open" | "resolved">("all");
   const [discussionMessage, setDiscussionMessage] = useState<string>("");
+  const [replyBoxOpen, setReplyBoxOpen] = useState<Record<string, boolean>>({});
 
   // Tabs: Q&A vs Reviews
   const [activeTab, setActiveTab] = useState<"qa" | "reviews">("qa");
@@ -838,7 +839,7 @@ export default function CourseDetail() {
                       : "Chọn một bài học ở danh sách bên để xem hỏi đáp."}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className="flex items-center gap-2 text-sm text-gray-600 hidden">
                   <span>Trạng thái</span>
                   <select
                     value={threadFilter}
@@ -856,7 +857,8 @@ export default function CourseDetail() {
                 <div className="mt-4 text-gray-500">Hãy chọn một bài học để xem hoặc đặt câu hỏi.</div>
               ) : (
                 <>
-                  {canParticipate ? (
+                  {/* Composer moved to the bottom to mimic chat UI */}
+                  {false && canParticipate ? (
                     <div className="mt-4 border rounded-2xl p-4 bg-gray-50">
                       <h4 className="font-semibold text-gray-800 mb-2">Đặt câu hỏi mới</h4>
                       <textarea
@@ -899,7 +901,7 @@ export default function CourseDetail() {
                               <div className="font-semibold text-gray-900">{thread.user?.name || "Người học"}</div>
                               <div className="text-xs text-gray-500">{formatTimestamp(thread.created_at)}</div>
                             </div>
-                            <div className="flex items-center gap-2 text-xs">
+                            <div className="flex items-center gap-2 text-xs hidden">
                               <span
                                 className={`px-2 py-0.5 rounded-full ${
                                   thread.status === "resolved"
@@ -920,6 +922,14 @@ export default function CourseDetail() {
                             </div>
                           </div>
                           <p className="mt-3 text-sm text-gray-800 whitespace-pre-wrap">{thread.content}</p>
+                          <div className="mt-2 flex items-center gap-4 text-xs text-gray-600">
+                            <button
+                              onClick={() => setReplyBoxOpen((prev) => ({ ...prev, [thread._id]: !prev[thread._id] }))}
+                              className="hover:text-blue-600"
+                            >
+                              Phản hồi
+                            </button>
+                          </div>
                           {thread.replies && thread.replies.length > 0 ? (
                             <ul className="mt-4 space-y-2">
                               {thread.replies.map((reply) => (
@@ -929,13 +939,14 @@ export default function CourseDetail() {
                                     <span>{formatTimestamp(reply.created_at)}</span>
                                   </div>
                                   <p className="mt-2 text-sm text-gray-700 whitespace-pre-wrap">{reply.content}</p>
+                                  
                                 </li>
                               ))}
                             </ul>
                           ) : (
                             <div className="mt-4 text-xs text-gray-500">Chưa có phản hồi nào.</div>
                           )}
-                          {canParticipate && (
+                          {canParticipate && replyBoxOpen[thread._id] && (
                             <div className="mt-4">
                               <textarea
                                 value={replyDrafts[thread._id] || ""}
@@ -961,6 +972,36 @@ export default function CourseDetail() {
                       ))}
                     </ul>
                   )}
+
+                  {/* Composer at the bottom for a single unified flow */}
+                  {canParticipate ? (
+                    <div className="mt-6 border rounded-2xl p-4 bg-gray-50">
+                      <h4 className="font-semibold text-gray-800 mb-2">Viết bình luận</h4>
+                      <textarea
+                        value={questionInput}
+                        onChange={(e) => setQuestionInput(e.target.value)}
+                        placeholder="Chia sẻ câu hỏi hoặc cảm nghĩ của bạn..."
+                        className="w-full border rounded-xl p-3 text-sm min-h-[90px] focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      />
+                      <div className="mt-3 flex items-center gap-3">
+                        <button
+                          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                          onClick={handleAskQuestion}
+                          disabled={postingQuestion || !questionInput.trim()}
+                        >
+                          {postingQuestion ? "Đang đăng..." : "Đăng"}
+                        </button>
+                        {discussionMessage && (
+                          <span className="text-xs text-red-600">{discussionMessage}</span>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-6 rounded-2xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-900">
+                      Đăng nhập và ghi danh khóa học để bình luận và phản hồi.
+                    </div>
+                  )}
+
                 </>
               )}
             </>
