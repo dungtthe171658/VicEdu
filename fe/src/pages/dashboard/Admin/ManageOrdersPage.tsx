@@ -93,7 +93,7 @@ const ManageOrdersPage = () => {
               <th>Tổng tiền</th>
               <th>Ngày tạo</th>
               <th>Phương thức thanh toán</th>
-              <th>Thao tác</th>
+              {/* <th>Thao tác</th> */}
             </tr>
           </thead>
           <tbody>
@@ -117,14 +117,14 @@ const ManageOrdersPage = () => {
                     : "—"}
                 </td>
                 <td>{order.payment_method || "Không rõ"}</td>
-                <td>
+                {/* <td>
                   <button
                     className="delete-btn"
                     onClick={() => handleDelete(order._id)}
                   >
                     Xóa
                   </button>
-                </td>
+                </td> */}
               </tr>
             ))}
           </tbody>
