@@ -128,19 +128,19 @@ const ManageCoursesPage = () => {
               </span>
 
               <span>
-                <div style={{ display: "inline-flex", gap: 8, marginLeft: 12 }}>
-                  <button onClick={() => handleStatus(course._id, "approved")}>Duyệt</button>
-                  <button onClick={() => handleStatus(course._id, "rejected")}>Từ chối</button>
+             
+              </span>
+            </div>
+
+            <div className="actions">
+                 <div style={{ display: "inline-flex", gap: 8, marginLeft: 12 }}>
+                
                   {(course as any).is_published ? (
                     <button onClick={() => handlePublish(course._id, false)}>Ẩn</button>
                   ) : (
                     <button onClick={() => handlePublish(course._id, true)}>Hiển thị</button>
                   )}
                 </div>
-              </span>
-            </div>
-
-            <div className="actions">
               <button className="detail-btn" onClick={() => navigate(`/dashboard/manage-courses/${course._id}`)}>
                 Chi tiết
               </button>

@@ -138,29 +138,7 @@ export default function CourseManageDetail() {
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 20 }}>
           <div style={{ gridColumn: '1 / -1', background: '#fff', borderRadius: 12, padding: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
-            <strong>Quick actions:</strong>
-            {!(course as any)?.is_published && (course as any)?.publish_requested_at && (
-              <>
-                <button onClick={approvePublish}>Approve publish</button>
-                <button onClick={rejectPublish}>Reject publish</button>
-              </>
-            )}
-            {(course as any)?.has_pending_changes && (
-              <>
-                <button onClick={handleApproveChanges}>Approve changes</button>
-                <button onClick={handleRejectChanges}>Reject changes</button>
-              </>
-            )}
-            <button onClick={() => handleStatus('approved')}>Approve</button>
-            <button onClick={() => handleStatus('rejected')}>Reject</button>
-            {((course as any)?.is_published ? (
-              <button onClick={() => handlePublish(false)}>Hide</button>
-            ) : (
-              <button onClick={() => handlePublish(true)}>Publish</button>
-            ))}
-            <span style={{ marginLeft: 'auto', fontSize: 12, color: '#6b7280' }}>
-              Status: {course.status} • {((course as any)?.is_published ? 'published' : 'unpublished')}
-            </span>
+     
           </div>
           <div style={{ background: "#fff", borderRadius: 12, padding: 16 }}>
             <h3 style={{ marginTop: 0 }}>Thông tin khóa học</h3>
