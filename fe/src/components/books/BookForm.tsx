@@ -8,12 +8,13 @@ import "./BookForm.css";
 interface BookFormProps {
   initialData?: Partial<BookDto>;
   onSubmit: (data: Partial<BookDto>) => void;
+  onUploadImage?: (file: File) => Promise<string>;
 }
 
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME!;
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET!;
 
-const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
+const BookForm = ({ initialData = {}, onSubmit, onUploadImage }: BookFormProps) => {
   const [formData, setFormData] = useState<
     Partial<BookDto> & { images?: string[] }
   >({
@@ -57,6 +58,22 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
     if (!file) return;
 
     setUploading(true);
+    // If parent provides a signed upload handler, use it
+    if (onUploadImage) {
+      try {
+        const url = await onUploadImage(file);
+        setFormData((prev) => ({
+          ...prev,
+          images: [...(prev.images || []), url],
+        }));
+      } catch (err) {
+        console.error("L��-i upload ���nh:", err);
+        alert(`Upload ���nh th���t b���i: ${err instanceof Error ? err.message : err}`);
+      } finally {
+        setUploading(false);
+      }
+      return;
+    }
     const formDataCloud = new FormData();
     formDataCloud.append("file", file);
     formDataCloud.append("upload_preset", UPLOAD_PRESET);
@@ -131,6 +148,13 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
       stock: Number(formData.stock) || 0,
     };
     onSubmit(payload);
+  };
+
+  const handleRemoveImage = (idx: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      images: (prev.images || []).filter((_, i) => i !== idx),
+    }));
   };
 
   return (
@@ -229,14 +253,23 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
         <input type="file" accept="image/*" onChange={handleImageUpload} />
         {uploading && <p>Đang tải ảnh lên Cloudinary...</p>}
 
-        <div className="preview-container">
+        <div className="preview-grid">
           {formData.images?.map((url, idx) => (
-            <img
-              key={idx}
-              src={url}
-              alt={`Preview ${idx + 1}`}
-              style={{ width: "100px", marginRight: "8px" }}
-            />
+            <div key={idx} className="preview-item">
+              <img
+                className="preview-thumb"
+                src={url}
+                alt={`Preview ${idx + 1}`}
+              />
+              <button
+                type="button"
+                className="remove-img-btn"
+                title="Xóa ảnh"
+                onClick={() => handleRemoveImage(idx)}
+              >
+                -
+              </button>
+            </div>
           ))}
         </div>
       </div>
