@@ -4,6 +4,7 @@ import bookApi from "../../api/bookApi";
 import type { BookDto } from "../../types/book.d";
 import type { Category } from "../../types/category.d";
 import "./BookDetailPage.css";
+import { useCart } from "../../contexts/CartContext";
 
 const isCategoryPopulated = (
   category: string | Category
@@ -33,6 +34,7 @@ const BookDetailPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [added, setAdded] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const { addBookItem } = useCart();
 
   useEffect(() => {
     if (!id) return;
@@ -66,7 +68,7 @@ const BookDetailPage = () => {
     fetchBook();
   }, [id]);
 
-  const handleAddToCart = () => {
+  const _handleAddToCartLegacy = () => {
     if (!book || (book.stock ?? 0) <= 0) return;
     const cart = JSON.parse(localStorage.getItem("cart") || "[]");
     const exists = cart.find((item: BookDto) => item._id === book._id);
@@ -77,6 +79,22 @@ const BookDetailPage = () => {
     } else {
       alert("Sách này đã có trong giỏ hàng 🛒");
     }
+  };
+
+  const handleAddToCartByContext = () => {
+    if (!book || (book.stock ?? 0) <= 0) return;
+    addBookItem({
+      _id: book._id,
+      title: book.title,
+      price_cents: book.price_cents,
+      images: Array.isArray(book.images) ? book.images : [],
+      stock: book.stock ?? 0,
+      quantity: 1,
+    });
+    setAdded(true);
+    try {
+      alert(`Added "${book.title}" to cart!`);
+    } catch {}
   };
 
   const handlePrevImage = () => {
@@ -157,7 +175,7 @@ const BookDetailPage = () => {
 
         <button
           className={`add-to-cart-btn ${added ? "added" : ""}`}
-          onClick={handleAddToCart}
+          onClick={handleAddToCartByContext}
           disabled={added || stock <= 0}
         >
           {stock <= 0
