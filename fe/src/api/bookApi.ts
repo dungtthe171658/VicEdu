@@ -28,13 +28,20 @@ const bookApi = {
   delete: (id: string) =>
     axios.delete(`${BASE_URL}/books/${id}`, { headers: getAuthHeaders() }),
 
-  // ✅ updateStock có token để tránh 401
+  // updateStock có token để tránh 401
   updateStock: (id: string, stock: number) =>
     axios.put(
       `${BASE_URL}/books/${id}/stock`,
       { stock },
       { headers: getAuthHeaders() }
     ),
+
+  // 🔒 Lấy PDF nếu user đã mua sách
+  getPdfUrl: (id: string) =>
+    axios.get(`${BASE_URL}/books/${id}/pdf`, { headers: getAuthHeaders() }),
+
+  getPurchasedBooks: () =>
+    axios.get(`${BASE_URL}/books/purchased`, { headers: getAuthHeaders() }),
 };
 
 export default bookApi;

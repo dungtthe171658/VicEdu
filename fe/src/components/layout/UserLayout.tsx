@@ -16,7 +16,11 @@ const UserHeader = () => {
 
   useEffect(() => {
     const onClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setOpen(false);
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      )
+        setOpen(false);
     };
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
@@ -50,10 +54,12 @@ const UserHeader = () => {
   return (
     <header className="user-header">
       <nav>
-        <Link to="/" className="logo">VicEdu</Link>
+        <Link to="/" className="logo">
+          VicEdu
+        </Link>
 
         <div className="menu flex items-center gap-4">
-              <Link to="/courses">Khóa học</Link>
+          <Link to="/courses">Khóa học</Link>
           <Link to="/books">Sách</Link>
           <Link to="/about">Giới thiệu</Link>
 
@@ -61,10 +67,15 @@ const UserHeader = () => {
           <CartIcon />
 
           {!user ? (
-            <Link to="/login" className="login">Đăng nhập</Link>
+            <Link to="/login" className="login">
+              Đăng nhập
+            </Link>
           ) : (
             <div className="relative" ref={dropdownRef}>
-              <button onClick={() => setOpen((s) => !s)} className="flex items-center gap-2 focus:outline-none">
+              <button
+                onClick={() => setOpen((s) => !s)}
+                className="flex items-center gap-2 focus:outline-none"
+              >
                 {avatarSrc ? (
                   <img
                     src={avatarSrc}
@@ -83,20 +94,46 @@ const UserHeader = () => {
               {open && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
                   <div className="px-4 py-2 text-sm text-gray-700">
-                    <p className="font-semibold truncate">{user.name || "User"}</p>
-                    <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                    <p className="font-semibold truncate">
+                      {user.name || "User"}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {user.email}
+                    </p>
                   </div>
                   <div className="border-t border-gray-200" />
-                  <Link to="/profile" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setOpen(false)}>
+                  <Link
+                    to="/profile"
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    onClick={() => setOpen(false)}
+                  >
                     <FaIdBadge className="mr-2" /> Hồ sơ
                   </Link>
-                  <Link to="/my-courses" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setOpen(false)}>
+                  <Link
+                    to="/my-courses"
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    onClick={() => setOpen(false)}
+                  >
                     <FaBook className="mr-2" /> Khóa học của tôi
                   </Link>
-                  <Link to="/my-orders" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setOpen(false)}>
+                  <Link
+                    to="/my-books"
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    onClick={() => setOpen(false)}
+                  >
+                    📚 Sách của tôi
+                  </Link>
+                  <Link
+                    to="/my-orders"
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    onClick={() => setOpen(false)}
+                  >
                     🧾 Đơn hàng của tôi
                   </Link>
-                  <button onClick={handleLogout} className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
                     <FaSignOutAlt className="mr-2" /> Đăng xuất
                   </button>
                 </div>

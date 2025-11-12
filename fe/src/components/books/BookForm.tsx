@@ -15,7 +15,7 @@ const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET!;
 
 const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
   const [formData, setFormData] = useState<
-    Partial<BookDto> & { images?: string[] }
+    Partial<BookDto> & { images?: string[]; pdf_url?: string }
   >({
     ...initialData,
     category_id:
@@ -23,11 +23,13 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
         ? initialData.category_id?._id
         : initialData.category_id || "",
     images: Array.isArray(initialData.images) ? initialData.images : [],
+    pdf_url: initialData.pdf_url || "",
   });
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
-  const [uploading, setUploading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
 
   // Load danh mục
   useEffect(() => {
@@ -56,56 +58,71 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploading(true);
+    setUploadingImage(true);
     const formDataCloud = new FormData();
     formDataCloud.append("file", file);
     formDataCloud.append("upload_preset", UPLOAD_PRESET);
 
-    console.log("🌩 Uploading:", {
-      file,
-      CLOUD_NAME,
-      UPLOAD_PRESET,
-    });
-
     try {
       const res = await fetch(
         `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-        {
-          method: "POST",
-          body: formDataCloud,
-        }
+        { method: "POST", body: formDataCloud }
       );
-
-      const text = await res.text();
-
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        throw new Error("Không thể parse JSON từ Cloudinary");
-      }
-
-      if (!res.ok) {
-        throw new Error(
-          data.error?.message || "Upload thất bại (Cloudinary error)"
-        );
-      }
-
-      if (!data.secure_url) {
-        throw new Error("Upload thất bại: Không có secure_url trong response");
-      }
+      const data = await res.json();
+      if (!res.ok || !data.secure_url)
+        throw new Error(data.error?.message || "Upload thất bại");
 
       setFormData((prev) => ({
         ...prev,
         images: [...(prev.images || []), data.secure_url],
       }));
-
-      console.log("Ảnh đã upload thành công");
     } catch (err) {
       console.error("Lỗi upload ảnh:", err);
       alert(`Upload ảnh thất bại: ${err instanceof Error ? err.message : err}`);
     } finally {
-      setUploading(false);
+      setUploadingImage(false);
+    }
+  };
+
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      console.log("No PDF selected");
+      return;
+    }
+
+    console.log("Selected PDF file:", file);
+
+    setUploadingPdf(true);
+    const formDataCloud = new FormData();
+    formDataCloud.append("file", file);
+    formDataCloud.append("upload_preset", UPLOAD_PRESET);
+
+    try {
+      console.log("Uploading PDF to Cloudinary...");
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`,
+        { method: "POST", body: formDataCloud }
+      );
+
+      const data = await res.json();
+      console.log("Cloudinary response:", data);
+
+      if (!res.ok || !data.secure_url) {
+        throw new Error(data.error?.message || "Upload failed");
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        pdf_url: data.secure_url,
+      }));
+
+      console.log("PDF uploaded successfully:", data.secure_url);
+    } catch (err) {
+      console.error("Error uploading PDF:", err);
+      alert(`Upload PDF failed: ${err instanceof Error ? err.message : err}`);
+    } finally {
+      setUploadingPdf(false);
     }
   };
 
@@ -124,18 +141,22 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+
     const payload: Partial<BookDto> = {
       ...formData,
       category_id: formData.category_id?.toString() || "",
       price_cents: Number(formData.price_cents) || 0,
       stock: Number(formData.stock) || 0,
+      pdf_url: formData.pdf_url,
+      images: formData.images,
     };
+
+    console.log("Submitting payload to backend:", payload); // 🔹 thêm dòng này
     onSubmit(payload);
   };
 
   return (
     <form onSubmit={handleSubmit} className="book-form">
-      {/* Tiêu đề */}
       <div className="form-group">
         <label htmlFor="title">Tiêu đề</label>
         <input
@@ -148,7 +169,6 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
         />
       </div>
 
-      {/* Tác giả */}
       <div className="form-group">
         <label htmlFor="author">Tác giả</label>
         <input
@@ -160,7 +180,6 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
         />
       </div>
 
-      {/* Mô tả */}
       <div className="form-group">
         <label htmlFor="description">Mô tả</label>
         <textarea
@@ -171,7 +190,6 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
         />
       </div>
 
-      {/* Giá */}
       <div className="form-group">
         <label htmlFor="price_cents">Giá (VND)</label>
         <input
@@ -184,7 +202,6 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
         />
       </div>
 
-      {/* Số lượng */}
       <div className="form-group">
         <label htmlFor="stock">Số lượng</label>
         <input
@@ -196,7 +213,6 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
         />
       </div>
 
-      {/* Danh mục */}
       <div className="form-group">
         <label htmlFor="category_id">Danh mục</label>
         <select
@@ -223,12 +239,10 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
         </select>
       </div>
 
-      {/* Upload ảnh */}
       <div className="form-group">
         <label>Ảnh bìa</label>
         <input type="file" accept="image/*" onChange={handleImageUpload} />
-        {uploading && <p>Đang tải ảnh lên Cloudinary...</p>}
-
+        {uploadingImage && <p>Đang tải ảnh lên...</p>}
         <div className="preview-container">
           {formData.images?.map((url, idx) => (
             <img
@@ -239,6 +253,28 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
             />
           ))}
         </div>
+      </div>
+
+      <div className="form-group">
+        <label>File PDF</label>
+        <input
+          type="file"
+          accept="application/pdf"
+          onChange={handlePdfUpload}
+        />
+        {uploadingPdf && <p>Đang tải PDF lên...</p>}
+        {formData.pdf_url && (
+          <p>
+            PDF đã upload:{" "}
+            <a
+              href={formData.pdf_url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Xem PDF
+            </a>
+          </p>
+        )}
       </div>
 
       <button type="submit" className="btn-save">

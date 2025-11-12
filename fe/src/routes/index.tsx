@@ -19,12 +19,12 @@ import RegisterPage from "../pages/RegisterPage";
 import BookListPage from "../pages/books/BookListPage";
 import BookDetailPage from "../pages/books/BookDetailPage";
 import { CoursePage } from "../pages/courses/CoursePage";
+import MyBooksPage from "../pages/books/MyBooksPage";
 
 // 🔹 Category / Courses / Cart
 import { CategoryPage } from "../pages/category/CategoryPage.tsx";
 import CourseDetail from "../pages/courses/CourseDetail.tsx";
 import CartPage from "../pages/cart/CartPage.tsx";
-
 
 // 🔹 Payment pages
 import PaymentSuccessPage from "../pages/payment/PaymentSuccessPage";
@@ -84,6 +84,7 @@ const AppRoutes: React.FC = () => {
         {/* Books */}
         <Route path="books" element={<BookListPage />} />
         <Route path="books/:id" element={<BookDetailPage />} />
+        <Route path="/my-books" element={<MyBooksPage />} />
 
         {/* Route test BookManagementPage */}
         <Route path="test/manage-books" element={<BookManagementPage />} />
@@ -191,14 +192,18 @@ const AppRoutes: React.FC = () => {
       >
         <Route index element={<DashboardTeacherPage />} />
         <Route path="manage-courses" element={<ManageCoursesTeacherPage />} />
-        <Route path="manage-courses/:courseId" element={<CourseManageDetailTeacher />} />
-        <Route path="manage-courses/:courseId/lessons/:lessonId" element={<LessonManageDetailTeacher />} />
+        <Route
+          path="manage-courses/:courseId"
+          element={<CourseManageDetailTeacher />}
+        />
+        <Route
+          path="manage-courses/:courseId/lessons/:lessonId"
+          element={<LessonManageDetailTeacher />}
+        />
         <Route path="manage-students" element={<ManageStudentsPage />} />
         <Route path="manage-comments" element={<ManageCommentTeacherPages />} />
         <Route path="pending-edits" element={<PendingEditsTeacher />} />
       </Route>
-
-
     </Routes>
   );
 };

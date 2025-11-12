@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Star } from "lucide-react";
 import bookApi from "../../api/bookApi";
 import type { BookDto } from "../../types/book.d";
@@ -33,6 +33,11 @@ export default function BookDetailPage() {
 
   const [added, setAdded] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // User purchase & pdf
+  const [hasPurchased, setHasPurchased] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [loadingPdf, setLoadingPdf] = useState(false);
 
   // Reviews
   const [reviews, setReviews] = useState<ReviewDto[]>([]);
@@ -71,6 +76,26 @@ export default function BookDetailPage() {
     })();
   }, [id]);
 
+  // Load user purchase (PDF)
+  useEffect(() => {
+    if (!id) return;
+    (async () => {
+      try {
+        setLoadingPdf(true);
+        const res = await bookApi.getPdfUrl(id); // gọi endpoint /books/:id/pdf
+        if (res.data?.pdf_url) {
+          setHasPurchased(true);
+          setPdfUrl(res.data.pdf_url);
+        }
+      } catch (err) {
+        setHasPurchased(false);
+        setPdfUrl(null);
+      } finally {
+        setLoadingPdf(false);
+      }
+    })();
+  }, [id]);
+
   // Load reviews + summary for this book
   useEffect(() => {
     (async () => {
@@ -93,7 +118,7 @@ export default function BookDetailPage() {
   }, [book?._id]);
 
   const handleAddToCart = () => {
-    if (!book || (book.stock ?? 0) <= 0) return;
+    if (!book || (book.stock ?? 0) <= 0 || hasPurchased) return;
     const cart = JSON.parse(localStorage.getItem("cart") || "[]");
     const exists = cart.find((item: BookDto) => item._id === book._id);
     if (!exists) {
@@ -101,7 +126,7 @@ export default function BookDetailPage() {
       localStorage.setItem("cart", JSON.stringify(cart));
       setAdded(true);
     } else {
-      alert("This book is already in the cart.");
+      alert("Sách đã có trong giỏ hàng.");
     }
   };
 
@@ -152,9 +177,32 @@ export default function BookDetailPage() {
 
         <p className={`stock ${stock > 0 ? "in-stock" : "out-of-stock"}`}>{stock > 0 ? `Còn ${stock} cuốn` : "Hết hàng"}</p>
 
-        <button className={`add-to-cart-btn ${added ? "added" : ""}`} onClick={handleAddToCart} disabled={added || stock <= 0}>
-          {stock <= 0 ? "Đã hết hàng" : added ? "Đã thêm vào giỏ hàng" : "Thêm vào giỏ hàng"}
+        {/* Nút thêm vào giỏ hàng hoặc thông báo đã mua */}
+        <button
+          className={`add-to-cart-btn ${added ? "added" : ""}`}
+          onClick={handleAddToCart}
+          disabled={added || stock <= 0 || hasPurchased}
+        >
+          {stock <= 0
+            ? "Đã hết hàng"
+            : hasPurchased
+            ? "Bạn đã mua sách này"
+            : added
+            ? "Đã thêm vào giỏ hàng"
+            : "Thêm vào giỏ hàng"}
         </button>
+
+        {/* Nút đọc sách nếu có PDF */}
+        {hasPurchased && pdfUrl && (
+          <a
+            href={pdfUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="read-pdf-btn bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 mt-2 inline-block"
+          >
+            📖 Đọc sách
+          </a>
+        )}
       </div>
 
       {/* Same-category books */}
