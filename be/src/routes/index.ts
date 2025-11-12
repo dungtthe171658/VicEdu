@@ -14,6 +14,7 @@ import homeRoutes from "./home.routes";
 import chatRoutes from "./chat.route";
 import subtitleRoutes from "./subtitle.route";
 import commentRoutes from "./comment.route";
+import quizRoutes from "./quiz.route";
 
 const router = express.Router();
 
@@ -31,6 +32,7 @@ router.use("/uploads", uploadRoutes);
 router.use("/chat", chatRoutes);
 router.use("/subtitles", subtitleRoutes);
 router.use("/comments", commentRoutes);
+router.use("/quizzes", quizRoutes);
 
 export default router;
 

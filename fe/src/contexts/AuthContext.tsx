@@ -3,6 +3,7 @@ import * as authApi from "../api/authApi";
 import { getAuthToken } from "../api/api.helpers";
 import type { UserDto, UserRole } from "../types/user.d";
 import { buildAvatarUrl } from "../utils/buildAvatarUrl";
+import { useCart } from "./CartContext.tsx";
 
 type AuthContextType = {
   user: UserDto | null;
@@ -55,6 +56,7 @@ function mapBackendUserToFront(u: BackendUser): UserDto {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { clear } = useCart();
 
   const bootstrap = useCallback(async () => {
     setIsLoading(true);
@@ -97,9 +99,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = useCallback(() => {
+    // Clear auth data
     localStorage.removeItem("accessToken");
+    localStorage.removeItem("user");
+
+    // Clear cart items so cart becomes empty after logout
+    try {
+      clear();
+    } catch {}
+
+    // Optional: remove any legacy cart key if existed
+    try {
+      localStorage.removeItem("cart");
+    } catch {}
+
     setUser(null);
-  }, []);
+  }, [clear]);
   const loginWithGoogle = useCallback(async (token: String) => {
       localStorage.setItem("accessToken", String(token));
     try {

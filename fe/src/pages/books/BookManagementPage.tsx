@@ -5,6 +5,15 @@ import BookForm from "../../components/books/BookForm";
 import BookModal from "../../components/books/BookModal";
 import "./BookManagementPage.css";
 
+type CloudinarySign = {
+  timestamp: number;
+  signature: string;
+  apiKey: string;
+  cloudName: string;
+  folder: string;
+  upload_preset: string;
+};
+
 const BookManagementPage = () => {
   const [books, setBooks] = useState<BookDto[]>([]);
   const [selectedBook, setSelectedBook] = useState<Partial<BookDto> | null>(
@@ -28,6 +37,48 @@ const BookManagementPage = () => {
   useEffect(() => {
     loadBooks();
   }, []);
+
+  // Cloudinary signature (reuse approach from ProfilePage)
+  const getCloudinarySignature = async (
+    folder: string,
+    uploadPreset = "vicedu_default"
+  ): Promise<CloudinarySign> => {
+    const res = await axios.get<CloudinarySign>("/uploads/cloudinary-signature", {
+      params: { folder, upload_preset: uploadPreset },
+    });
+    return res as unknown as CloudinarySign;
+  };
+
+  // Upload trực tiếp lên Cloudinary bằng chữ ký từ BE
+  const uploadImageToCloudinary = async (
+    file: File,
+    sign: CloudinarySign
+  ): Promise<{ secure_url: string; public_id: string }> => {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("api_key", sign.apiKey);
+    form.append("timestamp", String(sign.timestamp));
+    form.append("upload_preset", sign.upload_preset?.trim());
+    form.append("folder", sign.folder);
+    form.append("signature", sign.signature);
+
+    const endpoint = `https://api.cloudinary.com/v1_1/${sign.cloudName}/image/upload`;
+    const res = await fetch(endpoint, { method: "POST", body: form });
+    const json = await res.json();
+
+    if (!json?.secure_url || !json?.public_id) {
+      throw new Error(json?.error?.message || "Upload Cloudinary thất bại");
+    }
+
+    return { secure_url: json.secure_url, public_id: json.public_id };
+  };
+
+  // Expose an upload helper for BookForm to use
+  const handleUploadImage = async (file: File): Promise<string> => {
+    const sign = await getCloudinarySignature("vicedu/images/books");
+    const { secure_url } = await uploadImageToCloudinary(file, sign);
+    return secure_url;
+  };
 
   // Thêm hoặc sửa sách
   const handleSave = async (data: Partial<BookDto>) => {

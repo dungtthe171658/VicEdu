@@ -8,12 +8,13 @@ import "./BookForm.css";
 interface BookFormProps {
   initialData?: Partial<BookDto>;
   onSubmit: (data: Partial<BookDto>) => void;
+  onUploadImage?: (file: File) => Promise<string>;
 }
 
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME!;
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET!;
 
-const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
+const BookForm = ({ initialData = {}, onSubmit, onUploadImage }: BookFormProps) => {
   const [formData, setFormData] = useState<
     Partial<BookDto> & { images?: string[]; pdf_url?: string }
   >({
@@ -155,6 +156,13 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
     onSubmit(payload);
   };
 
+  const handleRemoveImage = (idx: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      images: (prev.images || []).filter((_, i) => i !== idx),
+    }));
+  };
+
   return (
     <form onSubmit={handleSubmit} className="book-form">
       <div className="form-group">
@@ -245,12 +253,21 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
         {uploadingImage && <p>Đang tải ảnh lên...</p>}
         <div className="preview-container">
           {formData.images?.map((url, idx) => (
-            <img
-              key={idx}
-              src={url}
-              alt={`Preview ${idx + 1}`}
-              style={{ width: "100px", marginRight: "8px" }}
-            />
+            <div key={idx} className="preview-item">
+              <img
+                className="preview-thumb"
+                src={url}
+                alt={`Preview ${idx + 1}`}
+              />
+              <button
+                type="button"
+                className="remove-img-btn"
+                title="Xóa ảnh"
+                onClick={() => handleRemoveImage(idx)}
+              >
+                -
+              </button>
+            </div>
           ))}
         </div>
       </div>
