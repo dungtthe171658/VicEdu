@@ -183,20 +183,6 @@ const TeacherNavbar: React.FC<TeacherNavbarProps> = ({
 
           {rightActions}
 
-          {/* <Tooltip title="Thông báo">
-            <IconButton color="inherit">
-              <Badge color="error" variant="dot">
-                <NotificationsIcon />
-              </Badge>
-            </IconButton>
-          </Tooltip> */}
-
-          {/* <Tooltip title="Cài đặt">
-            <IconButton color="inherit" onClick={() => navigate('/teacher/settings')}>
-              <SettingsOutlinedIcon />
-            </IconButton>
-          </Tooltip> */}
-
           {/* Profile */}
           <Tooltip title={user?.name || 'Tài khoản'}>
             <IconButton color="inherit" onClick={handleOpenMenu} sx={{ ml: 0.5 }}>
