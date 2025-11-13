@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import courseAdminApi from "../../../api/courseAdminApi";
 import lessonApi from "../../../api/lessonApi";
 import historyApi, { type EditHistoryItem } from "../../../api/historyApi";
+import CourseDetailModal from "../../../components/courses/CourseDetailModal";
+import "./PendingEditsAdmin.css";
 
 type PendingCourse = {
   _id: string;
@@ -25,17 +27,7 @@ export default function PendingEditsAdmin() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [recent, setRecent] = useState<EditHistoryItem[]>([]);
-  const [detail, setDetail] = useState<null | {
-    type: 'course' | 'lesson';
-    id: string;
-    title?: string;
-    pending_at?: string;
-    keys: string[];
-    before: Record<string, any>;
-    after: Record<string, any>;
-    course_id?: string;
-  }>(null);
-  const [opening, setOpening] = useState(false);
+  const [viewingCourseId, setViewingCourseId] = useState<string | null>(null);
 
   const load = async () => {
     try {
@@ -64,187 +56,304 @@ export default function PendingEditsAdmin() {
   }, []);
 
   const approveCourse = async (id: string) => {
-    try { await courseAdminApi.approveChanges(id); load(); } catch {}
+    try {
+      await courseAdminApi.approveChanges(id);
+      load();
+    } catch (e: any) {
+      alert(e?.message || "Không thể phê duyệt yêu cầu");
+    }
   };
+
   const rejectCourse = async (id: string) => {
-    try { await courseAdminApi.rejectChanges(id); load(); } catch {}
+    try {
+      await courseAdminApi.rejectChanges(id);
+      load();
+    } catch (e: any) {
+      alert(e?.message || "Không thể từ chối yêu cầu");
+    }
   };
+
   const approveLesson = async (id: string) => {
-    try { await lessonApi.approveChanges(id); load(); } catch {}
+    try {
+      await lessonApi.approveChanges(id);
+      load();
+    } catch (e: any) {
+      alert(e?.message || "Không thể phê duyệt yêu cầu");
+    }
   };
+
   const rejectLesson = async (id: string) => {
-    try { await lessonApi.rejectChanges(id); load(); } catch {}
+    try {
+      await lessonApi.rejectChanges(id);
+      load();
+    } catch (e: any) {
+      alert(e?.message || "Không thể từ chối yêu cầu");
+    }
   };
 
   const fmt = (d?: string) => (d ? new Date(d).toLocaleString("vi-VN") : "");
 
-  const openCourseDetail = async (c: PendingCourse) => {
-    setOpening(true);
-    try {
-      const full = await courseAdminApi.getById(c._id);
-      const entity: any = (full as any)?.data ?? full;
-      const keys = Object.keys(c.draft || {});
-      const before: any = {};
-      const after: any = {};
-      keys.forEach((k) => {
-        if (k === 'category_id') {
-          const cat = (entity as any)?.category;
-          before[k] = Array.isArray(cat) && cat.length > 0
-            ? (typeof cat[0] === 'object' ? (cat[0]?._id || cat[0]?.id || String(cat[0])) : String(cat[0]))
-            : '';
-        } else {
-          before[k] = (entity as any)?.[k];
-        }
-        after[k] = (c as any)?.draft?.[k];
-      });
-      setDetail({ type: 'course', id: c._id, title: c.title, pending_at: c.pending_at, keys, before, after });
-    } finally {
-      setOpening(false);
-    }
-  };
-
-  const openLessonDetail = async (l: PendingLesson) => {
-    setOpening(true);
-    try {
-      const full = await lessonApi.getById(l._id);
-      const entity: any = (full as any)?.data ?? full;
-      const keys = Object.keys(l.draft || {});
-      const before: any = {}; const after: any = {};
-      keys.forEach((k) => { before[k] = (entity as any)?.[k]; after[k] = (l as any)?.draft?.[k]; });
-      setDetail({ type: 'lesson', id: l._id, title: l.title, pending_at: l.pending_at, keys, before, after, course_id: l.course_id });
-    } finally {
-      setOpening(false);
-    }
-  };
-
-  // Only focus on delete requests for clearer UI
+  // Filter different types of requests
   const courseDeleteRequests = (courses || []).filter((c) => (c as any)?.draft?.__action === 'delete');
+  const courseCreationRequests = (courses || []).filter((c) => (c as any)?.draft?.__action === 'create');
   const lessonDeleteRequests = (lessons || []).filter((l) => (l as any)?.draft?.__action === 'delete');
 
   const recentDeletes = (recent || []).filter((h) => Boolean((h as any)?.changes?.deleted));
 
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
-      <h2>Delete Requests (Teacher → Admin)</h2>
+    <div className="pending-edits-container">
+      <div className="pending-edits-header">
+        <h2>Quản lý yêu cầu chỉnh sửa</h2>
+        <p>Xem xét và phê duyệt các yêu cầu từ giáo viên</p>
+      </div>
+
       {loading ? (
-        <div>Đang tải...</div>
+        <div className="loading-state">Đang tải dữ liệu...</div>
       ) : error ? (
-        <div style={{ color: 'red' }}>{error}</div>
+        <div className="error-state">
+          <strong>Lỗi:</strong> {error}
+          <button className="btn btn-primary" onClick={load} style={{ marginTop: 12 }}>
+            Thử lại
+          </button>
+        </div>
       ) : (
-        <div style={{ display: 'grid', gap: 20 }}>
-          <section style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, flex: 1 }}>Courses • Yêu cầu xóa</h3>
-              <span style={{ fontSize: 12, color: '#6b7280' }}>{courseDeleteRequests.length} request(s)</span>
+        <div>
+          {/* Course Creation Requests */}
+          <section className="pending-section">
+            <div className="section-header">
+              <h3 className="section-title">
+                📚 Khóa học • Yêu cầu tạo mới
+              </h3>
+              <span className={`section-count ${courseCreationRequests.length > 0 ? 'has-items' : ''}`}>
+                {courseCreationRequests.length} yêu cầu
+              </span>
+            </div>
+            {courseCreationRequests.length === 0 ? (
+              <div className="empty-state">Không có yêu cầu tạo khóa học mới.</div>
+            ) : (
+              <div>
+                  {courseCreationRequests.map((c) => (
+                  <div key={c._id} className="request-card">
+                    <div className="request-header">
+                      <div className="request-title-section">
+                        <h4 className="request-title">
+                          {(c as any)?.draft?.title || c.title}
+                          <span className="request-badge create">Tạo mới</span>
+                        </h4>
+                        <div className="request-meta">
+                          <div className="request-time">
+                            🕒 {fmt((c as any)?.pending_at) || "Chưa có thời gian"}
+                        </div>
+                          <Link
+                            to={`/dashboard/course-creation-request/${c._id}`}
+                            className="request-link"
+                          >
+                            📄 Xem chi tiết
+                          </Link>
+                          <button 
+                            className="btn btn-primary btn-sm"
+                            onClick={() => setViewingCourseId(c._id)} 
+                          >
+                            👁️ Xem khóa học
+                          </button>
+                        </div>
+                      </div>
+                      <div className="request-actions">
+                        <button
+                          className="btn btn-success btn-sm"
+                          onClick={() => {
+                            if (confirm('Phê duyệt tạo khóa học này?')) {
+                              approveCourse(c._id);
+                            }
+                          }}
+                        >
+                          ✓ Phê duyệt
+                        </button>
+                        <button
+                          className="btn btn-danger btn-sm"
+                          onClick={() => {
+                          const ok = confirm('Từ chối yêu cầu tạo khóa học này? Khóa học sẽ bị xóa.');
+                            if (ok) rejectCourse(c._id);
+                          }}
+                        >
+                          ✗ Từ chối
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Course Delete Requests */}
+          <section className="pending-section">
+            <div className="section-header">
+              <h3 className="section-title">
+                🗑️ Khóa học • Yêu cầu xóa
+              </h3>
+              <span className={`section-count ${courseDeleteRequests.length > 0 ? 'has-items' : ''}`}>
+                {courseDeleteRequests.length} yêu cầu
+              </span>
             </div>
             {courseDeleteRequests.length === 0 ? (
-              <div style={{ paddingTop: 8 }}>Không có yêu cầu xóa khóa học.</div>
+              <div className="empty-state">Không có yêu cầu xóa khóa học.</div>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    <th style={{ textAlign: 'left' }}>Khóa học</th>
-                    <th>Gửi lúc</th>
-                    <th>Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <div>
                   {courseDeleteRequests.map((c) => (
-                    <tr key={c._id}>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontWeight: 600 }}>{c.title}</span>
-                          <span style={{ fontSize: 12, color: '#ef4444', border: '1px solid #fecaca', background: '#fee2e2', padding: '0 6px', borderRadius: 999 }}>DELETE REQUEST</span>
+                  <div key={c._id} className="request-card">
+                    <div className="request-header">
+                      <div className="request-title-section">
+                        <h4 className="request-title">
+                          {c.title}
+                          <span className="request-badge delete">Xóa</span>
+                        </h4>
+                        <div className="request-meta">
+                          <div className="request-time">
+                            🕒 {fmt((c as any)?.pending_at) || "Chưa có thời gian"}
                         </div>
-                        <div style={{ marginTop: 4, fontSize: 12 }}>
-                          <Link to={`/dashboard/manage-courses/${c._id}`}>Mở trang khóa học</Link>
+                          <Link
+                            to={`/dashboard/manage-courses/${c._id}`}
+                            className="request-link"
+                          >
+                            📄 Mở trang khóa học
+                          </Link>
+                          <button 
+                            className="btn btn-primary btn-sm"
+                            onClick={() => setViewingCourseId(c._id)} 
+                          >
+                            👁️ Xem chi tiết
+                          </button>
                         </div>
-                      </td>
-                      <td style={{ textAlign: 'center' }}>{fmt((c as any)?.pending_at)}</td>
-                      <td style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-                        <button onClick={() => {
-                          if (confirm('Phê duyệt xóa khóa học này? Hành động sẽ xóa toàn bộ khóa học và các bài học liên quan.')) approveCourse(c._id)
-                        }}>Approve Delete</button>
-                        <button onClick={() => {
+                      </div>
+                      <div className="request-actions">
+                        <button
+                          className="btn btn-danger btn-sm"
+                          onClick={() => {
+                            if (confirm('⚠️ Phê duyệt xóa khóa học này?\n\nHành động này sẽ xóa toàn bộ khóa học và các bài học liên quan. Hành động này không thể hoàn tác!')) {
+                              approveCourse(c._id);
+                            }
+                          }}
+                        >
+                          ✓ Phê duyệt xóa
+                        </button>
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => {
                           const ok = confirm('Từ chối yêu cầu xóa khóa học này?');
-                          if (ok) rejectCourse(c._id)
-                        }} style={{ color: '#b91c1c' }}>Reject</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                            if (ok) rejectCourse(c._id);
+                          }}
+                        >
+                          ✗ Từ chối
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </section>
 
-          <section style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, flex: 1 }}>Lessons • Yêu cầu xóa</h3>
-              <span style={{ fontSize: 12, color: '#6b7280' }}>{lessonDeleteRequests.length} request(s)</span>
+          {/* Lesson Delete Requests */}
+          <section className="pending-section">
+            <div className="section-header">
+              <h3 className="section-title">
+                📝 Bài học • Yêu cầu xóa
+              </h3>
+              <span className={`section-count ${lessonDeleteRequests.length > 0 ? 'has-items' : ''}`}>
+                {lessonDeleteRequests.length} yêu cầu
+              </span>
             </div>
             {lessonDeleteRequests.length === 0 ? (
-              <div style={{ paddingTop: 8 }}>Không có yêu cầu xóa bài học.</div>
+              <div className="empty-state">Không có yêu cầu xóa bài học.</div>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    <th style={{ textAlign: 'left' }}>Bài học</th>
-                    <th>Khóa học</th>
-                    <th>Gửi lúc</th>
-                    <th>Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <div>
                   {lessonDeleteRequests.map((l) => (
-                    <tr key={l._id}>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontWeight: 600 }}>{l.title}</span>
-                          <span style={{ fontSize: 12, color: '#ef4444', border: '1px solid #fecaca', background: '#fee2e2', padding: '0 6px', borderRadius: 999 }}>DELETE REQUEST</span>
+                  <div key={l._id} className="request-card">
+                    <div className="request-header">
+                      <div className="request-title-section">
+                        <h4 className="request-title">
+                          {l.title}
+                          <span className="request-badge delete">Xóa</span>
+                        </h4>
+                        <div className="request-meta">
+                          <div className="request-time">
+                            🕒 {fmt((l as any)?.pending_at) || "Chưa có thời gian"}
+                          </div>
+                          <Link
+                            to={`/dashboard/manage-courses/${l.course_id}/lessons/${l._id}`}
+                            className="request-link"
+                          >
+                            📄 Xem bài học
+                          </Link>
                         </div>
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <Link to={`/dashboard/manage-courses/${l.course_id}/lessons/${l._id}`}>Xem</Link>
-                      </td>
-                      <td style={{ textAlign: 'center' }}>{fmt((l as any)?.pending_at)}</td>
-                      <td style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-                        <button onClick={() => {
-                          if (confirm('Phê duyệt xóa bài học này?')) approveLesson(l._id)
-                        }}>Approve Delete</button>
-                        <button onClick={() => {
+                      </div>
+                      <div className="request-actions">
+                        <button
+                          className="btn btn-danger btn-sm"
+                          onClick={() => {
+                            if (confirm('Phê duyệt xóa bài học này?')) {
+                              approveLesson(l._id);
+                            }
+                          }}
+                        >
+                          ✓ Phê duyệt xóa
+                        </button>
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => {
                           const ok = confirm('Từ chối yêu cầu xóa bài học này?');
-                          if (ok) rejectLesson(l._id)
-                        }} style={{ color: '#b91c1c' }}>Not delete</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                            if (ok) rejectLesson(l._id);
+                          }}
+                        >
+                          ✗ Từ chối
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </section>
 
-          <section style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 12 }}>
-            <h3 style={{ margin: 0 }}>Recent delete actions</h3>
+          {/* Recent Delete Actions */}
+          <section className="recent-actions-section">
+            <div className="section-header">
+              <h3 className="section-title">
+                📋 Lịch sử xóa gần đây
+              </h3>
+              <span className={`section-count ${recentDeletes.length > 0 ? 'has-items' : ''}`}>
+                {recentDeletes.length} hành động
+              </span>
+            </div>
             {recentDeletes.length === 0 ? (
-              <div style={{ paddingTop: 8 }}>Chưa có lịch sử xóa gần đây.</div>
+              <div className="empty-state">Chưa có lịch sử xóa gần đây.</div>
             ) : (
-              <div style={{ display: 'grid', gap: 12 }}>
+              <div>
                 {recentDeletes.map((h) => (
-                  <div key={h._id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <span>{h.target_type.toUpperCase()}</span>
-                      <span style={{ color: '#6b7280' }}>{h.created_at ? new Date(h.created_at).toLocaleString('vi-VN') : ''}</span>
-                      <span style={{ marginLeft: 'auto' }}>{h.status}</span>
+                  <div key={h._id} className="history-card">
+                    <div className="history-header">
+                      <span className="history-type">{h.target_type.toUpperCase()}</span>
+                      <span className="history-time">
+                        🕒 {h.created_at ? new Date(h.created_at).toLocaleString('vi-VN') : 'Chưa có thời gian'}
+                      </span>
+                      <span className={`history-status ${h.status?.toLowerCase() || 'pending'}`}>
+                        {h.status || 'pending'}
+                      </span>
                     </div>
-                    <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
-                      <div style={{ fontWeight: 600 }}>Field</div>
-                      <div style={{ fontWeight: 600 }}>Before</div>
-                      <div style={{ fontWeight: 600 }}>After</div>
+                    <div className="history-changes">
+                      <div className="history-changes-header">Trường</div>
+                      <div className="history-changes-header">Trước</div>
+                      <div className="history-changes-header">Sau</div>
                       {Object.entries(h.changes || {}).map(([k, v]) => (
                         <>
-                          <div key={h._id + k + 'f'} style={{ fontFamily: 'monospace' }}>{k}</div>
-                          <div key={h._id + k + 'b'} style={{ whiteSpace: 'pre-wrap' }}>{String((v as any).from ?? '')}</div>
-                          <div key={h._id + k + 'a'} style={{ whiteSpace: 'pre-wrap' }}>{String((v as any).to ?? '')}</div>
+                          <div key={h._id + k + 'f'} className="history-field">{k}</div>
+                          <div key={h._id + k + 'b'} className="history-value">
+                            {String((v as any).from ?? '') || '(trống)'}
+                          </div>
+                          <div key={h._id + k + 'a'} className="history-value">
+                            {String((v as any).to ?? '') || '(trống)'}
+                          </div>
                         </>
                       ))}
                     </div>
@@ -255,9 +364,14 @@ export default function PendingEditsAdmin() {
           </section>
         </div>
       )}
+      
+      {viewingCourseId && (
+        <CourseDetailModal
+          courseId={viewingCourseId}
+          isOpen={!!viewingCourseId}
+          onClose={() => setViewingCourseId(null)}
+        />
+      )}
     </div>
   );
 }
-
-// Inline lightweight modal renderer (no external deps)
-// Detail modal no longer used in the simplified delete-only UI. Keeping removed for clarity.

@@ -1,26 +1,25 @@
 import axios from "./axios";
 import type { Course } from "../types/course";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8888/api";
-
 // Auth header handled by axios interceptor in ./axios via accessToken
+// Use relative paths since axios instance already has baseURL configured
 
 const courseTeacherApi = {
   // Teacher list: only courses owned by the authenticated teacher
   getAll: (params?: Record<string, unknown>) =>
-    axios.get(`${BASE_URL}/courses/teacher/all`, { params }),
+    axios.get("/courses/teacher/all", { params }),
 
   // Backend route is /api/courses/id/:id (not /:id)
-  getById: (id: string) => axios.get(`${BASE_URL}/courses/id/${id}`),
+  getById: (id: string) => axios.get(`/courses/id/${id}`),
 
-  create: (data: Partial<Course>) => axios.post(`${BASE_URL}/courses`, data),
+  create: (data: Partial<Course>) => axios.post("/courses", data),
 
-  update: (id: string, data: Partial<Course>) => axios.put(`${BASE_URL}/courses/${id}`, data),
+  update: (id: string, data: Partial<Course>) => axios.put(`/courses/${id}`, data),
 
-  delete: (id: string) => axios.delete(`${BASE_URL}/courses/${id}`),
+  delete: (id: string) => axios.delete(`/courses/${id}`),
 
   // Publish flow
-  requestPublish: (id: string) => axios.post(`${BASE_URL}/courses/${id}/request-publish`),
+  requestPublish: (id: string) => axios.post(`/courses/${id}/request-publish`),
 };
 
 export default courseTeacherApi;

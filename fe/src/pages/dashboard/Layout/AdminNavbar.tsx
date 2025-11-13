@@ -23,6 +23,8 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../hooks/useAuth';
 import axios from '../../../api/axios';
+import userApi from '../../../api/userApi';
+import { buildAvatarUrl } from '../../../utils/buildAvatarUrl';
 
 type AdminNavbarProps = {
   onToggleDrawer: () => void;
@@ -91,6 +93,25 @@ const AdminNavbar: React.FC<AdminNavbarProps> = ({
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
+  const [avatarSrc, setAvatarSrc] = useState<string | undefined>(
+    user?.avatar ? String(user.avatar) : undefined
+  );
+
+  // Resolve avatar from backend if missing; keep local state for onError fallback
+  useEffect(() => {
+    setAvatarSrc(user?.avatar ? String(user.avatar) : undefined);
+    if (user && !user.avatar) {
+      userApi
+        .getMyAvatar()
+        .then((res: any) => buildAvatarUrl(res?.data?.avatar))
+        .then((url: string | undefined) => {
+          if (url) setAvatarSrc(url);
+        })
+        .catch(() => {
+          // silent: fallback shows icon
+        });
+    }
+  }, [user?.avatar, user?._id]);
 
   // Pending edits count (courses + lessons)
   const [pendingCount, setPendingCount] = useState<number>(0);
@@ -207,7 +228,12 @@ const AdminNavbar: React.FC<AdminNavbarProps> = ({
           {/* Profile */}
           <Tooltip title={user?.fullName || 'Tài khoản'}>
             <IconButton color="inherit" onClick={handleOpenMenu} sx={{ ml: 0.5 }}>
-              <Avatar alt={user?.fullName || 'User'} src={user?.avatarUrl} sx={{ width: 32, height: 32 }} />
+              <Avatar 
+                alt={user?.fullName || 'User'} 
+                src={avatarSrc} 
+                sx={{ width: 32, height: 32 }}
+                onError={() => setAvatarSrc(undefined)}
+              />
             </IconButton>
           </Tooltip>
 

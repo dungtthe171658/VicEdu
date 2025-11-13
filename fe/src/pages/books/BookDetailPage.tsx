@@ -168,10 +168,10 @@ const BookDetailPage = () => {
 
         <p className="price">{priceVND}</p>
 
-{/*     
+    
         <p className={`stock ${stock > 0 ? "in-stock" : "out-of-stock"}`}>
           {stock > 0 ? `Còn ${stock} cuốn` : "Hết hàng"}
-        </p> */}
+        </p>
 
         <button
           className={`add-to-cart-btn ${added ? "added" : ""}`}

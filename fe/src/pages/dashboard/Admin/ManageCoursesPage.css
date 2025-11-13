@@ -59,6 +59,29 @@
   color: #fff;
 }
 
+.status-btn {
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.status-btn.published {
+  background-color: #28a745;
+}
+
+.status-btn.published:hover {
+  background-color: #218838;
+}
+
+.status-btn.unpublished {
+  background-color: #6c757d;
+}
+
+.status-btn.unpublished:hover {
+  background-color: #5a6268;
+}
+
 .status {
   text-transform: capitalize;
 }
