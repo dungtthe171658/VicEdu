@@ -6,6 +6,7 @@ import {
   deleteReview,
   getPublicReviews,
   getPublicSummary,
+  countAllReviews,
 } from "../controllers/review.controller";
 import { authenticateToken, checkRole } from "../middlewares/auth";
 
@@ -17,6 +18,7 @@ router.get("/summary", getPublicSummary);
 
 // Admin manage reviews
 router.get("/", authenticateToken, checkRole(["admin"]), getAllReviews);
+router.get("/count", authenticateToken, checkRole(["admin"]), countAllReviews);
 router.patch("/:id/approve", authenticateToken, checkRole(["admin"]), approveReview);
 router.delete("/:id", authenticateToken, checkRole(["admin"]), deleteReview);
 

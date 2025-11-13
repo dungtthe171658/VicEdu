@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
 import orderApi from "../../../api/orderApi";
 import type { OrderDto } from "../../../types/order";
+import OrderDetailModal from "../../../components/orders/OrderDetailModal";
 import "./ManageOrdersPage.css";
 
 const ManageOrdersPage = () => {
   const [orders, setOrders] = useState<OrderDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // ✅ Tải danh sách đơn hàng
   const loadOrders = async () => {
@@ -65,8 +68,22 @@ const ManageOrdersPage = () => {
   // ✅ Lấy tên người dùng
   const getUserName = (user: any) => {
     if (!user) return "Không rõ";
-    if (typeof user === "object") return user.name || "Không rõ";
+    if (typeof user === "object") {
+      // Nếu là object UserDto
+      return user.name || user.email || "Không rõ";
+    }
+    // Nếu là string ID (fallback)
     return user;
+  };
+
+  const handleViewDetail = (orderId: string) => {
+    setSelectedOrderId(orderId);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedOrderId(null);
   };
 
   return (
@@ -93,7 +110,7 @@ const ManageOrdersPage = () => {
               <th>Tổng tiền</th>
               <th>Ngày tạo</th>
               <th>Phương thức thanh toán</th>
-              {/* <th>Thao tác</th> */}
+              <th>Thao tác</th>
             </tr>
           </thead>
           <tbody>
@@ -117,18 +134,36 @@ const ManageOrdersPage = () => {
                     : "—"}
                 </td>
                 <td>{order.payment_method || "Không rõ"}</td>
-                {/* <td>
+                <td>
                   <button
-                    className="delete-btn"
-                    onClick={() => handleDelete(order._id)}
+                    className="detail-btn"
+                    onClick={() => handleViewDetail(order._id)}
+                    style={{
+                      padding: "4px 12px",
+                      backgroundColor: "#3b82f6",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                    }}
                   >
-                    Xóa
+                    Chi tiết
                   </button>
-                </td> */}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
+      )}
+
+      {/* Order Detail Modal */}
+      {selectedOrderId && (
+        <OrderDetailModal
+          orderId={selectedOrderId}
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+        />
       )}
     </div>
   );

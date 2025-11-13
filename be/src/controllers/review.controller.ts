@@ -253,3 +253,13 @@ export const deleteReview = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// Count all reviews
+export const countAllReviews = async (_req: AuthRequest, res: Response) => {
+  try {
+    const count = await ReviewModel.countDocuments();
+    return res.status(200).json({ count });
+  } catch (error: any) {
+    return res.status(500).json({ message: error?.message || "Server error" });
+  }
+};

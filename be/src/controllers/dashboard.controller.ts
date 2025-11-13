@@ -5,6 +5,7 @@ import UserModel from "../models/user.model";
 import OrderModel from "../models/order.model";
 import CourseModel from "../models/course.model";
 import OrderItemModel from "../models/order_item.model";
+import ReviewModel from "../models/review.model";
 
 export const getAdminStats = async (req: AuthRequest, res: Response) => {
     try {
@@ -72,5 +73,23 @@ export const getTeacherStats = async (req: AuthRequest, res: Response) => {
     return res.json({ students, revenue, activeCourses });
   } catch (error: any) {
     return res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
+export const getAdminActiveCourseCount = async (_req: AuthRequest, res: Response) => {
+  try {
+    const count = await CourseModel.countDocuments({ is_published: true });
+    return res.status(200).json({ count });
+  } catch (error: any) {
+    return res.status(500).json({ message: error?.message || "Server error" });
+  }
+};
+
+export const getAdminReviewCount = async (_req: AuthRequest, res: Response) => {
+  try {
+    const count = await ReviewModel.countDocuments();
+    return res.status(200).json({ count });
+  } catch (error: any) {
+    return res.status(500).json({ message: error?.message || "Server error" });
   }
 };

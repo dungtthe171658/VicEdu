@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useCart } from "../../contexts/CartContext";
+import { useAuth } from "../../hooks/useAuth";
 import paymentsApi from "../../api/paymentsApi";
 import bookApi from "../../api/bookApi";
 
@@ -14,6 +15,11 @@ export default function CartPage() {
   const [loading, setLoading] = useState(false);
   const [inStockBooks, setInStockBooks] = useState(books);
   const [outOfStockBooks, setOutOfStockBooks] = useState<typeof books>([]);
+  // Thông tin liên hệ
+  const [location, setLocation] = useState("");
+  const [phone, setPhone] = useState("");
+  const [fullName, setFullName] = useState("");
+  const { user } = useAuth();
 
   // 🔄 Đồng bộ lại stock thật từ DB khi mở trang
   useEffect(() => {
@@ -66,6 +72,23 @@ export default function CartPage() {
     }
 
     try {
+      // Validate địa chỉ và số điện thoại trước khi tiến hành
+      const trimmedLocation = location.trim();
+      const trimmedFullName = fullName.trim();
+      const phoneDigits = phone.replace(/\D/g, "");
+      if (!trimmedFullName) {
+        alert("Vui lòng nhập họ và tên.");
+        return;
+      }
+      if (!trimmedLocation) {
+        alert("Vui lòng nhập địa chỉ nhận hàng.");
+        return;
+      }
+      if (!/^\d{9,11}$/.test(phoneDigits)) {
+        alert("Số điện thoại không hợp lệ (9-11 số).");
+        return;
+      }
+
       setLoading(true);
 
       // 1️⃣ Trừ stock sách
@@ -108,6 +131,11 @@ export default function CartPage() {
         items,
         paymentMethod: payment,
       };
+      (payload as any).location = trimmedLocation;
+      (payload as any).phone = phoneDigits;
+      (payload as any).fullName = trimmedFullName;
+      if (user?.email) (payload as any).email = user.email;
+      delete (payload as any).paymentMethod;
 
       // 3️⃣ Gọi API tạo link thanh toán
       const res: { checkoutUrl?: string } = await paymentsApi.createPaymentLink(
@@ -368,6 +396,42 @@ export default function CartPage() {
       {/* === BÊN PHẢI: Thanh toán === */}
       <aside className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 h-fit sticky top-20">
         <h2 className="text-xl font-semibold mb-4">💳 Hình thức thanh toán</h2>
+
+        {/* Thông tin liên hệ */}
+        <div className="mb-6 space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên</label>
+            <input
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Ví dụ: Nguyễn Văn A"
+              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ nhận hàng</label>
+            <input
+              type="text"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="Ví dụ: 123 Trần Duy Hưng, Cầu Giấy, Hà Nội"
+              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
+            <input
+              type="tel"
+              inputMode="numeric"
+              pattern="[0-9]+"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="Ví dụ: 0912345678"
+              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
 
         <div className="space-y-3 mb-6">
           {[
