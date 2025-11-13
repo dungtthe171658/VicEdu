@@ -35,6 +35,12 @@ const bookApi = {
       { stock },
       { headers: getAuthHeaders() }
     ),
+
+  getPdfUrl: (id: string) =>
+    axios.get(`${BASE_URL}/books/${id}/pdf`, { headers: getAuthHeaders() }),
+
+  getPurchasedBooks: () =>
+    axios.get(`${BASE_URL}/books/purchased`, { headers: getAuthHeaders() }),
 };
 
 export default bookApi;

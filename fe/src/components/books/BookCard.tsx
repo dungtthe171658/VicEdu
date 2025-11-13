@@ -2,7 +2,7 @@ import type { BookDto } from "../../types/book.d";
 import { useNavigate } from "react-router-dom";
 import "./BookCard.css";
 import { useCart } from "../../contexts/CartContext";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface BookCardProps {
   book: BookDto;
@@ -12,6 +12,7 @@ const BookCard = ({ book }: BookCardProps) => {
   const navigate = useNavigate();
   const { addBookItem } = useCart();
   const [isAdding, setIsAdding] = useState(false);
+  const [hasPurchased, setHasPurchased] = useState(false);
 
   const handleCardClick = () => {
     navigate(`/books/${book._id}`);
@@ -19,11 +20,10 @@ const BookCard = ({ book }: BookCardProps) => {
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isOutOfStock || isAdding) return;
+    if (isOutOfStock || isAdding || hasPurchased) return;
 
     setIsAdding(true);
 
-    // Hiệu ứng UX: delay nhẹ để cảm giác "đang thêm"
     setTimeout(() => {
       addBookItem({
         _id: book._id,
@@ -35,9 +35,25 @@ const BookCard = ({ book }: BookCardProps) => {
       });
 
       setIsAdding(false);
-      alert(`✅ Đã thêm "${book.title}" vào giỏ hàng!`);
+      alert(`Đã thêm "${book.title}" vào giỏ hàng!`);
     }, 400);
   };
+
+  // Kiểm tra đã mua sách chưa
+  useEffect(() => {
+    const fetchPurchasedBooks = async () => {
+      try {
+        const res = await fetch("/orders/user-books", {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        });
+        const data: string[] = await res.json(); // giả sử backend trả về mảng book _id
+        setHasPurchased(data.includes(book._id));
+      } catch (err) {
+        console.error("Không thể kiểm tra sách đã mua:", err);
+      }
+    };
+    fetchPurchasedBooks();
+  }, [book._id]);
 
   const priceVND = (book.price_cents || 0).toLocaleString("vi-VN", {
     style: "currency",
@@ -70,12 +86,18 @@ const BookCard = ({ book }: BookCardProps) => {
 
         <button
           className={`add-to-cart-btn ${
-            isOutOfStock ? "disabled" : isAdding ? "loading" : ""
+            isOutOfStock || hasPurchased
+              ? "disabled"
+              : isAdding
+              ? "loading"
+              : ""
           }`}
           onClick={handleAddToCart}
-          disabled={isOutOfStock || isAdding}
+          disabled={isOutOfStock || isAdding || hasPurchased}
         >
-          {isOutOfStock
+          {hasPurchased
+            ? "Bạn đã mua sách này"
+            : isOutOfStock
             ? "Hết hàng"
             : isAdding
             ? "Đang thêm..."

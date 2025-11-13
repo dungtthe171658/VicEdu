@@ -39,7 +39,7 @@ import CourseManageDetail from "../pages/dashboard/Admin/CourseManageDetail";
 import ManageReviewsPage from "../pages/dashboard/Admin/ManageReviewsPage";
 import LessonManageDetail from "../pages/dashboard/Admin/LessonManageDetail";
 import PendingEditsAdmin from "../pages/dashboard/Admin/PendingEditsAdmin";
-
+import MyBooksPage from "../pages/books/MyBooksPage";
 import DashboardTeacherPage from "../pages/dashboard/Teacher/DashboardTeacherPage";
 import ManageCoursesTeacherPage from "../pages/dashboard/Teacher/ManageCoursesTeacherPage";
 import ManageStudentsPage from "../pages/dashboard/Teacher/ManageStudentsPage";
@@ -80,7 +80,7 @@ const AppRoutes: React.FC = () => {
                 {/* Books */}
                 <Route path="books" element={<BookListPage/>}/>
                 <Route path="books/:id" element={<BookDetailPage/>}/>
-
+                <Route path="/my-books" element={<MyBooksPage />} />
                 {/* Route test BookManagementPage */}
                 <Route path="test/manage-books" element={<BookManagementPage/>}/>
                 <Route path="/quiz/:lessonId" element={<QuizPage/>}/>
