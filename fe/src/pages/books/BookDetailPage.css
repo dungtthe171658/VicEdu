@@ -186,7 +186,7 @@
   cursor: default;
 }
 
-/* --- Nút giỏ hàng disable khi hết hàng --- */
+/* --- Nút giỏ hàng disable khi  --- */
 .add-to-cart-btn:disabled {
   background: #9ca3af;
   cursor: not-allowed;

@@ -8,6 +8,7 @@ import {
   updateBookStock,
   getPurchasedBooks,
   getBookOrderAndOrderitem,
+  getBookPdfUrl,
 } from "../controllers/book.controller";
 import { authenticateToken, checkRole } from "../middlewares/auth";
 
@@ -17,6 +18,7 @@ const router: Router = express.Router();
 router.get("/", getBooks);
 // Purchased should be defined before dynamic :id to avoid conflicts
 router.get("/purchased", authenticateToken, getBookOrderAndOrderitem);
+router.get("/:id/pdf", authenticateToken, getBookPdfUrl);
 router.get("/:id", getBookById);
 router.put("/:id/stock", authenticateToken, updateBookStock);
 

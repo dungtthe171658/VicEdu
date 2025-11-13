@@ -98,7 +98,7 @@ const BookCard = ({ book }: BookCardProps) => {
           {hasPurchased
             ? "Bạn đã mua sách này"
             : isOutOfStock
-            ? "Hết hàng"
+            ? "hết hàng"
             : isAdding
             ? "Đang thêm..."
             : "🛒 Thêm vào giỏ hàng"}
