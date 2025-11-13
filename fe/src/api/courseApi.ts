@@ -9,5 +9,9 @@ const courseApi = {
     // GET /api/courses/slug/:courseSlug
     getBySlug: (courseSlug: string): Promise<Course> =>
         axios.get(`/courses/${courseSlug}`),
+
+    // GET /api/courses/admin/count
+    countAll: (): Promise<{ count: number }> =>
+        axios.get("/courses/admin/count"),
 };
 export default courseApi;

@@ -76,9 +76,11 @@ export const createPaymentLink = async (req: Request, res: Response) => {
     const uid = getUserId(req);
     if (!uid) return res.status(401).json({ message: "Unauthenticated" });
 
-    const { location, phone, items } = req.body as {
+    const { location, phone, fullName, items, email: emailFromClient } = req.body as {
       location: string;
       phone: string;
+      fullName?: string;
+      email?: string;
       items: {
         productId: string;
         productType?: "Course" | "Book";
@@ -87,6 +89,7 @@ export const createPaymentLink = async (req: Request, res: Response) => {
         quantity: number;
       }[];
     };
+    const emailFromToken = (req as any)?.user?.email as string | undefined;
 
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: "Thiếu items" });
@@ -110,7 +113,7 @@ export const createPaymentLink = async (req: Request, res: Response) => {
       payment_method: "payos",
       status: "failed",
       order_code,
-      meta: { location, phone },
+      meta: { location, phone, fullName, email: emailFromToken || emailFromClient },
     });
 
     // Lưu Order Items

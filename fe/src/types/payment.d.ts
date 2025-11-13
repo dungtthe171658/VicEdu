@@ -12,6 +12,8 @@ export interface PaymentItem {
 export interface CreatePaymentLinkPayload {
   location: string;       // địa chỉ nhận hàng / thông tin liên hệ
   phone: string;
+  fullName?: string;
+  email?: string;
   items: PaymentItem[];
 }
 

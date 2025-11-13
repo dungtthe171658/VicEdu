@@ -38,15 +38,16 @@ export default function ProfilePage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [savingPwd, setSavingPwd] = useState(false);
 
   // Editable form state
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  // Change password state
   const [currentPwd, setCurrentPwd] = useState("");
   const [newPwd, setNewPwd] = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
+  const [savingPwd, setSavingPwd] = useState(false);
 
   // Lấy full profile từ BE
   const fetchFullProfile = async () => {
@@ -90,6 +91,7 @@ export default function ProfilePage() {
     }
   };
 
+  // BE trả THẲNG data do interceptor, nên res đã là JSON
   const handleChangePassword = async () => {
     try {
       setSavingPwd(true);
@@ -97,10 +99,10 @@ export default function ProfilePage() {
       const next = String(newPwd || "").trim();
       const conf = String(confirmPwd || "").trim();
 
-      if (!curr || !next || !conf) throw new Error("Vui lòng điền đầy đủ mật khẩu");
-      if (next.length < 8) throw new Error("Mật khẩu mới phải từ 8 ký tự");
-      if (next !== conf) throw new Error("Xác nhận mật khẩu không khớp");
-      if (curr === next) throw new Error("Mật khẩu mới không được trùng mật khẩu hiện tại");
+      if (!curr || !next || !conf) throw new Error("Vui long nhap day du mat khau");
+      if (next.length < 8) throw new Error("Mat khau moi phai co it nhat 8 ky tu");
+      if (next !== conf) throw new Error("Xac nhan mat khau khong khop");
+      if (curr === next) throw new Error("Mat khau moi khong duoc trung mat khau hien tai");
 
       await axios.put("/users/me/password", {
         currentPassword: curr,
@@ -110,16 +112,15 @@ export default function ProfilePage() {
       setCurrentPwd("");
       setNewPwd("");
       setConfirmPwd("");
-      alert("Đổi mật khẩu thành công!");
+      alert("Doi mat khau thanh cong!");
     } catch (e: any) {
-      console.error("Lỗi đổi mật khẩu:", e);
-      alert(e?.message || "Không thể đổi mật khẩu");
+      console.error("Loi doi mat khau:", e);
+      alert(e?.message || "Khong the doi mat khau");
     } finally {
       setSavingPwd(false);
     }
   };
 
-  // BE trả THẲNG data do interceptor, nên res đã là JSON
   const getCloudinarySignature = async (
     folder: string,
     uploadPreset = "vicedu_default"
@@ -268,7 +269,8 @@ export default function ProfilePage() {
           {loadingProfile ? (
             <div className="text-sm text-gray-500">Đang tải hồ sơ...</div>
           ) : (
-            <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="space-y-4">
               <div>
                 <label className="block text-sm text-gray-500 mb-1">Họ và tên</label>
                 <input
@@ -309,55 +311,80 @@ export default function ProfilePage() {
                   </span>
                 )}
               </div>
-
-              <div className="mt-6 border-t pt-4">
-                <h2 className="text-lg font-semibold mb-3">Đổi mật khẩu</h2>
-                <div className="grid gap-3">
-                  <div>
-                    <label className="block text-sm text-gray-500 mb-1">Mật khẩu hiện tại</label>
-                    <input
-                      type="password"
-                      value={currentPwd}
-                      onChange={(e) => setCurrentPwd(e.target.value)}
-                      className="w-full border rounded-lg px-3 py-2"
-                      placeholder="Nhập mật khẩu hiện tại"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-500 mb-1">Mật khẩu mới</label>
-                    <input
-                      type="password"
-                      value={newPwd}
-                      onChange={(e) => setNewPwd(e.target.value)}
-                      className="w-full border rounded-lg px-3 py-2"
-                      placeholder="Nhập mật khẩu mới (>= 8 ký tự)"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-500 mb-1">Xác nhận mật khẩu mới</label>
-                    <input
-                      type="password"
-                      value={confirmPwd}
-                      onChange={(e) => setConfirmPwd(e.target.value)}
-                      className="w-full border rounded-lg px-3 py-2"
-                      placeholder="Nhập lại mật khẩu mới"
-                    />
-                  </div>
-                </div>
+              <div className="pt-2">
                 <button
-                  onClick={handleChangePassword}
-                  disabled={savingPwd}
-                  className={`mt-3 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 ${
-                    savingPwd ? "opacity-70 cursor-not-allowed" : ""
+                  onClick={handleSaveProfile}
+                  disabled={saving}
+                  className={`bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 ${
+                    saving ? "opacity-70 cursor-not-allowed" : ""
                   }`}
                 >
-                  {savingPwd ? "Đang đổi..." : "Đổi mật khẩu"}
+                  {saving ? "Đang lưu..." : "Lưu thay đổi"}
                 </button>
               </div>
-            </>
+              <div className="pt-2">
+                <button
+                  onClick={() => {
+                    logout();
+                    navigate("/login");
+                  }}
+                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+                >
+                  Đăng xuất
+                </button>
+              </div>
+            </div>
+            {/* Right: Change password */}
+            <div className="space-y-4">
+                <div className="rounded-xl border p-4">
+                  <h2 className="text-lg font-semibold mb-3">Đổi mật khẩu</h2>
+                  <div className="grid gap-3">
+                    <div>
+                      <label className="block text-sm text-gray-500 mb-1">Mật khẩu hiện tại</label>
+                      <input
+                        type="password"
+                        value={currentPwd}
+                        onChange={(e) => setCurrentPwd(e.target.value)}
+                        className="w-full border rounded-lg px-3 py-2"
+                        placeholder="Nhập mật khẩu hiện tại"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-500 mb-1">Mật khẩu mới</label>
+                      <input
+                        type="password"
+                        value={newPwd}
+                        onChange={(e) => setNewPwd(e.target.value)}
+                        className="w-full border rounded-lg px-3 py-2"
+                        placeholder="Mật khẩu >= 8 ký tự"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-500 mb-1">Xác nhận mật khẩu mới</label>
+                      <input
+                        type="password"
+                        value={confirmPwd}
+                        onChange={(e) => setConfirmPwd(e.target.value)}
+                        className="w-full border rounded-lg px-3 py-2"
+                        placeholder="Nhập lại mật khẩu mới"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleChangePassword}
+                    disabled={savingPwd}
+                    className={`mt-3 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 ${
+                      savingPwd ? "opacity-70 cursor-not-allowed" : ""
+                    }`}
+                  >
+                    {savingPwd ? "Đang đổi..." : "Đổi mật khẩu"}
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
 
-          <div className="pt-2">
+          <div className="pt-2 hidden">
             <button
               onClick={handleSaveProfile}
               disabled={saving}
@@ -368,7 +395,7 @@ export default function ProfilePage() {
               {saving ? "Đang lưu..." : "Lưu thay đổi"}
             </button>
           </div>
-          <div className="pt-2">
+          <div className="pt-2 hidden">
             <button
               onClick={() => {
                 logout();

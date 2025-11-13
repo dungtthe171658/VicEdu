@@ -538,3 +538,13 @@ export const deleteCourse = async (req: Request, res: Response) => {
     return res.status(500).json({ message: error.message || "Server error" });
   }
 };
+
+// Count all courses
+export const countAllCourses = async (_req: AuthRequest, res: Response) => {
+  try {
+    const count = await CourseModel.countDocuments();
+    return res.status(200).json({ count });
+  } catch (error: any) {
+    return res.status(500).json({ message: error?.message || "Server error" });
+  }
+};
