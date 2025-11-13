@@ -12,6 +12,8 @@ export interface BookDto {
   category_id: string | Category;
   is_published?: boolean;
   images?: string[];
+   pdf_url?: string;
   created_at?: string;
   updated_at?: string;
+
 }
