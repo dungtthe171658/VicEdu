@@ -89,6 +89,29 @@ export default function CourseManageDetail() {
           )}
           <div style={{ background: "#fff", borderRadius: 12, padding: 16 }}>
             <h3 style={{ marginTop: 0 }}>Thông tin khóa học</h3>
+            {/* Hiển thị trạng thái (chỉ đọc) */}
+            <div style={{ marginBottom: 16, padding: 12, background: "#f3f4f6", borderRadius: 8 }}>
+              <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 14 }}>Trạng thái</label>
+              <div style={{ 
+                display: "inline-block", 
+                padding: "4px 12px", 
+                borderRadius: 4,
+                fontSize: 14,
+                fontWeight: 500,
+                backgroundColor: 
+                  (course as any)?.status === "approved" ? "#d1fae5" :
+                  (course as any)?.status === "rejected" ? "#fee2e2" :
+                  "#fef3c7",
+                color:
+                  (course as any)?.status === "approved" ? "#065f46" :
+                  (course as any)?.status === "rejected" ? "#991b1b" :
+                  "#92400e"
+              }}>
+                {(course as any)?.status === "approved" ? "Đã duyệt" :
+                  (course as any)?.status === "rejected" ? "Từ chối" :
+                  "Chờ duyệt"}
+              </div>
+            </div>
             <CourseForm
               initialData={{
                 ...course,

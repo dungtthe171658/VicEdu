@@ -85,6 +85,8 @@ const CourseFormTeacher = ({ initialData = {}, onSubmit }: CourseFormTeacherProp
       category_id: formData.category_id?.toString() || "",
       price_cents: priceInCents,
       is_published: !!formData.is_published,
+      // Ensure description is always sent (required by backend)
+      description: formData.description || "",
     };
 
     // Không gửi status field cho giáo viên
@@ -175,6 +177,7 @@ const CourseFormTeacher = ({ initialData = {}, onSubmit }: CourseFormTeacherProp
           value={formData.description || ""}
           onChange={handleChange}
           rows={3}
+          required
         />
       </div>
 

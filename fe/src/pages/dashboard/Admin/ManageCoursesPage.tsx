@@ -137,13 +137,13 @@ const ManageCoursesPage = () => {
               <span>{getCategoryName(course as any)}</span>
               <span>{formatVND(getPriceInVND(course as any))}</span>
               {/* Debug info - hiển thị cả price và price_cents nếu có */}
-              {((course as any).price !== undefined || (course as any).price_cents !== undefined) && (
+              {/* {((course as any).price !== undefined || (course as any).price_cents !== undefined) && (
                 <span style={{ fontSize: "11px", color: "#6b7280", marginLeft: "8px" }}>
                   {((course as any).price !== undefined && `price: ${(course as any).price}`)}
                   {((course as any).price !== undefined && (course as any).price_cents !== undefined) && " | "}
                   {((course as any).price_cents !== undefined && `price_cents: ${(course as any).price_cents}`)}
                 </span>
-              )}
+              )} */}
 
               <span className={`status ${(course as any).is_published ? "published" : "unpublished"}`}>
                 {(course as any).is_published ? "Đang hiển thị" : "Đang ẩn"}
