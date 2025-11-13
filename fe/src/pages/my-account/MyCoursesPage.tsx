@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "../../api/axios";
+import enrollmentApi from "../../api/enrollmentApi";
 import { Link } from "react-router-dom";
 
 type Course = {
@@ -44,7 +45,7 @@ export default function MyCoursesPage() {
       setError(null);
       try {
         // Gợi ý BE: GET /api/enrollments/my (populate sẵn)
-        console.log("[MyCourses] fetching /enrollments/my", {
+        console.log("[MyCourses] fetching /enrollments/my-mini", {
           baseURL: (axios as any).defaults?.baseURL,
           hasToken: !!localStorage.getItem("accessToken"),
         });
@@ -53,8 +54,8 @@ export default function MyCoursesPage() {
         if (testEmail) params.email = String(testEmail);
         if ((import.meta as any).env?.DEV) params.includePending = 1;
 
-        const data = (await axios.get("/enrollments/my", { params })) as any;
-        console.log("[MyCourses] /enrollments/my response:", data);
+        const data = (await enrollmentApi.getMyEnrollMini(params)) as any;
+        console.log("[MyCourses] /enrollments/my-mini response:", data);
 
         if (Array.isArray(data) && data.length && data[0]?.course) {
           // Trường hợp đã populate

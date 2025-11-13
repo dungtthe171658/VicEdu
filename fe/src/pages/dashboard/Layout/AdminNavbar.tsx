@@ -237,7 +237,7 @@ const AdminNavbar: React.FC<AdminNavbarProps> = ({
                 <Typography variant="caption" color="text.secondary">{user?.email}</Typography>
               </Box>
             </MenuItem>
-            <MenuItem onClick={() => { navigate('/admin/profile'); handleCloseMenu(); }}>
+            <MenuItem onClick={() => { navigate('/profile'); handleCloseMenu(); }}>
               <SettingsOutlinedIcon fontSize="small" style={{ marginRight: 8 }} /> Hồ sơ
             </MenuItem>
             <MenuItem onClick={handleLogout}>

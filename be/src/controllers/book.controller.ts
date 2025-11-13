@@ -5,9 +5,31 @@ import Book from "../models/book.model";
 import OrderItemModel from "../models/order_item.model";
 import Order from "../models/order.model";
 import { AuthRequest } from "../middlewares/auth";
+import UserModel from "../models/user.model";
 
 const toObjectId = (id: any) =>
   mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : null;
+
+// Helper: resolve user id from decoded token (compatible with various shapes)
+function getUserIdFromToken(req: Request & { user?: any }): string | null {
+  const u = (req as any).user as any;
+  const id = u?._id?.toString?.() || u?.id?.toString?.();
+  return id || null;
+}
+
+async function resolveUserId(req: Request & { user?: any }): Promise<string | null> {
+  const isDev = (process.env.NODE_ENV || "development") !== "production";
+  let uid = getUserIdFromToken(req);
+  if (!uid && isDev) {
+    const qEmailRaw = (req.query as any)?.email;
+    if (qEmailRaw && typeof qEmailRaw === "string") {
+      const qEmail = qEmailRaw.trim().toLowerCase();
+      const user = await UserModel.findOne({ email: qEmail }).select({ _id: 1 }).lean();
+      if (user?._id) uid = String((user as any)._id);
+    }
+  }
+  return uid || null;
+}
 
 // 📘 Lấy danh sách sách (kèm bộ lọc cơ bản)
 export const getBooks = async (req: Request, res: Response) => {
@@ -234,31 +256,124 @@ export const updateBookStock = async (req: Request, res: Response) => {
 // 📘 Lấy danh sách sách đã mua của user
 export const getPurchasedBooks = async (req: AuthRequest, res: Response) => {
   try {
-    const userId =
-      typeof req.user === "object" && "id" in req.user
-        ? String(req.user.id)
-        : undefined;
+    const isDev = (process.env.NODE_ENV || "development") !== "production";
+    const uid = getUserIdFromToken(req as any);
+    if (!uid) return res.status(401).json({ message: "Unauthenticated" });
 
-    if (!userId) return res.status(401).json({ message: "Unauthenticated" });
+    const userObjectId = new mongoose.Types.ObjectId(uid);
 
-    const orders = await Order.find({
-      user_id: userId,
-      status: "completed",
-    }).lean();
+    // Join orders -> order_items (Book) -> books, group unique books
+    const viaOrders = await Order.aggregate([
+      { $match: { user_id: userObjectId, status: { $in: ["completed"] } } },
+      {
+        $lookup: {
+          from: "order_items",
+          localField: "_id",
+          foreignField: "order_id",
+          as: "items",
+        },
+      },
+      { $unwind: "$items" },
+      { $match: { "items.product_type": "Book" } },
+      {
+        $lookup: {
+          from: "books",
+          localField: "items.product_id",
+          foreignField: "_id",
+          as: "book",
+        },
+      },
+      { $unwind: "$book" },
+      {
+        $group: {
+          _id: "$book._id",
+          book: { $first: "$book" },
+          lastPurchasedAt: { $max: "$created_at" },
+        },
+      },
+      { $sort: { lastPurchasedAt: -1 } },
+    ]);
 
-    const bookIds: mongoose.Types.ObjectId[] = [];
-    orders.forEach((o) => {
-      if (o.meta?.books) {
-        bookIds.push(
-          ...o.meta.books.map((b: string) => new mongoose.Types.ObjectId(b))
-        );
-      }
-    });
+    let books = (viaOrders as any[]).map((row) => row.book);
+    if (!books.length && isDev && String((req.query as any)?.forceAll || "0") === "1") {
+      books = await Book.find({}).sort({ created_at: -1 }).limit(24).lean();
+    }
 
-    const books = await Book.find({ _id: { $in: bookIds } }).lean();
     return res.json({ data: books, count: books.length });
   } catch (err: any) {
     console.error(err);
     return res.status(500).json({ message: err.message || "Server error" });
+  }
+};
+
+// Alternate controller following the requested naming and logic
+export const getBookOrderAndOrderitem = async (req: Request, res: Response) => {
+  try {
+    const isDev = (process.env.NODE_ENV || "development") !== "production";
+    const uid = await resolveUserId(req);
+    if (!uid) return res.status(401).json({ message: "Unauthenticated" });
+
+    const userObjectId = new mongoose.Types.ObjectId(uid);
+
+    const includePending = String((req.query as any)?.includePending || "0") === "1";
+    const statuses = includePending && isDev ? ["completed", "pending"] : ["completed"];
+
+    const results = await Order.aggregate([
+      { $match: { user_id: userObjectId, status: { $in: statuses } } },
+      {
+        $lookup: {
+          from: "order_items",
+          localField: "_id",
+          foreignField: "order_id",
+          as: "items",
+        },
+      },
+      { $unwind: "$items" },
+      { $match: { "items.product_type": "Book" } },
+      {
+        $lookup: {
+          from: "books",
+          localField: "items.product_id",
+          foreignField: "_id",
+          as: "book",
+        },
+      },
+      { $unwind: "$book" },
+      {
+        $group: {
+          _id: "$book._id",
+          book: { $first: "$book" },
+          lastPurchasedAt: { $max: "$created_at" },
+        },
+      },
+      { $sort: { lastPurchasedAt: -1 } },
+    ]);
+
+    let books = (results as any[]).map((r) => r.book);
+
+    // Fallback for environments where order_items are not populated yet
+    if (!books.length) {
+      const orders = await Order.find({ user_id: userObjectId, status: { $in: statuses } })
+        .select({ meta: 1 })
+        .lean();
+      const idSet = new Set<string>();
+      for (const o of orders as any[]) {
+        const list = Array.isArray(o?.meta?.books) ? (o.meta.books as any[]) : [];
+        for (const bid of list) {
+          try {
+            idSet.add(String(bid));
+          } catch {}
+        }
+      }
+      if (idSet.size) {
+        const ids = Array.from(idSet).map((s) => new mongoose.Types.ObjectId(s));
+        books = await Book.find({ _id: { $in: ids } }).lean();
+      }
+    }
+
+    return res.json({ data: books, count: books.length });
+  } catch (error: any) {
+    console.error("getBookOrderAndOrderitem error:", error?.message || error);
+    return res.status(500).json({ message: error?.message || "Server error" });
   }
 };

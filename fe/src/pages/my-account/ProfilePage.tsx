@@ -2,6 +2,7 @@
 import { useAuth } from "../../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { buildAvatarUrl } from "../../utils/buildAvatarUrl";
 import axios from "../../api/axios";           // axios instance (đã có baseURL + token)
 import userApi from "../../api/userApi";       // dùng để gọi /users/me/full
 
@@ -36,6 +37,16 @@ export default function ProfilePage() {
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savingPwd, setSavingPwd] = useState(false);
+
+  // Editable form state
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [currentPwd, setCurrentPwd] = useState("");
+  const [newPwd, setNewPwd] = useState("");
+  const [confirmPwd, setConfirmPwd] = useState("");
 
   // Lấy full profile từ BE
   const fetchFullProfile = async () => {
@@ -44,6 +55,10 @@ export default function ProfilePage() {
       const res = await userApi.getProfileFull(); // GET /users/me/full
       // res.data dạng { user: FullUser }
       setFullUser(res.data.user);
+      const u = res.data.user as FullUser;
+      setName(u.fullName || u.name || user?.name || "");
+      setEmail(u.email || user?.email || "");
+      setPhone(u.phone || user?.phone || "");
       console.log("👉 Full profile:", res.data.user);
     } catch (e) {
       console.error("👉 Lỗi lấy full profile:", e);
@@ -55,6 +70,54 @@ export default function ProfilePage() {
   useEffect(() => {
     fetchFullProfile();
   }, []);
+
+  const handleSaveProfile = async () => {
+    try {
+      setSaving(true);
+      const payload: any = {
+        name: String(name || "").trim(),
+        email: String(email || "").trim(),
+        phone: String((phone ?? "") as string).trim(),
+      };
+      await axios.put("/users/me", payload);
+      await fetchFullProfile();
+      alert("Cập nhật hồ sơ thành công!");
+    } catch (e: any) {
+      console.error("Lỗi cập nhật hồ sơ:", e);
+      alert(e?.message || "Có lỗi khi cập nhật hồ sơ");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    try {
+      setSavingPwd(true);
+      const curr = String(currentPwd || "");
+      const next = String(newPwd || "").trim();
+      const conf = String(confirmPwd || "").trim();
+
+      if (!curr || !next || !conf) throw new Error("Vui lòng điền đầy đủ mật khẩu");
+      if (next.length < 8) throw new Error("Mật khẩu mới phải từ 8 ký tự");
+      if (next !== conf) throw new Error("Xác nhận mật khẩu không khớp");
+      if (curr === next) throw new Error("Mật khẩu mới không được trùng mật khẩu hiện tại");
+
+      await axios.put("/users/me/password", {
+        currentPassword: curr,
+        newPassword: next,
+      });
+
+      setCurrentPwd("");
+      setNewPwd("");
+      setConfirmPwd("");
+      alert("Đổi mật khẩu thành công!");
+    } catch (e: any) {
+      console.error("Lỗi đổi mật khẩu:", e);
+      alert(e?.message || "Không thể đổi mật khẩu");
+    } finally {
+      setSavingPwd(false);
+    }
+  };
 
   // BE trả THẲNG data do interceptor, nên res đã là JSON
   const getCloudinarySignature = async (
@@ -152,10 +215,11 @@ export default function ProfilePage() {
     );
   }
 
-  const avatarSrc = fullUser?.avatar || user.avatar || "";
-  const displayName = fullUser?.fullName || fullUser?.name || user.name || "";
-  const displayEmail = fullUser?.email || user.email || "";
-  const displayPhone = fullUser?.phone || user.phone || "";
+  const avatarSrc =
+    buildAvatarUrl(fullUser?.avatar) || buildAvatarUrl(user.avatar) || "";
+  const displayName = name;
+  const displayEmail = email;
+  const displayPhone = phone;
   const isVerified = (fullUser as any)?.is_verified ?? (user as any)?.is_verified ?? false;
 
   return (
@@ -209,28 +273,31 @@ export default function ProfilePage() {
                 <label className="block text-sm text-gray-500 mb-1">Họ và tên</label>
                 <input
                   value={displayName}
-                  readOnly
-                  className="w-full border rounded-lg px-3 py-2 bg-gray-50"
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full border rounded-lg px-3 py-2"
+                  placeholder="Nhập họ tên"
                 />
               </div>
               <div>
                 <label className="block text-sm text-gray-500 mb-1">Email</label>
                 <input
                   value={displayEmail}
-                  readOnly
-                  className="w-full border rounded-lg px-3 py-2 bg-gray-50"
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full border rounded-lg px-3 py-2"
+                  placeholder="Nhập email"
                 />
               </div>
-              {displayPhone && (
+              
                 <div>
                   <label className="block text-sm text-gray-500 mb-1">Số điện thoại</label>
                   <input
                     value={displayPhone}
-                    readOnly
-                    className="w-full border rounded-lg px-3 py-2 bg-gray-50"
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full border rounded-lg px-3 py-2"
+                    placeholder="Nhập số điện thoại"
                   />
                 </div>
-              )}
+              
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 {isVerified ? (
                   <span className="px-2 py-1 rounded bg-green-100 text-green-700">
@@ -242,9 +309,65 @@ export default function ProfilePage() {
                   </span>
                 )}
               </div>
+
+              <div className="mt-6 border-t pt-4">
+                <h2 className="text-lg font-semibold mb-3">Đổi mật khẩu</h2>
+                <div className="grid gap-3">
+                  <div>
+                    <label className="block text-sm text-gray-500 mb-1">Mật khẩu hiện tại</label>
+                    <input
+                      type="password"
+                      value={currentPwd}
+                      onChange={(e) => setCurrentPwd(e.target.value)}
+                      className="w-full border rounded-lg px-3 py-2"
+                      placeholder="Nhập mật khẩu hiện tại"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-500 mb-1">Mật khẩu mới</label>
+                    <input
+                      type="password"
+                      value={newPwd}
+                      onChange={(e) => setNewPwd(e.target.value)}
+                      className="w-full border rounded-lg px-3 py-2"
+                      placeholder="Nhập mật khẩu mới (>= 8 ký tự)"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-500 mb-1">Xác nhận mật khẩu mới</label>
+                    <input
+                      type="password"
+                      value={confirmPwd}
+                      onChange={(e) => setConfirmPwd(e.target.value)}
+                      className="w-full border rounded-lg px-3 py-2"
+                      placeholder="Nhập lại mật khẩu mới"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={handleChangePassword}
+                  disabled={savingPwd}
+                  className={`mt-3 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 ${
+                    savingPwd ? "opacity-70 cursor-not-allowed" : ""
+                  }`}
+                >
+                  {savingPwd ? "Đang đổi..." : "Đổi mật khẩu"}
+                </button>
+              </div>
             </>
           )}
 
+          <div className="pt-2">
+            <button
+              onClick={handleSaveProfile}
+              disabled={saving}
+              className={`bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 ${
+                saving ? "opacity-70 cursor-not-allowed" : ""
+              }`}
+            >
+              {saving ? "Đang lưu..." : "Lưu thay đổi"}
+            </button>
+          </div>
           <div className="pt-2">
             <button
               onClick={() => {

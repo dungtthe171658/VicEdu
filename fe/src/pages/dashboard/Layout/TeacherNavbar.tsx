@@ -218,7 +218,7 @@ const TeacherNavbar: React.FC<TeacherNavbarProps> = ({
                 <Typography variant="caption" color="text.secondary">{user?.email}</Typography>
               </Box>
             </MenuItem>
-            <MenuItem onClick={() => { navigate('/teacher/profile'); handleCloseMenu(); }}>
+            <MenuItem onClick={() => { navigate('/profile'); handleCloseMenu(); }}>
               <SettingsOutlinedIcon fontSize="small" style={{ marginRight: 8 }} /> Hồ sơ
             </MenuItem>
             <MenuItem onClick={handleLogout}>

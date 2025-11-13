@@ -11,8 +11,7 @@ interface BookFormProps {
   onSubmit: (data: Partial<BookDto>) => void;
 }
 
-const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME!;
-const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET!;
+// Signed uploads are used; no need for env CLOUD_NAME/UPLOAD_PRESET here.
 
 type CloudinarySign = {
   timestamp: number;
@@ -49,6 +48,29 @@ const uploadImageToCloudinary = async (
   form.append("signature", sign.signature);
 
   const endpoint = `https://api.cloudinary.com/v1_1/${sign.cloudName}/image/upload`;
+  const res = await fetch(endpoint, { method: "POST", body: form });
+  const json = await res.json();
+
+  if (!json?.secure_url || !json?.public_id) {
+    throw new Error(json?.error?.message || "Upload Cloudinary thất bại");
+  }
+
+  return { secure_url: json.secure_url, public_id: json.public_id };
+};
+
+const uploadRawToCloudinary = async (
+  file: File,
+  sign: CloudinarySign
+): Promise<{ secure_url: string; public_id: string }> => {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("api_key", sign.apiKey);
+  form.append("timestamp", String(sign.timestamp));
+  form.append("upload_preset", sign.upload_preset?.trim());
+  form.append("folder", sign.folder);
+  form.append("signature", sign.signature);
+
+  const endpoint = `https://api.cloudinary.com/v1_1/${sign.cloudName}/raw/upload`;
   const res = await fetch(endpoint, { method: "POST", body: form });
   const json = await res.json();
 
@@ -122,41 +144,19 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
 
   const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) {
-      console.log("No PDF selected");
-      return;
-    }
-
-    console.log("Selected PDF file:", file);
+    if (!file) return;
 
     setUploadingPdf(true);
-    const formDataCloud = new FormData();
-    formDataCloud.append("file", file);
-    formDataCloud.append("upload_preset", UPLOAD_PRESET);
-
     try {
-      console.log("Uploading PDF to Cloudinary...");
-      const res = await fetch(
-        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`,
-        { method: "POST", body: formDataCloud }
-      );
-
-      const data = await res.json();
-      console.log("Cloudinary response:", data);
-
-      if (!res.ok || !data.secure_url) {
-        throw new Error(data.error?.message || "Upload failed");
-      }
-
+      const sign = await getCloudinarySignature("vicedu/pdfs/books");
+      const { secure_url } = await uploadRawToCloudinary(file, sign);
       setFormData((prev) => ({
         ...prev,
-        pdf_url: data.secure_url,
+        pdf_url: secure_url,
       }));
-
-      console.log("PDF uploaded successfully:", data.secure_url);
-    } catch (err) {
-      console.error("Error uploading PDF:", err);
-      alert(`Upload PDF failed: ${err instanceof Error ? err.message : err}`);
+    } catch (err: any) {
+      console.error("Lỗi upload PDF:", err);
+      alert(`Upload PDF thất bại: ${err?.message || err}`);
     } finally {
       setUploadingPdf(false);
     }

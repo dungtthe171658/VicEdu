@@ -6,6 +6,8 @@ import {
   updateBook,
   deleteBook,
   updateBookStock,
+  getPurchasedBooks,
+  getBookOrderAndOrderitem,
 } from "../controllers/book.controller";
 import { authenticateToken, checkRole } from "../middlewares/auth";
 
@@ -13,6 +15,8 @@ const router: Router = express.Router();
 
 // Public — ai cũng xem được danh sách sách
 router.get("/", getBooks);
+// Purchased should be defined before dynamic :id to avoid conflicts
+router.get("/purchased", authenticateToken, getBookOrderAndOrderitem);
 router.get("/:id", getBookById);
 router.put("/:id/stock", authenticateToken, updateBookStock);
 
