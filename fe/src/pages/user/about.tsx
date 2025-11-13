@@ -241,11 +241,10 @@ const VicEduLanding = () => {
           <div className="flex flex-col md:flex-row items-center gap-12">
             <div className="flex-1">
               <h2 className="text-4xl font-bold text-gray-900 mb-6">
-                Thư viện sách điện tử
+                Thư viện sách
               </h2>
               <p className="text-xl text-gray-600 mb-8">
-                Hơn 1000 đầu sách từ các lĩnh vực: Công nghệ, Kinh doanh, Marketing, 
-                Phát triển bản thân, và nhiều hơn nữa. Đọc mọi lúc mọi nơi trên mọi thiết bị.
+                Hơn 1000 đầu sách từ các lĩnh vực: Công nghệ, Marketing, Thiết kế đồ họa. Đọc mọi lúc mọi nơi trên mọi thiết bị.
               </p>
               <ul className="space-y-4 mb-8">
                 {[
