@@ -147,9 +147,48 @@ const UserHeader = () => {
 };
 
 const UserFooter = () => (
-  <footer className="user-footer">
-    <p>&copy; 2025 VicEdu. All rights reserved.</p>
-  </footer>
+  <footer className="bg-gray-900 text-gray-300 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-4 gap-8 mb-8">
+            <div>
+              <h3 className="text-white text-xl font-bold mb-4">VicEdu</h3>
+              <p className="text-gray-400">
+                Nền tảng học trực tuyến hàng đầu Việt Nam
+              </p>
+            </div>
+            <div>
+              <h4 className="text-white font-semibold mb-4">Khám phá</h4>
+              <ul className="space-y-2">
+                <li><a href="#" className="hover:text-white transition">Khóa học</a></li>
+                <li><a href="#" className="hover:text-white transition">Sách điện tử</a></li>
+                <li><a href="#" className="hover:text-white transition">Giảng viên</a></li>
+                <li><a href="#" className="hover:text-white transition">Blog</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-white font-semibold mb-4">Hỗ trợ</h4>
+              <ul className="space-y-2">
+                <li><a href="#" className="hover:text-white transition">Trung tâm trợ giúp</a></li>
+                <li><a href="#" className="hover:text-white transition">Liên hệ</a></li>
+                <li><a href="#" className="hover:text-white transition">Điều khoản</a></li>
+                <li><a href="#" className="hover:text-white transition">Chính sách</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-white font-semibold mb-4">Kết nối</h4>
+              <ul className="space-y-2">
+                <li><a href="#" className="hover:text-white transition">Facebook</a></li>
+                <li><a href="#" className="hover:text-white transition">YouTube</a></li>
+                <li><a href="#" className="hover:text-white transition">LinkedIn</a></li>
+                <li><a href="#" className="hover:text-white transition">Instagram</a></li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-gray-800 pt-8 text-center">
+            <p>&copy; 2025 VicEdu. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
 );
 
 const UserLayout = () => {

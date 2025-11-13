@@ -202,19 +202,7 @@ const AdminNavbar: React.FC<AdminNavbarProps> = ({
 
           {rightActions}
 
-          {/* <Tooltip title="Thông báo">
-            <IconButton color="inherit">
-              <Badge color="error" badgeContent={pendingCount}>
-                <NotificationsIcon />
-              </Badge>
-            </IconButton>
-          </Tooltip> */}
-{/* 
-          <Tooltip title="Cài đặt">
-            <IconButton color="inherit" onClick={() => navigate('/admin/settings')}>
-              <SettingsOutlinedIcon />
-            </IconButton>
-          </Tooltip> */}
+     
 
           {/* Profile */}
           <Tooltip title={user?.fullName || 'Tài khoản'}>

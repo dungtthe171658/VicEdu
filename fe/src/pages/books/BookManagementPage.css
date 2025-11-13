@@ -60,6 +60,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  z-index: 1300;
 }
 
 .modal-content {
@@ -67,6 +68,10 @@
   padding: 20px;
   border-radius: 6px;
   width: 400px;
+  max-height: 90vh; /* Thêm để tránh tràn màn hình */
+  overflow-y: auto; /* Cho phép scroll nếu nội dung dài */
+  position: relative;
+  z-index: 1301; /* Đảm bảo content nằm trên overlay */
 }
 
 .close-btn {
