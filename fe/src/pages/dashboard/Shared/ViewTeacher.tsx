@@ -7,7 +7,6 @@ import { FaUsers, FaBookOpen, FaMoneyBillWave } from "react-icons/fa";
 import { useAuth } from "../../../hooks/useAuth";
 import courseTeacherApi from "../../../api/courseTeacherApi";
 import orderApi from "../../../api/orderApi";
-import dashboardApi from "../../../api/dashboardApi";
 import type { Course } from "../../../types/course";
 import type { OrderDto } from "../../../types/order";
 
@@ -97,53 +96,64 @@ const ViewTeacher: React.FC = () => {
           orders = [];
         }
 
-        const COMPLETED = new Set(["completed", "paid"]);
+        const TARGET = new Set(["pending"]);
         const uniqueStudents = new Set<string>();
         let revenue = 0;
+        const currentTeacherId = toId((user as any)?._id || (user as any)?.id);
 
         for (const o of orders || []) {
-          if (!o || !COMPLETED.has((o as any).status)) continue;
+          if (!o || !TARGET.has((o as any).status)) continue;
 
-          // Normalize courses inside order
-          const rawCourses: any[] = Array.isArray((o as any).course)
-            ? ((o as any).course as any[])
-            : (Array.isArray((o as any).courses) ? ((o as any).courses as any[]) : []);
-          const rawCourseIdsFromField = Array.isArray((o as any).course_id)
-            ? ((o as any).course_id as any[]).map(toId)
-            : ((o as any).course_id ? [toId((o as any).course_id)] : []);
-          const orderedIds: string[] = rawCourses.length ? rawCourses.map((c: any) => toId((c as any)._id)).filter(Boolean) : rawCourseIdsFromField;
-
-          const matchedIds = orderedIds.filter((id) => teacherCourseIds.has(id));
-          if (matchedIds.length === 0) continue;
-
-          const uid = typeof (o as any).user_id === "string" ? String((o as any).user_id) : toId((o as any).user_id);
-          if (uid) uniqueStudents.add(uid);
-
-          if (rawCourses.length) {
-            for (const c of rawCourses) {
-              const id = toId((c as any)._id);
-              if (id && teacherCourseIds.has(id)) revenue += Number((c as any).price_cents || 0);
+          // Tính income dựa trên order_items
+          const orderItems: any[] = Array.isArray((o as any).order_items) ? (o as any).order_items : [];
+          
+          for (const item of orderItems) {
+            if (!item) continue;
+            
+            const productType = String(item.product_type || '').toLowerCase();
+            
+            // Chỉ tính cho Course
+            if (productType === 'course') {
+              const product = item.product;
+              if (!product) continue;
+              
+              // Kiểm tra xem course có thuộc về teacher này không
+              const courseId = toId(product._id);
+              if (!teacherCourseIds.has(courseId)) continue;
+              
+              // Kiểm tra teacher field trong product
+              const productTeachers: any = product.teacher;
+              let isTeacherOwner = false;
+              
+              if (Array.isArray(productTeachers)) {
+                // Nếu teacher là array, kiểm tra xem có chứa currentTeacherId không
+                isTeacherOwner = productTeachers.some((t: any) => toId(t) === currentTeacherId);
+              } else if (productTeachers) {
+                // Nếu teacher là single value
+                isTeacherOwner = toId(productTeachers) === currentTeacherId;
+              }
+              
+              // Nếu không có teacher field trong product, dùng teacherCourseIds để kiểm tra
+              if (!isTeacherOwner && teacherCourseIds.has(courseId)) {
+                isTeacherOwner = true;
+              }
+              
+              if (isTeacherOwner) {
+                const priceAtPurchase = Number(item.price_at_purchase || 0);
+                const quantity = Number(item.quantity || 1);
+                const itemTotal = priceAtPurchase * quantity;
+                
+                // Teacher nhận 50% từ Course
+                revenue += 0.5 * itemTotal;
+                
+                // Đếm học viên
+                const uid = typeof (o as any).user_id === "string" ? String((o as any).user_id) : toId((o as any).user_id);
+                if (uid) uniqueStudents.add(uid);
+              }
             }
-          } else {
-            const hasBooks = Array.isArray((o as any).book) ? ((o as any).book as any[]).length > 0 : Boolean((o as any).book_id);
-            const allOwned = orderedIds.length > 0 && orderedIds.every((id) => teacherCourseIds.has(id));
-            if (!hasBooks && allOwned) revenue += Number((o as any).total_amount || 0);
           }
         }
-
-        // Prefer server-side aggregated stats when available
-        let studentsCount = uniqueStudents.size;
-        try {
-          const serverStats = await dashboardApi.getTeacherStats();
-          const apiStats = (serverStats as any)?.data ?? serverStats;
-          if (apiStats && (apiStats as any).revenue != null) {
-            revenue = Number((apiStats as any).revenue);
-          }
-          if (apiStats && (apiStats as any).students != null) {
-            studentsCount = Number((apiStats as any).students);
-          }
-        } catch {}
-
+        const studentsCount = uniqueStudents.size;
         setStats({ students: studentsCount, revenue, activeCourses });
       } catch (err) {
         console.error("Failed to fetch teacher dashboard:", err);

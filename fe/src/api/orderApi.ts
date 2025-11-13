@@ -17,6 +17,30 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+export interface OrderItem {
+  _id: string;
+  product_type: "Course" | "Book";
+  product_id: string;
+  price_at_purchase: number;
+  quantity: number;
+  product: {
+    _id: string;
+    title: string;
+    slug: string;
+    price?: number;
+    price_cents?: number;
+    thumbnail_url?: string;
+    images?: string[];
+    // For Course products
+    teacher?: string | string[] | any;
+  } | null;
+}
+
+export interface OrderItemsResponse {
+  order_id: string;
+  items: OrderItem[];
+}
+
 const orderApi = {
   getAll: async (): Promise<OrderDto[]> => {
     const res = await api.get("/orders");
@@ -25,6 +49,11 @@ const orderApi = {
   },
 
   getById: (id: string) => api.get(`/orders/${id}`),
+
+  getOrderItems: async (id: string): Promise<OrderItemsResponse> => {
+    const res = await api.get(`/orders/${id}/items`);
+    return res.data;
+  },
 
   create: (data: Partial<OrderDto>) => api.post("/orders", data),
 

@@ -3,6 +3,8 @@ import { Response, Request } from "express";
 import mongoose from "mongoose";
 import OrderModel from "../models/order.model";
 import OrderItemModel from "../models/order_item.model";
+import CourseModel from "../models/course.model";
+import BookModel from "../models/book.model";
 // Nếu bạn đã có AuthRequest trong middlewares/auth thì dùng dòng dưới:
 // import { AuthRequest } from "../middlewares/auth";
 
@@ -124,11 +126,109 @@ export const getMyOrders = async (req: Request, res: Response) => {
 export const getAllOrders = async (req: Request, res: Response) => {
   try {
     const orders = await OrderModel.find()
+      .populate("user_id", "name email")
       .sort({ created_at: -1 })
       .lean();
-    return res.status(200).json({ data: orders });
+
+    // Lấy order_items cho tất cả orders
+    const ordersWithItems = await Promise.all(
+      orders.map(async (order: any) => {
+        const items = await OrderItemModel.find({ order_id: order._id })
+          .lean();
+
+        // Populate thông tin sản phẩm cho từng item
+        const itemsWithProducts = await Promise.all(
+          items.map(async (item: any) => {
+            let product = null;
+            if (item.product_type === "Course") {
+              product = await CourseModel.findById(item.product_id)
+                .select("title slug price thumbnail_url teacher")
+                .lean();
+            } else if (item.product_type === "Book") {
+              product = await BookModel.findById(item.product_id)
+                .select("title slug price_cents images")
+                .lean();
+            }
+
+            return {
+              _id: item._id,
+              product_type: item.product_type,
+              product_id: item.product_id,
+              price_at_purchase: item.price_at_purchase,
+              quantity: item.quantity,
+              product: product,
+            };
+          })
+        );
+
+        return {
+          ...order,
+          order_items: itemsWithProducts,
+        };
+      })
+    );
+
+    return res.status(200).json({ data: ordersWithItems });
   } catch (error: any) {
     console.error("getAllOrders error:", error);
+    return res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
+/**
+ * GET /api/orders/:id/items
+ * Lấy chi tiết các sản phẩm trong đơn hàng (order items với thông tin sản phẩm)
+ */
+export const getOrderItems = async (req: Request, res: Response) => {
+  try {
+    const orderId = req.params.id;
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({ message: "Invalid order ID" });
+    }
+
+    const orderObjectId = new mongoose.Types.ObjectId(orderId);
+    
+    // Kiểm tra order có tồn tại không
+    const order = await OrderModel.findById(orderObjectId).lean();
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    // Lấy order items với thông tin sản phẩm
+    const items = await OrderItemModel.find({ order_id: orderObjectId })
+      .lean();
+
+    // Populate thông tin sản phẩm cho từng item
+    const itemsWithProducts = await Promise.all(
+      items.map(async (item: any) => {
+        let product = null;
+        if (item.product_type === "Course") {
+          product = await CourseModel.findById(item.product_id)
+            .select("title slug price thumbnail_url")
+            .lean();
+        } else if (item.product_type === "Book") {
+          product = await BookModel.findById(item.product_id)
+            .select("title slug price_cents images")
+            .lean();
+        }
+
+        return {
+          _id: item._id,
+          product_type: item.product_type,
+          product_id: item.product_id,
+          price_at_purchase: item.price_at_purchase,
+          quantity: item.quantity,
+          product: product,
+        };
+      })
+    );
+
+    return res.status(200).json({
+      order_id: orderId,
+      items: itemsWithProducts,
+    });
+  } catch (error: any) {
+    console.error("getOrderItems error:", error);
     return res.status(500).json({ message: error.message || "Server error" });
   }
 };
@@ -137,4 +237,5 @@ export default {
   createOrder,
   getMyOrders,
   getAllOrders,
+  getOrderItems,
 };

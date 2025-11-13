@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "../../api/axios";
 import dayjs from "dayjs";
+import OrderDetailModal from "../../components/orders/OrderDetailModal";
 
 type Order = {
   _id: string;
@@ -34,8 +35,20 @@ export default function OrderHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<Order[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const hasOrders = useMemo(() => orders.length > 0, [orders]);
+
+  const handleViewDetail = (orderId: string) => {
+    setSelectedOrderId(orderId);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedOrderId(null);
+  };
 
   useEffect(() => {
     (async () => {
@@ -105,18 +118,29 @@ export default function OrderHistoryPage() {
                 </div>
               </div>
 
-              <div className="text-right">
+              <div className="text-right flex flex-col items-end gap-2">
                 <div className="text-lg font-semibold text-gray-800">
                   {formatVND(o.total_amount || 0)}
                 </div>
-                {/* Nếu sau này có trang chi tiết đơn hàng: /orders/:id */}
-                {/* <Link to={`/orders/${o._id}`} className="text-blue-600 text-sm hover:underline">
+                <button
+                  onClick={() => handleViewDetail(o._id)}
+                  className="text-blue-600 text-sm hover:underline font-medium"
+                >
                   Xem chi tiết
-                </Link> */}
+                </button>
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {/* Order Detail Modal */}
+      {selectedOrderId && (
+        <OrderDetailModal
+          orderId={selectedOrderId}
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+        />
       )}
     </div>
   );

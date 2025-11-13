@@ -1,5 +1,6 @@
 import type { UserDto } from './user';
 import type { Course } from "./course";
+import type { OrderItem } from '../api/orderApi';
 
 export type OrderStatus = 'pending' | 'completed' | 'failed' | 'cancelled';
 
@@ -14,4 +15,7 @@ export interface OrderDto {
   // Dạng mới
   course: Course[];
   book: string[];
+  
+  // Order items với product_type
+  order_items?: OrderItem[];
 }
