@@ -18,6 +18,14 @@ const userApi = {
   getProfile: () => 
     axios.get<UserDto>(`${API_URL}/me`, { headers: getAuthHeaders() }),
 
+  // [User] Cập nhật thông tin cá nhân
+  updateMyProfile: (data: Partial<UserDto>) =>
+    axios.put(`${API_URL}/me`, data, { headers: getAuthHeaders() }),
+
+  // [User] Đổi mật khẩu
+  changeMyPassword: (currentPassword: string, newPassword: string) =>
+    axios.put(`${API_URL}/me/password`, { currentPassword, newPassword }, { headers: getAuthHeaders() }),
+
   // [Admin] Cập nhật thông tin user
   update: (id: string, data: Partial<UserDto>) =>
     axios.put(`${API_URL}/${id}`, data, { headers: getAuthHeaders() }),

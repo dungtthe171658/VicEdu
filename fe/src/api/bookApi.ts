@@ -41,6 +41,10 @@ const bookApi = {
 
   getPurchasedBooks: () =>
     axios.get(`${BASE_URL}/books/purchased`, { headers: getAuthHeaders() }),
+
+  // Alias per request: use controller getBookOrderAndOrderitem
+  getBookOrderAndOrderitem: (params?: Record<string, unknown>) =>
+    axios.get(`${BASE_URL}/books/purchased`, { headers: getAuthHeaders(), params }),
 };
 
 export default bookApi;

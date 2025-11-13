@@ -24,7 +24,6 @@ const CourseForm = ({ initialData = {}, onSubmit, showTeacherAssign = false }: C
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
-  const [thumbFile, setThumbFile] = useState<File | null>(null);
   const [uploadingThumb, setUploadingThumb] = useState(false);
   const [teacherOptions, setTeacherOptions] = useState<UserDto[]>([]);
   const [loadingTeachers, setLoadingTeachers] = useState(false);
@@ -155,18 +154,21 @@ const CourseForm = ({ initialData = {}, onSubmit, showTeacherAssign = false }: C
     return { secure_url: json.secure_url, public_id: json.public_id };
   };
 
-  const handleUploadThumbnail = async () => {
-    if (!thumbFile) return;
+  const handleThumbFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
     try {
       setUploadingThumb(true);
       const sign = await getCloudinarySignature("vicedu/images/course-thumbs");
-      const { secure_url } = await uploadImageToCloudinary(thumbFile, sign);
+      const { secure_url } = await uploadImageToCloudinary(file, sign);
       setFormData((prev) => ({ ...prev, thumbnail_url: secure_url }));
-      setThumbFile(null);
     } catch (e: any) {
       alert(e?.message || "Upload Cloudinary thất bại. Bạn có thể dán URL vào ô trên.");
     } finally {
       setUploadingThumb(false);
+      e.currentTarget.value = "";
     }
   };
 
@@ -271,10 +273,8 @@ const CourseForm = ({ initialData = {}, onSubmit, showTeacherAssign = false }: C
           onChange={handleChange}
         />
         <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
-          <input type="file" accept="image/*" onChange={(e) => setThumbFile(e.target.files?.[0] || null)} />
-          <button type="button" onClick={handleUploadThumbnail} disabled={!thumbFile || uploadingThumb}>
-            {uploadingThumb ? "Đang tải..." : "Upload Cloudinary"}
-          </button>
+          <input type="file" accept="image/*" onChange={handleThumbFileChange} disabled={uploadingThumb} />
+          {uploadingThumb && <span style={{ fontSize: 12, color: '#6b7280' }}>Đang tải ảnh lên...</span>}
           <span style={{ fontSize: 12, color: '#6b7280' }}>Hoặc dán URL ảnh vào ô trên.</span>
         </div>
       </div>

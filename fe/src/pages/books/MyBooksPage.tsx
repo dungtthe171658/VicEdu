@@ -13,8 +13,21 @@ export default function MyBooksPage() {
     (async () => {
       try {
         setLoading(true);
-        const res = await bookApi.getPurchasedBooks();
-        setBooks(res.data);
+        const params: any = {};
+        const testEmail = (import.meta as any).env?.VITE_PURCHASED_TEST_EMAIL;
+        if (testEmail) params.email = String(testEmail);
+        if ((import.meta as any).env?.DEV) params.includePending = 1;
+        const forceAll = (import.meta as any).env?.VITE_PURCHASED_FORCE_ALL;
+        if (forceAll) params.forceAll = 1;
+
+        const res = await bookApi.getBookOrderAndOrderitem(params);
+        const payload = res?.data as any;
+        const list: BookDto[] = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+          ? payload.data
+          : [];
+        setBooks(list);
       } catch (err) {
         setError("Không thể tải danh sách sách đã mua.");
       } finally {

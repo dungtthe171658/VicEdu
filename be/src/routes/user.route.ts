@@ -5,6 +5,8 @@ import {
   getMyProfile,
   getMyProfileFull,
   getMyAvatar,
+  updateMyPassword,
+  updateMyProfile,
   updateUser,
   lockUser,
   unlockUser,
@@ -24,6 +26,8 @@ router.get("/me/full", authenticateToken, getMyProfileFull);
 router.get("/me/avatar", authenticateToken, getMyAvatar);
 // ✅ Cho phép user tự đổi avatar (chỉ cần đăng nhập, không cần role admin)
 router.put("/me/avatar", authenticateToken, updateMyAvatar);
+router.put("/me", authenticateToken, updateMyProfile);
+router.put("/me/password", authenticateToken, updateMyPassword);
 
 // === CÁC ROUTES DƯỚI ĐÂY CHỈ DÀNH CHO ADMIN ===
 router.use(authenticateToken, checkRole(['admin']));

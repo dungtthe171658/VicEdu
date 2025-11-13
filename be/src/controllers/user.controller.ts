@@ -209,6 +209,93 @@ export const updateMyAvatar = async (req: AuthRequest, res: Response) => {
   }
 };
 
+/**
+ * PUT /users/me/password
+ * Change own password (requires current password)
+ */
+export const updateMyPassword = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId =
+      (req.user as any)?._id?.toString?.() || (req.user as any)?.id?.toString?.();
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    const { currentPassword, newPassword } = req.body || {};
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "Thiếu currentPassword hoặc newPassword" });
+    }
+
+    const user = await UserModel.findById(userId).select("password").lean(false);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Social accounts can't change local password
+    if ((user as any).password === "google_oauth") {
+      return res.status(400).json({ message: "Tài khoản Google không thể đổi mật khẩu" });
+    }
+
+    const bcrypt = await import("bcryptjs");
+    const matched = await bcrypt.compare(String(currentPassword), (user as any).password);
+    if (!matched) {
+      return res.status(400).json({ message: "Mật khẩu hiện tại không đúng" });
+    }
+
+    if (String(newPassword).length < 8) {
+      return res.status(400).json({ message: "Mật khẩu mới phải từ 8 ký tự" });
+    }
+
+    const hashed = await bcrypt.hash(String(newPassword), 10);
+    await UserModel.findByIdAndUpdate(userId, { password: hashed, updated_at: new Date() });
+
+    return res.json({ message: "Đổi mật khẩu thành công" });
+  } catch (e: any) {
+    return res.status(500).json({ message: e?.message || "Server error" });
+  }
+};
+
+/**
+ * PUT /users/me
+ * Update own profile fields (name, phone, email?)
+ */
+export const updateMyProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId =
+      (req.user as any)?._id?.toString?.() || (req.user as any)?.id?.toString?.();
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const payload: any = {};
+    const { name, phone, email } = req.body || {};
+
+    if (name !== undefined) payload.name = String(name);
+    if (phone !== undefined) payload.phone = String(phone);
+
+    if (email !== undefined) {
+      const emailNorm = String(email).toLowerCase();
+      // Ensure email uniqueness excluding self
+      const exists = await UserModel.exists({ email: emailNorm, _id: { $ne: userId } });
+      if (exists) {
+        return res.status(409).json({ message: "Email already exists." });
+      }
+      payload.email = emailNorm;
+    }
+
+    const updated = await UserModel.findByIdAndUpdate(userId, payload, {
+      new: true,
+      runValidators: true,
+    })
+      .select(SAFE_USER_PROJECTION)
+      .lean();
+
+    if (!updated) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.json({ message: "Profile updated successfully.", user: updated });
+  } catch (e: any) {
+    return res.status(500).json({ message: e?.message || "Server error" });
+  }
+};
+
 
 /**
  * GET /users/:id
