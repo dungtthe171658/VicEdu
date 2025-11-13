@@ -128,23 +128,6 @@ const ManageCoursesTeacherPage = () => {
           <li key={course._id}>
             <div className="course-info">
               <strong>{course.title}</strong>
-
-              {(course as any)?.has_pending_changes && (
-                <span
-                  style={{
-                    marginLeft: 8,
-                    padding: "2px 6px",
-                    borderRadius: 6,
-                    background: "#fff7ed",
-                    border: "1px solid #fdba74",
-                    color: "#9a3412",
-                    fontSize: 12
-                  }}
-                >
-                  Đang chờ duyệt chỉnh sửa
-                </span>
-              )}
-
               <span>{getCategoryName(course as any)}</span>
               <span>{formatVND(getPriceInVND(course as any))}</span>
               {/* Debug info - hiển thị cả price và price_cents nếu có */}
@@ -188,31 +171,6 @@ const ManageCoursesTeacherPage = () => {
         <div className="modal">
           <div className="modal-content">
             <h3>{selectedCourse ? "Chinh sua khoa hoc" : "Them khoa hoc moi"}</h3>
-            {/* Hiển thị trạng thái (chỉ đọc) - chỉ khi đang chỉnh sửa */}
-            {selectedCourse && (selectedCourse as any)?.status && (
-              <div style={{ marginBottom: 16, padding: 12, background: "#f3f4f6", borderRadius: 8 }}>
-                <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 14 }}>Trạng thái</label>
-                <div style={{ 
-                  display: "inline-block", 
-                  padding: "4px 12px", 
-                  borderRadius: 4,
-                  fontSize: 14,
-                  fontWeight: 500,
-                  backgroundColor: 
-                    (selectedCourse as any)?.status === "approved" ? "#d1fae5" :
-                    (selectedCourse as any)?.status === "rejected" ? "#fee2e2" :
-                    "#fef3c7",
-                  color:
-                    (selectedCourse as any)?.status === "approved" ? "#065f46" :
-                    (selectedCourse as any)?.status === "rejected" ? "#991b1b" :
-                    "#92400e"
-                }}>
-                  {(selectedCourse as any)?.status === "approved" ? "Đã duyệt" :
-                    (selectedCourse as any)?.status === "rejected" ? "Từ chối" :
-                    "Chờ duyệt"}
-                </div>
-              </div>
-            )}
             <CourseFormTeacher initialData={selectedCourse || {}} onSubmit={handleSave} />
             <button className="close-btn" onClick={() => setShowModal(false)}>Dong</button>
           </div>

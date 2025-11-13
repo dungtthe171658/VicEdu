@@ -63,15 +63,6 @@ const ManageCoursesPage = () => {
     }
   };
 
-  const handleStatus = async (id: string, status: "approved" | "rejected" | "pending") => {
-    try {
-      await courseAdminApi.updateStatus(id, status);
-      loadCourses();
-    } catch (error) {
-      console.error("Error updating status:", error);
-      alert("Cập nhật trạng thái thất bại.");
-    }
-  };
 
   const handlePublish = async (id: string, publish: boolean) => {
     try {
@@ -117,23 +108,6 @@ const ManageCoursesPage = () => {
           <li key={course._id}>
             <div className="course-info">
               <strong>{course.title}</strong>
-
-              {(course as any)?.has_pending_changes && (
-                <span
-                  style={{
-                    marginLeft: 8,
-                    padding: "2px 6px",
-                    borderRadius: 6,
-                    background: "#fff7ed",
-                    border: "1px solid #fdba74",
-                    color: "#9a3412",
-                    fontSize: 12
-                  }}
-                >
-                  Đang chờ duyệt chỉnh sửa
-                </span>
-              )}
-
               <span>{getCategoryName(course as any)}</span>
               <span>{formatVND(getPriceInVND(course as any))}</span>
               {/* Debug info - hiển thị cả price và price_cents nếu có */}

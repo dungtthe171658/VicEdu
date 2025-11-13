@@ -113,23 +113,12 @@ export const createCourse = async (req: AuthRequest, res: Response) => {
       if (uid) teachers = [new mongoose.Types.ObjectId(uid)];
     }
 
-    // If teacher creates course, create as pending request
+    // Teacher creates course directly (no approval needed)
     if (role === 'teacher') {
       const uid = user?._id?.toString?.() || user?.id?.toString?.();
       if (!uid) return res.status(401).json({ message: 'Unauthenticated' });
 
-      // Create course with pending status and draft
-      const draftData: any = {
-        title,
-        description: description || '', // Ensure description is always a string
-        price: price !== undefined ? Number(price) : (price_cents !== undefined ? Number(price_cents) / 100 : 0),
-        thumbnail_url: thumbnail_url || '',
-        category_id: category_id || (Array.isArray(category) && category.length > 0 ? String(category[0]) : undefined),
-        __action: 'create',
-      };
-
-      console.log('🔵 [createCourse] Teacher - Draft data:', JSON.stringify(draftData, null, 2));
-      console.log('🔵 [createCourse] Teacher - Category ID:', category_id);
+      console.log('🔵 [createCourse] Teacher - Creating course directly');
 
       // Validate category_id is provided
       if (!category_id) {
@@ -141,48 +130,54 @@ export const createCourse = async (req: AuthRequest, res: Response) => {
         return res.status(400).json({ message: 'Invalid category ID format' });
       }
 
-      // Use a placeholder description for the course model (required field)
-      // The actual description will be in draft and applied when approved
+      // Validate description is provided
+      if (!description) {
+        return res.status(400).json({ message: 'Description is required' });
+      }
+
+      // Create course directly with approved status
       const courseData = {
         title,
         slug,
-        description: description || 'Mô tả sẽ được cập nhật sau khi duyệt', // Use provided description or placeholder
-        price: 0,
+        description: description || '',
+        price: price !== undefined ? Number(price) : (price_cents !== undefined ? Number(price_cents) / 100 : 0),
         thumbnail_url: thumbnail_url || '',
-        category: [new mongoose.Types.ObjectId(String(category_id))], // Always an array with at least one element
+        category: [new mongoose.Types.ObjectId(String(category_id))],
         teacher: teachers,
-        status: 'pending',
-        draft: draftData,
-        has_pending_changes: true,
-        pending_by: new mongoose.Types.ObjectId(uid),
-        pending_at: new Date(),
+        status: 'approved',
       };
 
       console.log('🔵 [createCourse] Teacher - Course data to create:', JSON.stringify({
         ...courseData,
         teacher: courseData.teacher.map((t: any) => t.toString()),
         category: courseData.category.map((c: any) => c.toString()),
-        pending_by: courseData.pending_by.toString(),
       }, null, 2));
 
       const newCourse = await CourseModel.create(courseData);
 
-      // Create EditHistory entry
+      // Create EditHistory entry for tracking
       try {
         await EditHistory.create({
           target_type: 'course',
           target_id: new mongoose.Types.ObjectId(String(newCourse._id)),
           submitted_by: new mongoose.Types.ObjectId(uid),
           submitted_role: 'teacher',
-          status: 'pending',
+          status: 'applied',
           before: {},
-          after: draftData,
-          changes: Object.keys(draftData).reduce((acc: any, k) => {
-            if (k !== '__action') {
-              acc[k] = { from: undefined, to: draftData[k] };
-            }
-            return acc;
-          }, {}),
+          after: {
+            title,
+            description: description || '',
+            price: courseData.price,
+            thumbnail_url: thumbnail_url || '',
+            category_id: category_id,
+          },
+          changes: {
+            title: { from: undefined, to: title },
+            description: { from: undefined, to: description || '' },
+            price: { from: undefined, to: courseData.price },
+            thumbnail_url: { from: undefined, to: thumbnail_url || '' },
+            category_id: { from: undefined, to: category_id },
+          },
         });
       } catch (e) {
         console.error('Failed to create EditHistory:', e);

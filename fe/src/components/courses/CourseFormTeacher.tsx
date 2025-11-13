@@ -245,7 +245,7 @@ const CourseFormTeacher = ({ initialData = {}, onSubmit }: CourseFormTeacherProp
               checked={!!formData.is_published}
               onChange={handleChange}
             />
-            Xuất bản khóa học
+            Public khóa học
           </label>
         </div>
       )}

@@ -262,25 +262,44 @@ const ManageCommentTeacherPages = () => {
                 </div>
               )}
 
-              <div className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
-                <textarea
-                  value={replyDrafts[thread._id] || ""}
-                  onChange={(e) => setReplyDrafts((prev) => ({ ...prev, [thread._id]: e.target.value }))}
-                  placeholder="Phản hồi thêm cho học viên..."
-                  className="border rounded-xl p-3 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-blue-100"
-                />
-                <button
-                  onClick={() => handleReply(thread)}
-                  disabled={replying[thread._id] || !replyDrafts[thread._id]?.trim()}
-                  className="bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {replying[thread._id] ? "Đang gửi..." : "Gửi phản hồi"}
-                </button>
-                <div className="text-xs text-gray-500 flex flex-col justify-center items-start">
-                  <span>{thread.reply_count || 0} tổng phản hồi</span>
-                  {thread.teacher_reply_count === 0 && <span className="text-red-500">Chưa có phản hồi từ giáo viên</span>}
+              {thread.status !== "resolved" && (
+                <div className="grid gap-3 md:grid-cols-[1fr_auto_auto] border-t pt-3">
+                  <textarea
+                    value={replyDrafts[thread._id] || ""}
+                    onChange={(e) => setReplyDrafts((prev) => ({ ...prev, [thread._id]: e.target.value }))}
+                    placeholder="Phản hồi thêm cho học viên..."
+                    className="border rounded-xl p-3 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  />
+                  <button
+                    onClick={() => handleReply(thread)}
+                    disabled={replying[thread._id] || !replyDrafts[thread._id]?.trim()}
+                    className="bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {replying[thread._id] ? "Đang gửi..." : "Gửi phản hồi"}
+                  </button>
+                  <div className="text-xs text-gray-500 flex flex-col justify-center items-start">
+                    <span>{thread.reply_count || 0} tổng phản hồi</span>
+                    {thread.teacher_reply_count === 0 && <span className="text-red-500">Chưa có phản hồi từ giáo viên</span>}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {thread.status === "resolved" && (
+                <div className="border-t pt-3 flex items-center justify-between">
+                  <div className="text-xs text-gray-500">
+                    <span>{thread.reply_count || 0} tổng phản hồi</span>
+                    {thread.teacher_reply_count > 0 && (
+                      <span className="ml-2">• {thread.teacher_reply_count} phản hồi từ giáo viên</span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleToggleStatus(thread)}
+                    className="text-blue-600 hover:text-blue-700 text-xs font-medium"
+                  >
+                    Mở lại câu hỏi
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
