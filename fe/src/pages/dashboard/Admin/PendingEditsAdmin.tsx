@@ -95,7 +95,6 @@ export default function PendingEditsAdmin() {
 
   // Filter different types of requests
   const courseDeleteRequests = (courses || []).filter((c) => (c as any)?.draft?.__action === 'delete');
-  const courseCreationRequests = (courses || []).filter((c) => (c as any)?.draft?.__action === 'create');
   const lessonDeleteRequests = (lessons || []).filter((l) => (l as any)?.draft?.__action === 'delete');
 
   const recentDeletes = (recent || []).filter((h) => Boolean((h as any)?.changes?.deleted));
@@ -118,74 +117,6 @@ export default function PendingEditsAdmin() {
         </div>
       ) : (
         <div>
-          {/* Course Creation Requests */}
-          <section className="pending-section">
-            <div className="section-header">
-              <h3 className="section-title">
-                📚 Khóa học • Yêu cầu tạo mới
-              </h3>
-              <span className={`section-count ${courseCreationRequests.length > 0 ? 'has-items' : ''}`}>
-                {courseCreationRequests.length} yêu cầu
-              </span>
-            </div>
-            {courseCreationRequests.length === 0 ? (
-              <div className="empty-state">Không có yêu cầu tạo khóa học mới.</div>
-            ) : (
-              <div>
-                  {courseCreationRequests.map((c) => (
-                  <div key={c._id} className="request-card">
-                    <div className="request-header">
-                      <div className="request-title-section">
-                        <h4 className="request-title">
-                          {(c as any)?.draft?.title || c.title}
-                          <span className="request-badge create">Tạo mới</span>
-                        </h4>
-                        <div className="request-meta">
-                          <div className="request-time">
-                            🕒 {fmt((c as any)?.pending_at) || "Chưa có thời gian"}
-                        </div>
-                          <Link
-                            to={`/dashboard/course-creation-request/${c._id}`}
-                            className="request-link"
-                          >
-                            📄 Xem chi tiết
-                          </Link>
-                          <button 
-                            className="btn btn-primary btn-sm"
-                            onClick={() => setViewingCourseId(c._id)} 
-                          >
-                            👁️ Xem khóa học
-                          </button>
-                        </div>
-                      </div>
-                      <div className="request-actions">
-                        <button
-                          className="btn btn-success btn-sm"
-                          onClick={() => {
-                            if (confirm('Phê duyệt tạo khóa học này?')) {
-                              approveCourse(c._id);
-                            }
-                          }}
-                        >
-                          ✓ Phê duyệt
-                        </button>
-                        <button
-                          className="btn btn-danger btn-sm"
-                          onClick={() => {
-                          const ok = confirm('Từ chối yêu cầu tạo khóa học này? Khóa học sẽ bị xóa.');
-                            if (ok) rejectCourse(c._id);
-                          }}
-                        >
-                          ✗ Từ chối
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
           {/* Course Delete Requests */}
           <section className="pending-section">
             <div className="section-header">

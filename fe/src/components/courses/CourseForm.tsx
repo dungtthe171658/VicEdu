@@ -356,7 +356,7 @@ const CourseForm = ({ initialData = {}, onSubmit, showTeacherAssign = false, hid
             checked={!!formData.is_published}
             onChange={handleChange}
           />
-          Xuất bản khóa học
+          Public khóa học
         </label>
       </div>
 
