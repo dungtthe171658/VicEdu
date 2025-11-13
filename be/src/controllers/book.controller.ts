@@ -6,6 +6,7 @@ import OrderItemModel from "../models/order_item.model";
 import Order from "../models/order.model";
 import { AuthRequest } from "../middlewares/auth";
 import UserModel from "../models/user.model";
+import cloudinary from "../utils/cloudinary";
 
 const toObjectId = (id: any) =>
   mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : null;
@@ -374,6 +375,55 @@ export const getBookOrderAndOrderitem = async (req: Request, res: Response) => {
     return res.json({ data: books, count: books.length });
   } catch (error: any) {
     console.error("getBookOrderAndOrderitem error:", error?.message || error);
+    return res.status(500).json({ message: error?.message || "Server error" });
+  }
+};
+
+// Generate a downloadable/signed URL for a book PDF stored on Cloudinary
+export const getBookPdfUrl = async (req: Request, res: Response) => {
+  try {
+    const bookId = toObjectId(req.params.id);
+    if (!bookId) return res.status(400).json({ message: "Invalid book ID" });
+
+    const book = await Book.findById(bookId).select({ pdf_url: 1, _id: 1 }).lean();
+    if (!book) return res.status(404).json({ message: "Book not found" });
+    if (!book.pdf_url) return res.status(404).json({ message: "No PDF available" });
+
+    // Parse public_id and extension from a Cloudinary URL, e.g.:
+    // https://res.cloudinary.com/<cloud>/raw/upload/v12345/folder/name/file.pdf
+    const original = String(book.pdf_url);
+    const uploadIdx = original.indexOf("/upload/");
+    if (uploadIdx === -1) return res.json({ url: original }); // fallback
+    let path = original.substring(uploadIdx + "/upload/".length);
+    // Strip version v123... if present
+    path = path.replace(/^v\d+\//, "");
+
+    const lastDot = path.lastIndexOf(".");
+    const hasExt = lastDot > -1;
+    const ext = hasExt ? path.substring(lastDot + 1) : "pdf";
+    const publicIdNoExt = hasExt ? path.substring(0, lastDot) : path;
+
+    // Two modes: inline preview vs forced download
+    const inlineUrl = cloudinary.url(publicIdNoExt, {
+      resource_type: "raw",
+      type: "upload",
+      format: ext,
+      flags: "inline", // fl_inline => Content-Disposition: inline
+      secure: true,
+      sign_url: true,
+    });
+
+    const downloadUrl = (cloudinary.utils as any).private_download_url(
+      publicIdNoExt,
+      ext,
+      { resource_type: "raw", type: "upload", attachment: true }
+    );
+
+    const disposition = String((req.query as any)?.disposition || "inline");
+    const selected = disposition === "attachment" ? downloadUrl : inlineUrl;
+    return res.json({ url: selected, inline: inlineUrl, download: downloadUrl, raw: original });
+  } catch (error: any) {
+    console.error("getBookPdfUrl error:", error?.message || error);
     return res.status(500).json({ message: error?.message || "Server error" });
   }
 };

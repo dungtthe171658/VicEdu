@@ -168,10 +168,10 @@ const BookDetailPage = () => {
 
         <p className="price">{priceVND}</p>
 
-        {/* --- Hiển thị stock --- */}
+{/*     
         <p className={`stock ${stock > 0 ? "in-stock" : "out-of-stock"}`}>
           {stock > 0 ? `Còn ${stock} cuốn` : "Hết hàng"}
-        </p>
+        </p> */}
 
         <button
           className={`add-to-cart-btn ${added ? "added" : ""}`}
@@ -179,7 +179,7 @@ const BookDetailPage = () => {
           disabled={added || stock <= 0}
         >
           {stock <= 0
-            ? "❌ Hết hàng"
+            ? "❌ hết hàng"
             : added
             ? "✅ Đã thêm vào giỏ hàng"
             : "🛒 Thêm vào giỏ hàng"}

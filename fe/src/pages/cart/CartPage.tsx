@@ -290,7 +290,7 @@ export default function CartPage() {
         {outOfStockBooks.length > 0 && (
           <div className="mt-6 bg-white border border-gray-100 rounded-2xl shadow-sm divide-y">
             <h3 className="text-lg font-semibold text-gray-700 px-4 pt-4">
-              📦 Các sản phẩm đang hết hàng
+              📦 Các sản phẩm đang hết
             </h3>
             {outOfStockBooks.map((b) => (
               <div

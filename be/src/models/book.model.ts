@@ -9,8 +9,8 @@ export interface IBook extends Document {
   stock?: number;
   category_id: mongoose.Types.ObjectId;
   is_published?: boolean;
-  images?: string[];
-  pdf_url?: string; 
+  images?: string[]; // 🆕 hỗ trợ nhiều ảnh
+   pdf_url?: string; 
   created_at?: Date;
   updated_at?: Date;
 }
@@ -29,7 +29,7 @@ const bookSchema = new Schema<IBook>(
       required: true,
     },
     is_published: { type: Boolean, default: true },
-    images: [{ type: String }],
+    images: [{ type: String }], // 🆕 mảng chứa URL hoặc đường dẫn ảnh
     pdf_url: { type: String }, 
   },
   {

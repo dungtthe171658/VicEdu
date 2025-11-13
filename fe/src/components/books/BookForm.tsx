@@ -148,7 +148,9 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
 
     setUploadingPdf(true);
     try {
-      const sign = await getCloudinarySignature("vicedu/pdfs/books");
+      // Use folder that matches your actual Cloudinary structure
+      // Tip: keep it consistent everywhere to avoid 404 on private/signed URLs
+      const sign = await getCloudinarySignature("pdfs/books");
       const { secure_url } = await uploadRawToCloudinary(file, sign);
       setFormData((prev) => ({
         ...prev,
@@ -308,7 +310,7 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
         </div>
       </div>
 
-      <div className="form-group">
+      {/* <div className="form-group">
         <label>File PDF</label>
         <input
           type="file"
@@ -328,6 +330,23 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
             </a>
           </p>
         )}
+      </div> */}
+
+      
+      <div className="form-group">
+        <label htmlFor="pdf_url">nhập URL PDF (Drive)</label>
+        <input
+          id="pdf_url"
+          type="url"
+          name="pdf_url"
+          placeholder="https://drive.google.com/file/d/.../view?usp=sharing"
+          value={formData.pdf_url || ""}
+          onChange={handleChange}
+        />
+        <small>
+          Gợi ý: đặt quyền chia sẻ Drive là "Anyone with the link". Bạn có thể dùng
+          link xem trước hoặc link tải xuống trực tiếp.
+        </small>
       </div>
 
       <button type="submit" className="btn-save">
