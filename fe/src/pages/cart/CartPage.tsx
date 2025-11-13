@@ -91,16 +91,15 @@ export default function CartPage() {
 
       setLoading(true);
 
-      // 1️⃣ Trừ stock sách
+      // 1️⃣ Kiểm tra stock trước khi thanh toán (không trừ stock ở đây)
       for (const b of inStockBooks) {
-        const newStock = (b.stock ?? 0) - (b.quantity ?? 1);
-        if (newStock < 0) {
-          alert(`Sản phẩm ${b.title} không đủ hàng!`);
+        const currentStock = b.stock ?? 0;
+        const requestedQty = b.quantity ?? 1;
+        if (currentStock < requestedQty) {
+          alert(`Sản phẩm ${b.title} không đủ hàng! (Còn lại: ${currentStock} quyển)`);
           setLoading(false);
           return;
         }
-        // Gọi API update stock
-        await bookApi.updateStock(b._id, newStock);
       }
 
       // 2️⃣ Chuẩn bị payload thanh toán
@@ -254,9 +253,9 @@ export default function CartPage() {
                   <p className="text-sm text-gray-500 mt-1">
                     Giá: {formatVND(b.price_cents || 0)}đ / quyển
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">
+                  {/* <p className="text-xs text-gray-400 mt-1">
                     Còn lại: {b.stock ?? 0} quyển
-                  </p>
+                  </p> */}
                 </div>
                 <div className="col-span-1 flex items-center justify-center gap-2">
                   <button

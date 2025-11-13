@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import courseTeacherApi from "../../../api/courseTeacherApi";
 import type { Course } from "../../../types/course";
-import CourseForm from "../../../components/courses/CourseForm";
+import CourseFormTeacher from "../../../components/courses/CourseFormTeacher";
 import "../Admin/ManageCoursesPage.css";
 
 const ManageCoursesTeacherPage = () => {
@@ -63,6 +63,18 @@ const ManageCoursesTeacherPage = () => {
     }
   };
 
+  const handleTogglePublish = async (course: Course) => {
+    try {
+      await courseTeacherApi.update(course._id, { 
+        is_published: !course.is_published 
+      });
+      loadCourses();
+    } catch (error) {
+      console.error("Error toggling publish:", error);
+      alert("Khong the cap nhat trang thai khoa hoc.");
+    }
+  };
+
   return (
     <div className="course-management-container">
       <div className="header">
@@ -85,6 +97,13 @@ const ManageCoursesTeacherPage = () => {
               <div className="actions">
                 <button className="detail-btn" onClick={() => navigate(`/teacher/manage-courses/${course._id}`)}>Chi tiet</button>
                 <button className="edit-btn" onClick={() => handleEdit(course)}>Sua</button>
+                <button 
+                  className={course.is_published ? "status-btn published" : "status-btn unpublished"}
+                  onClick={() => handleTogglePublish(course)}
+                  title={course.is_published ? "Ẩn khóa học" : "Hiện khóa học"}
+                >
+                  {course.is_published ? "Ẩn" : "Hiện"}
+                </button>
                 <button className="delete-btn" onClick={() => handleDelete(course._id)}>Xoa</button>
               </div>
             </li>
@@ -96,7 +115,7 @@ const ManageCoursesTeacherPage = () => {
         <div className="modal">
           <div className="modal-content">
             <h3>{selectedCourse ? "Chinh sua khoa hoc" : "Them khoa hoc moi"}</h3>
-            <CourseForm initialData={selectedCourse || {}} onSubmit={handleSave} />
+            <CourseFormTeacher initialData={selectedCourse || {}} onSubmit={handleSave} />
             <button className="close-btn" onClick={() => setShowModal(false)}>Dong</button>
           </div>
         </div>

@@ -101,6 +101,7 @@ export default function CourseManageDetail() {
                 })(),
               }}
               onSubmit={handleSave}
+              hideStatus
             />
             {saving && <div style={{ marginTop: 8 }}>Đang lưu...</div>}
           </div>

@@ -1,0 +1,19 @@
+.course-detail-modal {
+  max-width: 90vw;
+  width: 1200px;
+  max-height: 95vh;
+  overflow-y: auto;
+}
+
+.course-detail-modal h2 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.course-detail-modal h3 {
+  color: #555;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+}
+

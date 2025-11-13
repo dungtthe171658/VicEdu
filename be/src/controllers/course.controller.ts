@@ -84,6 +84,7 @@ export const createCourse = async (req: AuthRequest, res: Response) => {
   try {
     const { title, description, price, price_cents, category, category_id, thumbnail_url, teacher_ids } = req.body as any;
     const user: any = req.user || {};
+    const role = String(user?.role || "");
     const slug = slugify(title, { lower: true, strict: true });
 
     // Determine teacher list
@@ -97,6 +98,61 @@ export const createCourse = async (req: AuthRequest, res: Response) => {
       if (uid) teachers = [new mongoose.Types.ObjectId(uid)];
     }
 
+    // If teacher creates course, create as pending request
+    if (role === 'teacher') {
+      const uid = user?._id?.toString?.() || user?.id?.toString?.();
+      if (!uid) return res.status(401).json({ message: 'Unauthenticated' });
+
+      // Create course with pending status and draft
+      const draftData: any = {
+        title,
+        description,
+        price: price !== undefined ? Number(price) : (price_cents !== undefined ? Number(price_cents) / 100 : 0),
+        thumbnail_url,
+        category_id: category_id || (Array.isArray(category) && category.length > 0 ? String(category[0]) : undefined),
+        __action: 'create',
+      };
+
+      const newCourse = await CourseModel.create({
+        title,
+        slug,
+        description: '', // Empty initially, will be filled from draft when approved
+        price: 0,
+        thumbnail_url: '',
+        category: category_id ? [new mongoose.Types.ObjectId(String(category_id))] : [],
+        teacher: teachers,
+        status: 'pending',
+        draft: draftData,
+        has_pending_changes: true,
+        pending_by: new mongoose.Types.ObjectId(uid),
+        pending_at: new Date(),
+      });
+
+      // Create EditHistory entry
+      try {
+        await EditHistory.create({
+          target_type: 'course',
+          target_id: new mongoose.Types.ObjectId(String(newCourse._id)),
+          submitted_by: new mongoose.Types.ObjectId(uid),
+          submitted_role: 'teacher',
+          status: 'pending',
+          before: {},
+          after: draftData,
+          changes: Object.keys(draftData).reduce((acc: any, k) => {
+            if (k !== '__action') {
+              acc[k] = { from: undefined, to: draftData[k] };
+            }
+            return acc;
+          }, {}),
+        });
+      } catch (e) {
+        console.error('Failed to create EditHistory:', e);
+      }
+
+      return res.status(201).json(newCourse);
+    }
+
+    // Admin creates course directly (no approval needed)
     const newCourse = await CourseModel.create({
       title,
       slug,
@@ -105,6 +161,7 @@ export const createCourse = async (req: AuthRequest, res: Response) => {
       thumbnail_url,
       category: category ?? (category_id ? [category_id] : undefined),
       teacher: teachers,
+      status: 'approved',
     });
     res.status(201).json(newCourse);
   } catch (error: any) {
@@ -356,7 +413,27 @@ export const approveCourseChanges = async (req: Request, res: Response) => {
       // Delete course and its lessons
       await LessonModel.deleteMany({ course_id: new mongoose.Types.ObjectId(id) });
       await CourseModel.deleteOne({ _id: id });
+    } else if ((draft as any).__action === 'create') {
+      // Approve course creation request
+      if (draft.title !== undefined) course.title = draft.title;
+      if (draft.description !== undefined) course.description = draft.description;
+      if (draft.thumbnail_url !== undefined) course.thumbnail_url = draft.thumbnail_url;
+      if (draft.price !== undefined) course.price = Number(draft.price);
+      if (draft.category_id) {
+        try { course.category = [new mongoose.Types.ObjectId(String(draft.category_id))]; } catch {}
+      }
+      // Update slug when title changes
+      if (draft.title) {
+        course.slug = slugify(String(draft.title), { lower: true, strict: true });
+      }
+      course.status = 'approved';
+      course.draft = undefined;
+      course.has_pending_changes = false;
+      course.pending_by = null;
+      course.pending_at = null;
+      await course.save();
     } else {
+      // Regular edit approval
       if (draft.title !== undefined) course.title = draft.title;
       if (draft.description !== undefined) course.description = draft.description;
       if (draft.thumbnail_url !== undefined) course.thumbnail_url = draft.thumbnail_url;
@@ -390,12 +467,36 @@ export const approveCourseChanges = async (req: Request, res: Response) => {
 export const rejectCourseChanges = async (req: Request, res: Response) => {
   try {
     const { id } = req.params as { id: string };
+    const course: any = await CourseModel.findById(id);
+    if (!course) return res.status(404).json({ message: 'Course not found' });
+    const draft = course.draft || {};
+    
+    // If it's a creation request, delete the course when rejected
+    if ((draft as any).__action === 'create') {
+      await LessonModel.deleteMany({ course_id: new mongoose.Types.ObjectId(id) });
+      await CourseModel.deleteOne({ _id: id });
+      
+      // Mark latest pending history as rejected
+      try {
+        const latest = await EditHistory.findOne({ target_type: 'course', target_id: new mongoose.Types.ObjectId(id), status: 'pending' })
+          .sort({ created_at: -1 });
+        if (latest) {
+          latest.status = 'rejected';
+          latest.approved_by = (req as any)?.user?._id ? new mongoose.Types.ObjectId(String((req as any).user._id)) : null;
+          latest.approved_at = new Date();
+          latest.reason = (req.body as any)?.reason;
+          await latest.save();
+        }
+      } catch {}
+      return res.json({ message: 'Course creation request rejected and course deleted', deleted: true });
+    }
+    
+    // For regular edits, just clear the draft
     const updated = await CourseModel.findByIdAndUpdate(
       id,
       { $unset: { draft: 1 }, $set: { has_pending_changes: false, pending_by: null, pending_at: null } },
       { new: true }
     );
-    if (!updated) return res.status(404).json({ message: 'Course not found' });
     
     // Mark latest pending history as rejected
     try {

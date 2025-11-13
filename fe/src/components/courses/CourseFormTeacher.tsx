@@ -3,18 +3,16 @@ import type { FormEvent } from "react";
 import type { Course } from "../../types/course";
 import type { Category } from "../../types/category";
 import categoryApi from "../../api/categoryApi";
-import axios from "../../api/axios";
-import type { UserDto } from "../../types/user.d";
 import "./CourseForm.css";
 
-interface CourseFormProps {
+interface CourseFormTeacherProps {
   initialData?: Partial<Course>;
   onSubmit: (data: Partial<Course>) => void;
-  showTeacherAssign?: boolean;
-  hideStatus?: boolean;
 }
 
-const CourseForm = ({ initialData = {}, onSubmit, showTeacherAssign = false, hideStatus = false }: CourseFormProps) => {
+const CourseFormTeacher = ({ initialData = {}, onSubmit }: CourseFormTeacherProps) => {
+  const isEditMode = !!initialData._id;
+  
   // Backend returns price in VND, form displays VND, so use price directly if price_cents not available
   // price_cents in form state represents VND (what user enters), will be converted to cents when submitting
   const price_cents = initialData.price_cents !== undefined 
@@ -35,14 +33,6 @@ const CourseForm = ({ initialData = {}, onSubmit, showTeacherAssign = false, hid
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [uploadingThumb, setUploadingThumb] = useState(false);
-  const [teacherOptions, setTeacherOptions] = useState<UserDto[]>([]);
-  const [loadingTeachers, setLoadingTeachers] = useState(false);
-  const [teacherIds, setTeacherIds] = useState<string[]>(
-    Array.isArray((initialData as any)?.teacher_ids)
-      ? ((initialData as any).teacher_ids as string[])
-      : []
-  );
-  const [teacherTouched, setTeacherTouched] = useState(false);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -67,29 +57,6 @@ const CourseForm = ({ initialData = {}, onSubmit, showTeacherAssign = false, hid
     };
     fetchCategories();
   }, []);
-
-  useEffect(() => {
-    if (!showTeacherAssign) return;
-    const run = async () => {
-      try {
-        setLoadingTeachers(true);
-        const res = await axios.get("/users", { params: { role: "teacher", limit: 1000 } });
-        const list = Array.isArray((res as any)?.data)
-          ? (res as any).data
-          : Array.isArray(res)
-            ? (res as any)
-            : Array.isArray((res as any)?.data?.data)
-              ? (res as any).data.data
-              : [];
-        setTeacherOptions(list as UserDto[]);
-      } catch (e) {
-        setTeacherOptions([]);
-      } finally {
-        setLoadingTeachers(false);
-      }
-    };
-    run();
-  }, [showTeacherAssign]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -120,9 +87,8 @@ const CourseForm = ({ initialData = {}, onSubmit, showTeacherAssign = false, hid
       is_published: !!formData.is_published,
     };
 
-    if (showTeacherAssign && teacherTouched) {
-      (payload as any).teacher_ids = teacherIds;
-    }
+    // Không gửi status field cho giáo viên
+    delete (payload as any).status;
 
     onSubmit(payload);
   };
@@ -141,6 +107,7 @@ const CourseForm = ({ initialData = {}, onSubmit, showTeacherAssign = false, hid
     folder: string,
     uploadPreset = "vicedu_default"
   ): Promise<CloudinarySign> => {
+    const axios = (await import("../../api/axios")).default;
     const res = await axios.get<CloudinarySign>("/uploads/cloudinary-signature", {
       params: { folder, upload_preset: uploadPreset },
     });
@@ -199,73 +166,6 @@ const CourseForm = ({ initialData = {}, onSubmit, showTeacherAssign = false, hid
           required
         />
       </div>
-
-      {showTeacherAssign && (
-        <div className="form-group">
-          <label>Assigned Teachers</label>
-          <div
-            style={{
-              border: "1px solid #ccc",
-              borderRadius: "4px",
-              padding: "12px",
-              maxHeight: "200px",
-              overflowY: "auto",
-              backgroundColor: "#fff",
-            }}
-          >
-            {loadingTeachers ? (
-              <div style={{ padding: "8px", color: "#6b7280" }}>Đang tải danh sách giáo viên...</div>
-            ) : teacherOptions.length === 0 ? (
-              <div style={{ padding: "8px", color: "#6b7280" }}>Không tìm thấy giáo viên</div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                {teacherOptions.map((t) => (
-                  <label
-                    key={t._id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      cursor: "pointer",
-                      padding: "6px 8px",
-                      borderRadius: "4px",
-                      transition: "background-color 0.2s",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "#f3f4f6";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "transparent";
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={teacherIds.includes(t._id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setTeacherIds([...teacherIds, t._id]);
-                        } else {
-                          setTeacherIds(teacherIds.filter((id) => id !== t._id));
-                        }
-                        setTeacherTouched(true);
-                      }}
-                      style={{
-                        cursor: "pointer",
-                        width: "18px",
-                        height: "18px",
-                        minWidth: "18px",
-                        flexShrink: 0,
-                        margin: 0,
-                      }}
-                    />
-                    <span style={{ flex: 1, wordBreak: "break-word" }}>{t.name || t.email}</span>
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       <div className="form-group">
         <label htmlFor="description">Mô tả</label>
@@ -332,38 +232,25 @@ const CourseForm = ({ initialData = {}, onSubmit, showTeacherAssign = false, hid
         </div>
       </div>
 
-      {!hideStatus && (
-        <div className="form-group">
-          <label htmlFor="status">Trạng thái</label>
-          <select
-            id="status"
-            name="status"
-            value={formData.status || "pending"}
-            onChange={handleChange}
-          >
-            <option value="pending">Chờ duyệt</option>
-            <option value="approved">Đã duyệt</option>
-            <option value="rejected">Từ chối</option>
-          </select>
+      {/* Chỉ hiển thị is_published khi đã tạo khóa học (edit mode) */}
+      {isEditMode && (
+        <div className="form-group checkbox">
+          <label>
+            <input
+              type="checkbox"
+              name="is_published"
+              checked={!!formData.is_published}
+              onChange={handleChange}
+            />
+            Xuất bản khóa học
+          </label>
         </div>
       )}
-
-      <div className="form-group checkbox">
-        <label>
-          <input
-            type="checkbox"
-            name="is_published"
-            checked={!!formData.is_published}
-            onChange={handleChange}
-          />
-          Xuất bản khóa học
-        </label>
-      </div>
 
       <button type="submit">Lưu khóa học</button>
     </form>
   );
 };
 
-export default CourseForm;
+export default CourseFormTeacher;
 

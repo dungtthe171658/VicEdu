@@ -214,10 +214,40 @@ export const payosReturnHandler = async (req: Request, res: Response) => {
       }
     );
 
-    // b) Kích hoạt Enrollment ngay (idempotent)
+    // b) Lấy order để xử lý
     const order = await OrderModel.findOne(filter).lean();
     if (!order) return;
 
+    const orderObjectId = order._id as mongoose.Types.ObjectId;
+
+    // c) Trừ stock sách ngay khi thanh toán thành công (idempotent)
+    // Kiểm tra xem đã trừ stock chưa để tránh trừ 2 lần
+    const stockDeducted = (order.meta as any)?.stock_deducted;
+    if (!stockDeducted) {
+      const bookItems = await OrderItemModel.find({
+        order_id: orderObjectId,
+        product_type: "Book",
+      }).lean();
+      
+      if (bookItems.length > 0) {
+        await Promise.all(
+          bookItems.map((it) =>
+            BookModel.updateOne(
+              { _id: it.product_id },
+              { $inc: { stock: -Math.abs(it.quantity) } }
+            )
+          )
+        );
+        
+        // Đánh dấu đã trừ stock
+        await OrderModel.updateOne(
+          { _id: orderObjectId },
+          { $set: { "meta.stock_deducted": true, "meta.stock_deducted_at": new Date(), "meta.stock_deducted_by": "returnUrl" } }
+        );
+      }
+    }
+
+    // d) Kích hoạt Enrollment ngay (idempotent)
     const courseItems = await OrderItemModel.find({
       order_id: order._id,
       product_type: "Course",
@@ -313,6 +343,11 @@ export const payosWebhook = async (req: Request, res: Response) => {
     const order = await OrderModel.findOne({ order_code: Number(orderCode) });
     if (!order) return res.status(404).json({ message: "Order not found" });
 
+    const orderId = order._id as mongoose.Types.ObjectId;
+    
+    // Kiểm tra xem đã trừ stock chưa (trước khi update status)
+    const stockDeducted = (order.meta as any)?.stock_deducted;
+
     if (order.status !== "completed") {
       order.status = "completed";
       order.paid_at = new Date();
@@ -320,13 +355,21 @@ export const payosWebhook = async (req: Request, res: Response) => {
       order.meta = { ...(order.meta || {}), payos: verified };
       await order.save();
 
-      const orderId = order._id as mongoose.Types.ObjectId;
-
-      // Trừ kho sách
-      const bookItems = await OrderItemModel.find({ order_id: orderId, product_type: "Book" }).lean();
-      await Promise.all(bookItems.map((it) =>
-        BookModel.updateOne({ _id: it.product_id }, { $inc: { stock: -Math.abs(it.quantity) } })
-      ));
+      // Trừ kho sách (idempotent - chỉ trừ nếu chưa trừ)
+      if (!stockDeducted) {
+        const bookItems = await OrderItemModel.find({ order_id: orderId, product_type: "Book" }).lean();
+        if (bookItems.length > 0) {
+          await Promise.all(bookItems.map((it) =>
+            BookModel.updateOne({ _id: it.product_id }, { $inc: { stock: -Math.abs(it.quantity) } })
+          ));
+          
+          // Đánh dấu đã trừ stock
+          await OrderModel.updateOne(
+            { _id: orderId },
+            { $set: { "meta.stock_deducted": true, "meta.stock_deducted_at": new Date(), "meta.stock_deducted_by": "webhook" } }
+          );
+        }
+      }
 
       // Re-assert enrollment active (idempotent)
       const courseItems = await OrderItemModel.find({ order_id: orderId, product_type: "Course" }).lean();

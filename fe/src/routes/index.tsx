@@ -36,6 +36,7 @@ import ManageOrdersPage from "../pages/dashboard/Admin/ManageOrdersPage.tsx";
 import ManageCategoriesPage from "../pages/dashboard/Admin/ManageCategoriesPage";
 import ManageCoursesPage from "../pages/dashboard/Admin/ManageCoursesPage";
 import CourseManageDetail from "../pages/dashboard/Admin/CourseManageDetail";
+import CourseCreationRequestDetail from "../pages/dashboard/Admin/CourseCreationRequestDetail";
 import ManageReviewsPage from "../pages/dashboard/Admin/ManageReviewsPage";
 import LessonManageDetail from "../pages/dashboard/Admin/LessonManageDetail";
 import PendingEditsAdmin from "../pages/dashboard/Admin/PendingEditsAdmin";
@@ -173,6 +174,14 @@ const AppRoutes: React.FC = () => {
                     element={
                         <ProtectedRoute allowedRoles={["admin"]}>
                             <PendingEditsAdmin/>
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="course-creation-request/:courseId"
+                    element={
+                        <ProtectedRoute allowedRoles={["admin"]}>
+                            <CourseCreationRequestDetail/>
                         </ProtectedRoute>
                     }
                 />
