@@ -121,8 +121,15 @@ export default function CategoryList() {
   const filteredCourses = useMemo(() => {
     if (!courseArray?.length) return [];
 
+    // ✅ Filter: chỉ hiển thị khóa học đã publish và approved
+    let list = courseArray.filter((c: any) => {
+      const isPublished = c.is_published === true;
+      const isApproved = c.status === 'approved';
+      return isPublished && isApproved;
+    });
+
     if (activeCat === "all") {
-      return [...courseArray].sort(() => 0.5 - Math.random()).slice(0, 6);
+      return [...list].sort(() => 0.5 - Math.random()).slice(0, 6);
     }
 
     // tìm category theo slug hoặc _id
@@ -134,7 +141,7 @@ export default function CategoryList() {
 
     const matchId = toId(matchCat._id);
 
-    return courseArray.filter((crs: any) => {
+    return list.filter((crs: any) => {
       // check category array (nếu course.category populated)
       if (Array.isArray(crs.category) && crs.category.length > 0) {
         return crs.category.some((c: any) => {

@@ -60,7 +60,13 @@ export default function MyCoursesPage() {
         if (Array.isArray(data) && data.length && data[0]?.course) {
           // Trường hợp đã populate
           const list = (data as EnrollmentPopulated[]).map((e) => e.course);
-          setCourses(list);
+          // ✅ Filter: chỉ hiển thị khóa học đã publish và approved
+          const filtered = list.filter((c: any) => {
+            const isPublished = c.is_published === true;
+            const isApproved = c.status === 'approved';
+            return isPublished && isApproved;
+          });
+          setCourses(filtered);
         } else if (Array.isArray(data)) {
           // Chưa populate
           const raw = data as EnrollmentRaw[];
@@ -70,7 +76,14 @@ export default function MyCoursesPage() {
             console.log("[MyCourses] fetching course by id:", item.course_id);
             const c = await fetchCourseById(item.course_id);
             console.log("[MyCourses] fetched course id:", c?._id);
-            if (c) fetched.push(c);
+            if (c) {
+              // ✅ Filter: chỉ hiển thị khóa học đã publish và approved
+              const isPublished = (c as any).is_published === true;
+              const isApproved = (c as any).status === 'approved';
+              if (isPublished && isApproved) {
+                fetched.push(c);
+              }
+            }
           }
           console.log("[MyCourses] total fetched courses:", fetched.length);
           setCourses(fetched);

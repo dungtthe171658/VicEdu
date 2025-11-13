@@ -12,7 +12,10 @@ const courseTeacherApi = {
   // Backend route is /api/courses/id/:id (not /:id)
   getById: (id: string) => axios.get(`/courses/id/${id}`),
 
-  create: (data: Partial<Course>) => axios.post("/courses", data),
+  create: (data: Partial<Course>) => {
+    console.log("🔵 [courseTeacherApi.create] Sending data:", JSON.stringify(data, null, 2));
+    return axios.post("/courses", data);
+  },
 
   update: (id: string, data: Partial<Course>) => axios.put(`/courses/${id}`, data),
 

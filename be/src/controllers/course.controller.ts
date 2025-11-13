@@ -22,7 +22,10 @@ function buildChanges(before: any, after: any, keys: string[]) {
 
 export const getPublicCourses = async (req: Request, res: Response) => {
   try {
-    const courses = await CourseModel.find({ is_published: true })
+    const courses = await CourseModel.find({ 
+      is_published: true,
+      status: 'approved'
+    })
       .populate("teacher", "name -_id")
       .populate("category", "name slug");
     res.status(200).json(courses);
@@ -38,7 +41,11 @@ export const getCourseBySlug = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Thiếu tham số slug" });
     }
 
-    const course = await CourseModel.findOne({ slug, is_published: true })
+    const course = await CourseModel.findOne({ 
+      slug, 
+      is_published: true,
+      status: 'approved'
+    })
       .populate("teacher", "full_name avatar_url -_id") // lấy tên + avatar, bỏ _id
       .populate("category", "name slug")
       .lean();
@@ -82,9 +89,17 @@ export const getCourseById = async (req: Request, res: Response) => {
 
 export const createCourse = async (req: AuthRequest, res: Response) => {
   try {
+    console.log('🔵 [createCourse] Request body:', JSON.stringify(req.body, null, 2));
     const { title, description, price, price_cents, category, category_id, thumbnail_url, teacher_ids } = req.body as any;
     const user: any = req.user || {};
     const role = String(user?.role || "");
+    console.log('🔵 [createCourse] User role:', role, 'User ID:', user?._id || user?.id);
+    console.log('🔵 [createCourse] Title:', title, 'Description:', description);
+    
+    if (!title) {
+      return res.status(400).json({ message: 'Title is required' });
+    }
+    
     const slug = slugify(title, { lower: true, strict: true });
 
     // Determine teacher list
@@ -106,27 +121,51 @@ export const createCourse = async (req: AuthRequest, res: Response) => {
       // Create course with pending status and draft
       const draftData: any = {
         title,
-        description,
+        description: description || '', // Ensure description is always a string
         price: price !== undefined ? Number(price) : (price_cents !== undefined ? Number(price_cents) / 100 : 0),
-        thumbnail_url,
+        thumbnail_url: thumbnail_url || '',
         category_id: category_id || (Array.isArray(category) && category.length > 0 ? String(category[0]) : undefined),
         __action: 'create',
       };
 
-      const newCourse = await CourseModel.create({
+      console.log('🔵 [createCourse] Teacher - Draft data:', JSON.stringify(draftData, null, 2));
+      console.log('🔵 [createCourse] Teacher - Category ID:', category_id);
+
+      // Validate category_id is provided
+      if (!category_id) {
+        return res.status(400).json({ message: 'Category is required' });
+      }
+
+      // Validate category_id is a valid ObjectId
+      if (!mongoose.Types.ObjectId.isValid(String(category_id))) {
+        return res.status(400).json({ message: 'Invalid category ID format' });
+      }
+
+      // Use a placeholder description for the course model (required field)
+      // The actual description will be in draft and applied when approved
+      const courseData = {
         title,
         slug,
-        description: '', // Empty initially, will be filled from draft when approved
+        description: description || 'Mô tả sẽ được cập nhật sau khi duyệt', // Use provided description or placeholder
         price: 0,
-        thumbnail_url: '',
-        category: category_id ? [new mongoose.Types.ObjectId(String(category_id))] : [],
+        thumbnail_url: thumbnail_url || '',
+        category: [new mongoose.Types.ObjectId(String(category_id))], // Always an array with at least one element
         teacher: teachers,
         status: 'pending',
         draft: draftData,
         has_pending_changes: true,
         pending_by: new mongoose.Types.ObjectId(uid),
         pending_at: new Date(),
-      });
+      };
+
+      console.log('🔵 [createCourse] Teacher - Course data to create:', JSON.stringify({
+        ...courseData,
+        teacher: courseData.teacher.map((t: any) => t.toString()),
+        category: courseData.category.map((c: any) => c.toString()),
+        pending_by: courseData.pending_by.toString(),
+      }, null, 2));
+
+      const newCourse = await CourseModel.create(courseData);
 
       // Create EditHistory entry
       try {
@@ -149,23 +188,68 @@ export const createCourse = async (req: AuthRequest, res: Response) => {
         console.error('Failed to create EditHistory:', e);
       }
 
+      console.log('✅ [createCourse] Teacher - Course created successfully:', newCourse._id);
       return res.status(201).json(newCourse);
     }
 
     // Admin creates course directly (no approval needed)
-    const newCourse = await CourseModel.create({
+    console.log('🔵 [createCourse] Admin - Creating course directly');
+    if (!description) {
+      return res.status(400).json({ message: 'Description is required for admin-created courses' });
+    }
+    
+    // Validate category for admin
+    let categoryArray: mongoose.Types.ObjectId[] = [];
+    if (category_id) {
+      if (!mongoose.Types.ObjectId.isValid(String(category_id))) {
+        return res.status(400).json({ message: 'Invalid category ID format' });
+      }
+      categoryArray = [new mongoose.Types.ObjectId(String(category_id))];
+    } else if (Array.isArray(category) && category.length > 0) {
+      categoryArray = category
+        .filter((c: any) => c && mongoose.Types.ObjectId.isValid(String(c)))
+        .map((c: any) => new mongoose.Types.ObjectId(String(c)));
+    }
+    
+    if (categoryArray.length === 0) {
+      return res.status(400).json({ message: 'Category is required' });
+    }
+    
+    const adminCourseData = {
       title,
       slug,
-      description,
+      description: description || '',
       price: price !== undefined ? Number(price) : (price_cents !== undefined ? Number(price_cents) / 100 : 0),
-      thumbnail_url,
-      category: category ?? (category_id ? [category_id] : undefined),
+      thumbnail_url: thumbnail_url || '',
+      category: categoryArray,
       teacher: teachers,
       status: 'approved',
-    });
+    };
+    
+    console.log('🔵 [createCourse] Admin - Course data:', JSON.stringify({
+      ...adminCourseData,
+      teacher: adminCourseData.teacher.map((t: any) => t.toString()),
+      category: Array.isArray(adminCourseData.category) ? adminCourseData.category.map((c: any) => c.toString()) : adminCourseData.category,
+    }, null, 2));
+    
+    const newCourse = await CourseModel.create(adminCourseData);
+    console.log('✅ [createCourse] Admin - Course created successfully:', newCourse._id);
     res.status(201).json(newCourse);
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    console.error('❌ [createCourse] Error:', error);
+    console.error('❌ [createCourse] Error stack:', error.stack);
+    console.error('❌ [createCourse] Error message:', error.message);
+    if (error.errors) {
+      console.error('❌ [createCourse] Validation errors:', JSON.stringify(error.errors, null, 2));
+    }
+    res.status(500).json({ 
+      message: error.message,
+      error: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      validationErrors: error.errors ? Object.keys(error.errors).map(key => ({
+        field: key,
+        message: error.errors[key].message
+      })) : undefined
+    });
   }
 };
 
@@ -256,6 +340,10 @@ export const updateCourse = async (req: AuthRequest, res: Response) => {
         }
         // auto update slug when title changes
         if (direct.title) direct.slug = slugify(String(direct.title), { lower: true, strict: true });
+        // Allow teacher to toggle is_published (hide/show course)
+        if (body.is_published !== undefined) {
+          direct.is_published = Boolean(body.is_published);
+        }
         const prev = await CourseModel.findById(id).lean();
         const updated = await CourseModel.findByIdAndUpdate(id, { $set: direct }, { new: true, runValidators: true });
         if (!updated) return res.status(404).json({ message: 'Course not found' });
@@ -280,6 +368,10 @@ export const updateCourse = async (req: AuthRequest, res: Response) => {
         try { setDirect.category = [new mongoose.Types.ObjectId(String(body.category_id))]; } catch {}
       }
       if (setDirect.title) setDirect.slug = slugify(String(setDirect.title), { lower: true, strict: true });
+      // Allow teacher to toggle is_published (hide/show course)
+      if (body.is_published !== undefined) {
+        setDirect.is_published = Boolean(body.is_published);
+      }
 
       const prevDoc = await CourseModel.findById(id).lean();
       const updatedDoc = await CourseModel.findByIdAndUpdate(id, { $set: setDirect }, { new: true, runValidators: true });
