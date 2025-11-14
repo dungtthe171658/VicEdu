@@ -20,10 +20,13 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import LogoutIcon from '@mui/icons-material/Logout';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../hooks/useAuth';
 import userApi from '../../../api/userApi';
 import { buildAvatarUrl } from '../../../utils/buildAvatarUrl';
+import courseTeacherApi from '../../../api/courseTeacherApi';
+import lessonApi from '../../../api/lessonApi';
 
 type TeacherNavbarProps = {
   onToggleDrawer: () => void;
@@ -95,6 +98,39 @@ const TeacherNavbar: React.FC<TeacherNavbarProps> = ({
   const [avatarSrc, setAvatarSrc] = useState<string | undefined>(
     user?.avatar ? String(user.avatar) : undefined
   );
+
+  // Pending requests count (courses + lessons with delete requests)
+  const [pendingCount, setPendingCount] = useState<number>(0);
+  useEffect(() => {
+    const load = async () => {
+      try {
+        if (user?.role !== 'teacher') return;
+        const coursesRes = await courseTeacherApi.getAll().catch(() => ({ data: [] }));
+        const courses: any[] = (coursesRes as any)?.data || coursesRes || [];
+        
+        // Count courses with pending changes (including delete requests)
+        const coursePending = courses.filter((c: any) => !!(c as any)?.has_pending_changes).length;
+        
+        // Count lessons with pending changes by iterating through courses
+        let lessonPending = 0;
+        await Promise.all(
+          courses.map(async (c: any) => {
+            try {
+              const lRes = await lessonApi.listByCourse(c._id).catch(() => []);
+              const lessons: any[] = Array.isArray(lRes) ? lRes : (lRes as any)?.data || [];
+              lessonPending += lessons.filter((l: any) => !!(l as any)?.has_pending_changes).length;
+            } catch {}
+          })
+        );
+        
+        setPendingCount(coursePending + lessonPending);
+      } catch {}
+    };
+    load();
+    // Refresh every 30 seconds
+    const interval = setInterval(load, 30000);
+    return () => clearInterval(interval);
+  }, [user?.role]);
 
   // Resolve avatar from backend if missing; keep local state for onError fallback
   useEffect(() => {
@@ -184,14 +220,14 @@ const TeacherNavbar: React.FC<TeacherNavbarProps> = ({
 
         <Box sx={{ flexGrow: 1 }} />
 
-        {showSearch && !isSmDown && (
+        {/* {showSearch && !isSmDown && (
           <Search>
             <SearchIconWrapper>
               <SearchIcon />
             </SearchIconWrapper>
             <StyledInputBase placeholder="Tìm kiếm…" inputProps={{ 'aria-label': 'search' }} />
           </Search>
-        )}
+        )} */}
 
         <Box sx={{ flexGrow: 1 }} />
 
@@ -201,6 +237,19 @@ const TeacherNavbar: React.FC<TeacherNavbarProps> = ({
           <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', md: 'block' } }}>
             {now}
           </Typography>
+
+          {/* Pending requests badge */}
+          <Tooltip title="Yêu cầu đang chờ duyệt">
+            <IconButton 
+              color="inherit" 
+              onClick={() => navigate('/teacher/pending-edits')}
+              sx={{ position: 'relative' }}
+            >
+              <Badge badgeContent={pendingCount} color="error" max={99}>
+                <PendingActionsIcon />
+              </Badge>
+            </IconButton>
+          </Tooltip>
 
           {rightActions}
 
@@ -240,7 +289,7 @@ const TeacherNavbar: React.FC<TeacherNavbarProps> = ({
         </Box>
       </Toolbar>
 
-      {showSearch && isSmDown && (
+      {/* {showSearch && isSmDown && (
         <Box px={2} pb={1.5}>
           <Search>
             <SearchIconWrapper>
@@ -249,7 +298,10 @@ const TeacherNavbar: React.FC<TeacherNavbarProps> = ({
             <StyledInputBase placeholder="Tìm kiếm…" inputProps={{ 'aria-label': 'search' }} />
           </Search>
         </Box>
-      )}
+      )} */}
+
+
+
     </AppBar>
   );
 };

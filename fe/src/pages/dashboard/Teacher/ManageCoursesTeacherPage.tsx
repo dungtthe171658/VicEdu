@@ -74,13 +74,25 @@ const ManageCoursesTeacherPage = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Ban chac chan muon xoa khoa hoc nay?")) {
+    const course = courses.find(c => c._id === id);
+    const isPublished = (course as any)?.is_published;
+    
+    if (confirm(isPublished 
+      ? "Bạn chắc chắn muốn xóa khóa học này? Yêu cầu sẽ được gửi đến admin để phê duyệt." 
+      : "Bạn chắc chắn muốn xóa khóa học này?")) {
       try {
-        await courseTeacherApi.delete(id);
+        if (isPublished) {
+          // For published courses, create a pending delete request
+          await courseTeacherApi.requestDelete(id);
+          alert("Yêu cầu xóa khóa học đã được gửi. Vui lòng chờ admin phê duyệt.");
+        } else {
+          // For unpublished courses, delete directly
+          await courseTeacherApi.delete(id);
+        }
         loadCourses();
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error deleting course:", error);
-        alert("Khong the xoa khoa hoc.");
+        alert(error?.response?.data?.message || "Khong the xoa khoa hoc.");
       }
     }
   };
