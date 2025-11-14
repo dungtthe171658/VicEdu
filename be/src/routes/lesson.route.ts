@@ -10,6 +10,7 @@ import {
   approveLessonChanges,
   rejectLessonChanges,
   getPendingLessons,
+  requestDeleteLesson,
 } from "../controllers/lesson.controller";
 import { authenticateToken, checkRole } from "../middlewares/auth";
 
@@ -63,6 +64,14 @@ router.post(
   authenticateToken,
   checkRole(["admin"]),
   rejectLessonChanges
+);
+
+// Teacher: request delete lesson (creates pending delete request)
+router.post(
+  "/:lessonId/request-delete",
+  authenticateToken,
+  checkRole(["teacher", "admin"]),
+  requestDeleteLesson
 );
 
 export default router;

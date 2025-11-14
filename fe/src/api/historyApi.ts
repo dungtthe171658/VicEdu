@@ -16,6 +16,11 @@ export type EditHistoryItem = {
   approved_by?: string | null;
   approved_at?: string | null;
   created_at?: string;
+  // Populated fields
+  target_title?: string;
+  submitted_by_name?: string;
+  approved_by_name?: string;
+  course_id?: string; // For lessons
 };
 
 const historyApi = {

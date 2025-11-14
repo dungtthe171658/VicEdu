@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import courseAdminApi from "../../../api/courseAdminApi";
 import lessonApi from "../../../api/lessonApi";
-import historyApi, { type EditHistoryItem } from "../../../api/historyApi";
+// import historyApi, { type EditHistoryItem } from "../../../api/historyApi";
 import type { Course } from "../../../types/course";
 import type { Lesson } from "../../../types/lesson";
 import CourseForm from "../../../components/courses/CourseForm";
@@ -29,7 +29,7 @@ export default function PendingEditsAdmin() {
   const [lessons, setLessons] = useState<PendingLesson[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [recent, setRecent] = useState<EditHistoryItem[]>([]);
+  // const [recent, setRecent] = useState<EditHistoryItem[]>([]);
   const [viewingCourseId, setViewingCourseId] = useState<string | null>(null);
   const [viewingLessonId, setViewingLessonId] = useState<string | null>(null);
   const [courseDetail, setCourseDetail] = useState<Course | null>(null);
@@ -41,17 +41,17 @@ export default function PendingEditsAdmin() {
     try {
       setLoading(true);
       setError(null);
-      const [cRes, lRes, rRes] = await Promise.all([
+      const [cRes, lRes] = await Promise.all([
         courseAdminApi.getPending().catch(() => ({ data: [], count: 0 } as any)),
         lessonApi.getPending().catch(() => ({ data: [], count: 0 } as any)),
-        historyApi.listAdminRecent({ limit: 30 }).catch(() => ({ data: [], count: 0 } as any)),
+        // historyApi.listAdminRecent({ limit: 30 }).catch(() => ({ data: [], count: 0 } as any)),
       ]);
       const cData: any[] = (cRes as any)?.data?.data || (cRes as any)?.data || cRes || [];
       const lData: any[] = (lRes as any)?.data?.data || (lRes as any)?.data || lRes || [];
-      const rData: any[] = (rRes as any)?.data?.data || (rRes as any)?.data || rRes || [];
+      // const rData: any[] = (rRes as any)?.data?.data || (rRes as any)?.data || rRes || [];
       setCourses(cData as PendingCourse[]);
       setLessons(lData as PendingLesson[]);
-      setRecent(rData as EditHistoryItem[]);
+      // setRecent(rData as EditHistoryItem[]);
     } catch (e: any) {
       setError(e?.message || "Failed to load pending edits");
     } finally {
@@ -155,7 +155,7 @@ export default function PendingEditsAdmin() {
   const courseDeleteRequests = (courses || []).filter((c) => (c as any)?.draft?.__action === 'delete');
   const lessonDeleteRequests = (lessons || []).filter((l) => (l as any)?.draft?.__action === 'delete');
 
-  const recentDeletes = (recent || []).filter((h) => Boolean((h as any)?.changes?.deleted));
+  // const recentDeletes = (recent || []).filter((h) => Boolean((h as any)?.changes?.deleted));
 
   return (
     <div className="pending-edits-container">
@@ -440,52 +440,10 @@ export default function PendingEditsAdmin() {
             )}
           </section>
 
-          {/* Recent Delete Actions */}
-          <section className="recent-actions-section">
-            <div className="section-header">
-              <h3 className="section-title">
-                📋 Lịch sử xóa gần đây
-              </h3>
-              <span className={`section-count ${recentDeletes.length > 0 ? 'has-items' : ''}`}>
-                {recentDeletes.length} hành động
-              </span>
-            </div>
-            {recentDeletes.length === 0 ? (
-              <div className="empty-state">Chưa có lịch sử xóa gần đây.</div>
-            ) : (
-              <div>
-                {recentDeletes.map((h) => (
-                  <div key={h._id} className="history-card">
-                    <div className="history-header">
-                      <span className="history-type">{h.target_type.toUpperCase()}</span>
-                      <span className="history-time">
-                        🕒 {h.created_at ? new Date(h.created_at).toLocaleString('vi-VN') : 'Chưa có thời gian'}
-                      </span>
-                      <span className={`history-status ${h.status?.toLowerCase() || 'pending'}`}>
-                        {h.status || 'pending'}
-                      </span>
-                    </div>
-                    <div className="history-changes">
-                      <div className="history-changes-header">Trường</div>
-                      <div className="history-changes-header">Trước</div>
-                      <div className="history-changes-header">Sau</div>
-                      {Object.entries(h.changes || {}).map(([k, v]) => (
-                        <>
-                          <div key={h._id + k + 'f'} className="history-field">{k}</div>
-                          <div key={h._id + k + 'b'} className="history-value">
-                            {String((v as any).from ?? '') || '(trống)'}
-                          </div>
-                          <div key={h._id + k + 'a'} className="history-value">
-                            {String((v as any).to ?? '') || '(trống)'}
-                          </div>
-                        </>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+          {/* Recent Delete Actions - Hidden */}
+          {/* <section className="recent-actions-section">
+            ...
+          </section> */}
         </div>
       )}
     </div>

@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import EditHistory from "../models/editHistory.model";
 import CourseModel from "../models/course.model";
 import LessonModel from "../models/lesson.model";
+import UserModel from "../models/user.model";
 
 function toObjectId(id: any) {
   return mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(String(id)) : null;
@@ -69,17 +70,58 @@ export const listPendingAll = async (req: Request & { user?: any }, res: Respons
   }
 };
 
-// Admin: list recent edits with optional status filter
+// Admin: list recent edits with optional status filter (only delete requests)
 export const listRecentAll = async (req: Request & { user?: any }, res: Response) => {
   try {
     const role = String((req.user as any)?.role || "");
     if (role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
     const { status, limit } = req.query as any;
-    const q: any = {};
+    const q: any = {
+      'changes.deleted': { $exists: true }, // Only delete requests
+    };
     if (status) q.status = status;
     const lim = Math.min(Math.max(Number(limit) || 50, 1), 200);
     const items = await EditHistory.find(q).sort({ created_at: -1 }).limit(lim).lean();
-    return res.json({ data: items, count: items.length });
+    
+    // Populate target information and user information
+    const withDetails = await Promise.all(
+      items.map(async (it: any) => {
+        let target_title: string | undefined;
+        let target_id_str = String(it.target_id);
+        
+        if (it.target_type === 'course') {
+          const c = await CourseModel.findById(it.target_id).select('title').lean();
+          target_title = (c as any)?.title;
+        } else if (it.target_type === 'lesson') {
+          const l = await LessonModel.findById(it.target_id).select('title course_id').lean();
+          target_title = (l as any)?.title;
+          (it as any).course_id = (l as any)?.course_id;
+        }
+        
+        // Populate submitted_by user
+        let submitted_by_name: string | undefined;
+        if (it.submitted_by) {
+          const user = await UserModel.findById(it.submitted_by).select('name email').lean();
+          submitted_by_name = (user as any)?.name || (user as any)?.email || 'Unknown';
+        }
+        
+        // Populate approved_by user if exists
+        let approved_by_name: string | undefined;
+        if (it.approved_by) {
+          const approver = await UserModel.findById(it.approved_by).select('name email').lean();
+          approved_by_name = (approver as any)?.name || (approver as any)?.email || 'Unknown';
+        }
+        
+        return {
+          ...it,
+          target_title,
+          submitted_by_name,
+          approved_by_name,
+        };
+      })
+    );
+    
+    return res.json({ data: withDetails, count: withDetails.length });
   } catch (error: any) {
     return res.status(500).json({ message: error.message || 'Server error' });
   }

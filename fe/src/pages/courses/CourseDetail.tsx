@@ -614,7 +614,7 @@ export default function CourseDetail() {
             <div className="flex items-center gap-3 mb-4">
               {(course as any).teacher.map((t: any) => (
                 <div key={t.full_name} className="flex items-center gap-1">
-                  <img src={t.avatar_url} alt={t.full_name} className="w-6 h-6 rounded-full" />
+                  <img src={t.avatar} alt={t.full_name} className="w-6 h-6 rounded-full" />
                   <span className="text-gray-700">{t.full_name}</span>
                 </div>
               ))}
@@ -733,7 +733,7 @@ export default function CourseDetail() {
               onChange={(e) => setSubMode((e.target as HTMLSelectElement).value as any)}
               className="border rounded px-2 py-1"
             >
-              <option value="both">Song ngữ</option>
+              {/* <option value="both">Song ngữ</option> */}
               <option value="en">Tiếng Anh</option>
               <option value="vi">Tiếng Việt</option>
             </select>
@@ -774,6 +774,7 @@ export default function CourseDetail() {
               {selectedLesson?.description || ""}
             </div>
           )}
+
         </div>
 
         {/* Lesson list */}
@@ -875,14 +876,12 @@ export default function CourseDetail() {
                         >
                           {postingQuestion ? "Đang gửi..." : "Gửi câu hỏi"}
                         </button>
-                        <span className="text-xs text-gray-500">
-                          Chỉ giáo viên và học viên đã ghi danh mới có thể hỏi đáp.
-                        </span>
+                     
                       </div>
                     </div>
                   ) : (
-                    <div className="mt-4 rounded-2xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-900">
-                      Đăng nhập và ghi danh khóa học để tham gia đặt câu hỏi, phản hồi.
+                    <div className="">
+                    
                     </div>
                   )}
 
