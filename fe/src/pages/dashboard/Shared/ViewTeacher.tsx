@@ -180,9 +180,9 @@ const ViewTeacher: React.FC = () => {
       </Typography>
 
       <Grid container spacing={3}>
-        <StatCard icon={<FaUsers size={22} />} title="Học viên theo học" value={stats.students} color="rgba(59, 130, 246, 1)" />
-        <StatCard icon={<FaMoneyBillWave size={22} />} title="Doanh thu (ước tính)" value={formatCurrency(stats.revenue)} color="rgba(16, 185, 129, 1)" />
-        <StatCard icon={<FaBookOpen size={22} />} title="Khóa học đang hoạt động" value={stats.activeCourses} color="rgba(168, 85, 247, 1)" />
+        <StatCard icon={<FaUsers size={22} />} title="Học viên" value={stats.students} color="rgba(59, 130, 246, 1)" />
+        <StatCard icon={<FaMoneyBillWave size={22} />} title="Doanh thu" value={formatCurrency(stats.revenue)} color="rgba(16, 185, 129, 1)" />
+        <StatCard icon={<FaBookOpen size={22} />} title="Khóa học" value={stats.activeCourses} color="rgba(168, 85, 247, 1)" />
       </Grid>
     </Box>
   );

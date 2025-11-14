@@ -63,11 +63,9 @@ export const CoursePage = () => {
   const filteredCourses = useMemo(() => {
     let list = [...courses];
 
-    // ✅ Filter: chỉ hiển thị khóa học đã publish và approved
+    // ✅ Filter: chỉ hiển thị khóa học đã publish
     list = list.filter((c) => {
-      const isPublished = (c as any).is_published === true;
-      const isApproved = (c as any).status === 'approved';
-      return isPublished && isApproved;
+      return (c as any).is_published === true;
     });
 
     // ✅ Filter by category

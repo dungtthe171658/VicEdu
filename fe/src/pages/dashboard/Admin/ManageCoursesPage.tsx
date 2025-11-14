@@ -30,7 +30,8 @@ const ManageCoursesPage = () => {
       if (selectedCourse?._id) {
         await courseAdminApi.update(selectedCourse._id, data);
       } else {
-        await courseAdminApi.create(data);
+        // Khi thêm khóa học mới, mặc định không hiển thị (is_published: false)
+        await courseAdminApi.create({ ...data, is_published: false });
       }
       setShowModal(false);
       setSelectedCourse(null);
@@ -129,14 +130,14 @@ const ManageCoursesPage = () => {
             </div>
 
             <div className="actions">
-                 <div style={{ display: "inline-flex", gap: 8, marginLeft: 12 }}>
+                 {/* <div style={{ display: "inline-flex", gap: 8, marginLeft: 12 }}>
                 
                   {(course as any).is_published ? (
                     <button onClick={() => handlePublish(course._id, false)}>Ẩn</button>
                   ) : (
                     <button onClick={() => handlePublish(course._id, true)}>Hiển thị</button>
                   )}
-                </div>
+                </div> */}
               <button className="detail-btn" onClick={() => navigate(`/dashboard/manage-courses/${course._id}`)}>
                 Chi tiết
               </button>
@@ -151,7 +152,7 @@ const ManageCoursesPage = () => {
         <div className="modal">
           <div className="modal-content">
             <h3>{selectedCourse ? "Chỉnh sửa khóa học" : "Thêm khóa học mới"}</h3>
-            <CourseForm initialData={selectedCourse || {}} onSubmit={handleSave} showTeacherAssign />
+            <CourseForm initialData={selectedCourse || {}} onSubmit={handleSave} showTeacherAssign hideStatus />
             <button className="close-btn" onClick={() => setShowModal(false)}>Đóng</button>
           </div>
         </div>
