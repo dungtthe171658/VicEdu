@@ -44,7 +44,7 @@ export const getCourseBySlug = async (req: Request, res: Response) => {
       slug, 
       is_published: true
     })
-      .populate("teacher", "full_name avatar_url -_id") // lấy tên + avatar, bỏ _id
+      .populate("teacher", "full_name avatar -_id") // lấy tên + avatar, bỏ _id
       .populate("category", "name slug")
       .lean();
 
@@ -70,7 +70,7 @@ export const getCourseById = async (req: Request, res: Response) => {
     }
 
     const course = await CourseModel.findById(id)
-      .populate("teacher", "full_name avatar_url")
+      .populate("teacher", "full_name avatar")
       .populate("category", "name slug")
       .lean();
 
