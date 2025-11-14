@@ -121,11 +121,9 @@ export default function CategoryList() {
   const filteredCourses = useMemo(() => {
     if (!courseArray?.length) return [];
 
-    // ✅ Filter: chỉ hiển thị khóa học đã publish và approved
+    // ✅ Filter: chỉ hiển thị khóa học đã publish
     let list = courseArray.filter((c: any) => {
-      const isPublished = c.is_published === true;
-      const isApproved = c.status === 'approved';
-      return isPublished && isApproved;
+      return c.is_published === true;
     });
 
     if (activeCat === "all") {

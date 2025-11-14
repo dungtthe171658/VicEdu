@@ -348,16 +348,22 @@ const CourseForm = ({ initialData = {}, onSubmit, showTeacherAssign = false, hid
         </div>
       )}
 
-      <div className="form-group checkbox">
-        <label>
-          <input
-            type="checkbox"
-            name="is_published"
-            checked={!!formData.is_published}
-            onChange={handleChange}
-          />
-          Public khóa học
-        </label>
+      <div className="form-group">
+        <label htmlFor="is_published">Trạng thái hiển thị</label>
+        <select
+          id="is_published"
+          name="is_published"
+          value={formData.is_published ? "true" : "false"}
+          onChange={(e) => {
+            setFormData((prev) => ({
+              ...prev,
+              is_published: e.target.value === "true",
+            }));
+          }}
+        >
+          <option value="false">Ẩn</option>
+          <option value="true">Hiển thị</option>
+        </select>
       </div>
 
       <button type="submit">Lưu khóa học</button>

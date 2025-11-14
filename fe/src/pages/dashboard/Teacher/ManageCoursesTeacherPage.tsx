@@ -32,7 +32,8 @@ const ManageCoursesTeacherPage = () => {
         await courseTeacherApi.update(selectedCourse._id, data);
       } else {
         console.log("🔵 [handleSave] Creating new course");
-        await courseTeacherApi.create(data);
+        // Khi thêm khóa học mới, mặc định không hiển thị (is_published: false)
+        await courseTeacherApi.create({ ...data, is_published: false });
       }
       setShowModal(false);
       setSelectedCourse(null);
@@ -149,14 +150,14 @@ const ManageCoursesTeacherPage = () => {
             </div>
 
             <div className="actions">
-                 <div style={{ display: "inline-flex", gap: 8, marginLeft: 12 }}>
+                 {/* <div style={{ display: "inline-flex", gap: 8, marginLeft: 12 }}>
                 
                   {(course as any).is_published ? (
                     <button onClick={() => handlePublish(course._id, false)}>Ẩn</button>
                   ) : (
                     <button onClick={() => handlePublish(course._id, true)}>Hiển thị</button>
                   )}
-                </div>
+                </div> */}
               <button className="detail-btn" onClick={() => navigate(`/teacher/manage-courses/${course._id}`)}>
                 Chi tiết
               </button>

@@ -23,8 +23,7 @@ function buildChanges(before: any, after: any, keys: string[]) {
 export const getPublicCourses = async (req: Request, res: Response) => {
   try {
     const courses = await CourseModel.find({ 
-      is_published: true,
-      status: 'approved'
+      is_published: true
     })
       .populate("teacher", "name -_id")
       .populate("category", "name slug");
@@ -43,8 +42,7 @@ export const getCourseBySlug = async (req: Request, res: Response) => {
 
     const course = await CourseModel.findOne({ 
       slug, 
-      is_published: true,
-      status: 'approved'
+      is_published: true
     })
       .populate("teacher", "full_name avatar_url -_id") // lấy tên + avatar, bỏ _id
       .populate("category", "name slug")

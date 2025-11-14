@@ -235,7 +235,19 @@ export default function LessonManager({ courseId }: Props) {
           rows={2}
         />
         <input type="file" accept="video/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-        <button disabled={!canCreate || creating || !supabase} onClick={handleCreate}>
+        <button 
+          disabled={!canCreate || creating || !supabase} 
+          onClick={handleCreate}
+          style={{ 
+            backgroundColor: '#a855f7', 
+            color: 'white', 
+            border: 'none', 
+            padding: '8px 16px', 
+            borderRadius: '6px', 
+            cursor: !canCreate || creating || !supabase ? 'not-allowed' : 'pointer',
+            opacity: !canCreate || creating || !supabase ? 0.6 : 1
+          }}
+        >
           {creating ? "Đang tạo..." : "Tạo bài học"}
         </button>
       </div>
@@ -295,8 +307,8 @@ export default function LessonManager({ courseId }: Props) {
                         ) : (
                           <span style={{ fontSize: 12, color: "#999" }}>Chưa có video</span>
                         )}
-                        <button onClick={() => openPlayback(ls._id)} style={{ fontSize: 12 }}>Play (auth)</button>
-                        <button onClick={() => navigate(`/dashboard/manage-courses/${courseId}/lessons/${ls._id}`)} style={{ fontSize: 12 }}>Xem chi tiết</button>
+                        {/* <button onClick={() => openPlayback(ls._id)} style={{ fontSize: 12 }}>Play (auth)</button> */}
+                        {/* <button onClick={() => navigate(`/dashboard/manage-courses/${courseId}/lessons/${ls._id}`)} style={{ fontSize: 12 }}>Xem chi tiết</button> */}
                         <button onClick={() => viewDetail(ls._id)} style={{ fontSize: 12 }}>Xem chi tiết</button>
                       </div>
                     </>
