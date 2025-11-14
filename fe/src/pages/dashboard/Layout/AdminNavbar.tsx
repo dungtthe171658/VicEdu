@@ -20,6 +20,7 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import LogoutIcon from '@mui/icons-material/Logout';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../hooks/useAuth';
 import axios from '../../../api/axios';
@@ -113,22 +114,27 @@ const AdminNavbar: React.FC<AdminNavbarProps> = ({
     }
   }, [user?.avatar, user?._id]);
 
-  // Pending edits count (courses + lessons)
+  // Pending edits count (courses + lessons, including delete requests)
   const [pendingCount, setPendingCount] = useState<number>(0);
   useEffect(() => {
     const load = async () => {
       try {
         if (user?.role !== 'admin') return;
-        const [courses, lessons] = await Promise.all([
-          axios.get('/courses/admin/pending').catch(() => ({ count: 0 })),
-          axios.get('/lesson/pending').catch(() => ({ count: 0 })),
+        const [coursesRes, lessonsRes] = await Promise.all([
+          axios.get('/courses/admin/pending').catch(() => ({ data: { data: [] } })),
+          axios.get('/lesson/pending').catch(() => ({ data: { data: [] } })),
         ]);
-        const c = (courses as any)?.count ?? (courses as any)?.data?.count ?? 0;
-        const l = (lessons as any)?.count ?? (lessons as any)?.data?.count ?? 0;
-        setPendingCount(Number(c) + Number(l));
+        const courses: any[] = (coursesRes as any)?.data?.data || (coursesRes as any)?.data || [];
+        const lessons: any[] = (lessonsRes as any)?.data?.data || (lessonsRes as any)?.data || [];
+        
+        // Count all pending requests (including delete requests)
+        setPendingCount(courses.length + lessons.length);
       } catch {}
     };
     load();
+    // Refresh every 30 seconds
+    const interval = setInterval(load, 30000);
+    return () => clearInterval(interval);
   }, [user?.role]);
 
   // Realtime clock
@@ -203,14 +209,14 @@ const AdminNavbar: React.FC<AdminNavbarProps> = ({
 
         <Box sx={{ flexGrow: 1 }} />
 
-        {showSearch && !isSmDown && (
+        {/* {showSearch && !isSmDown && (
           <Search>
             <SearchIconWrapper>
               <SearchIcon />
             </SearchIconWrapper>
             <StyledInputBase placeholder="Tìm kiếm…" inputProps={{ 'aria-label': 'search' }} />
           </Search>
-        )}
+        )} */}
 
         <Box sx={{ flexGrow: 1 }} />
 
@@ -223,7 +229,18 @@ const AdminNavbar: React.FC<AdminNavbarProps> = ({
 
           {rightActions}
 
-     
+          {/* Pending requests badge */}
+          <Tooltip title="Yêu cầu đang chờ duyệt">
+            <IconButton 
+              color="inherit" 
+              onClick={() => navigate('/dashboard/pending-edits')}
+              sx={{ position: 'relative' }}
+            >
+              <Badge badgeContent={pendingCount} color="error" max={99}>
+                <PendingActionsIcon />
+              </Badge>
+            </IconButton>
+          </Tooltip>
 
           {/* Profile */}
           <Tooltip title={user?.fullName || 'Tài khoản'}>
@@ -261,7 +278,7 @@ const AdminNavbar: React.FC<AdminNavbarProps> = ({
         </Box>
       </Toolbar>
 
-      {showSearch && isSmDown && (
+      {/* {showSearch && isSmDown && (
         <Box px={2} pb={1.5}>
           <Search>
             <SearchIconWrapper>
@@ -270,7 +287,7 @@ const AdminNavbar: React.FC<AdminNavbarProps> = ({
             <StyledInputBase placeholder="Tìm kiếm…" inputProps={{ 'aria-label': 'search' }} />
           </Search>
         </Box>
-      )}
+      )} */}
     </AppBar>
   );
 };

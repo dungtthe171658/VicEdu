@@ -21,6 +21,9 @@ const courseTeacherApi = {
 
   delete: (id: string) => axios.delete(`/courses/${id}`),
 
+  // Request delete (creates pending delete request for published courses)
+  requestDelete: (id: string) => axios.post(`/courses/${id}/request-delete`),
+
   // Publish flow
   requestPublish: (id: string) => axios.post(`/courses/${id}/request-publish`),
 };
