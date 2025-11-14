@@ -217,12 +217,53 @@ export async function autoGenerateFromAudio(req: Request, res: Response) {
     // Try a common video mime type; Gemini should accept video for ASR.
     const mimeType = 'video/mp4';
 
-    const viText = await geminiForAudio.transcribeAudioToText(buf, mimeType, 'vi');
-    if (!viText) return res.status(502).json({ message: "Transcription failed" });
+    // Try transcribing in English first (most common for educational videos)
+    let sourceText = await geminiForAudio.transcribeAudioToText(buf, mimeType, 'en');
+    let sourceLang = 'en';
+    let targetLang = 'vi';
+    
+    // If English transcription is empty or too short, try Vietnamese
+    if (!sourceText || sourceText.trim().length < 10) {
+      sourceText = await geminiForAudio.transcribeAudioToText(buf, mimeType, 'vi');
+      if (sourceText && sourceText.trim().length >= 10) {
+        sourceLang = 'vi';
+        targetLang = 'en';
+      } else {
+        // If both fail, default to English
+        sourceText = sourceText || "";
+        sourceLang = 'en';
+        targetLang = 'vi';
+      }
+    }
 
-    const enText = await geminiForAudio.translateText(viText, 'vi', 'en');
+    if (!sourceText || sourceText.trim().length === 0) {
+      return res.status(502).json({ message: "Transcription failed" });
+    }
 
-    return res.json({ viText, enText });
+    // Translate to the target language
+    const targetText = await geminiForAudio.translateText(sourceText, sourceLang, targetLang);
+
+    // Return both texts with language indicators
+    // For backward compatibility, also return as viText and enText
+    if (sourceLang === 'en') {
+      return res.json({ 
+        sourceText, 
+        targetText, 
+        sourceLang: 'en', 
+        targetLang: 'vi',
+        enText: sourceText, 
+        viText: targetText 
+      });
+    } else {
+      return res.json({ 
+        sourceText, 
+        targetText, 
+        sourceLang: 'vi', 
+        targetLang: 'en',
+        viText: sourceText, 
+        enText: targetText 
+      });
+    }
   } catch (err: any) {
     console.error('autoGenerateFromAudio error:', err);
     return res.status(500).json({ message: err?.message || 'Server error' });
