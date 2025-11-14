@@ -33,6 +33,13 @@ export const subtitleApi = {
   save: (lessonId: string, data: { enVtt?: string; viVtt?: string; cues?: BilingualCue[] }): Promise<SubtitleRecord> =>
     axios.post(`/subtitles/${lessonId}/save`, data),
 
-  autoGenerate: (lessonId: string): Promise<{ viText: string; enText: string }> =>
+  autoGenerate: (lessonId: string): Promise<{ 
+    viText: string; 
+    enText: string; 
+    sourceText?: string; 
+    targetText?: string; 
+    sourceLang?: string; 
+    targetLang?: string; 
+  }> =>
     axios.post(`/subtitles/${lessonId}/auto-generate`),
 };

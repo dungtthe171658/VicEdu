@@ -431,14 +431,24 @@ export default function CourseDetail() {
     }
   };
 
-  // Tự tạo phụ đề (VI only)
-  const handleAutoGenerateViOnly = async () => {
+  // Tự tạo phụ đề song ngữ (EN + VI)
+  const handleAutoGenerateBilingual = async () => {
     try {
       setLoadingSubs(true);
       const video = videoRef.current;
       const duration = video && isFinite((video as any).duration) ? (video as any).duration : 0;
       if (!selectedLessonId) throw new Error("No lesson");
       const r = await subtitleApi.autoGenerate(selectedLessonId);
+
+      // Get source and target texts based on detected language
+      const sourceLang = (r as any).sourceLang || 'en';
+      const targetLang = (r as any).targetLang || 'vi';
+      const sourceText = (r as any).sourceText || (sourceLang === 'en' ? (r as any).enText : (r as any).viText) || "";
+      const targetText = (r as any).targetText || (targetLang === 'vi' ? (r as any).viText : (r as any).enText) || "";
+
+      if (!sourceText || !targetText) {
+        throw new Error("Không thể tạo phụ đề. Vui lòng thử lại.");
+      }
 
       const normalize = (t: string) =>
         (t || "")
@@ -506,9 +516,16 @@ export default function CourseDetail() {
         return out;
       };
 
-      const viSentences0 = splitSentences((r as any).viText || "");
-      const viSentences = splitTooLong(mergeShortFragments(viSentences0));
+      // Process both source and target texts
+      const sourceSentences0 = splitSentences(sourceText);
+      const targetSentences0 = splitSentences(targetText);
+      
+      // Align sentence counts by using the longer array as reference
+      const maxLen = Math.max(sourceSentences0.length, targetSentences0.length);
+      const sourceSentences = splitTooLong(mergeShortFragments(sourceSentences0)).slice(0, maxLen);
+      const targetSentences = splitTooLong(mergeShortFragments(targetSentences0)).slice(0, maxLen);
 
+      // Use source text for duration estimation (usually more accurate)
       const estimateDurSec = (s: string) => {
         const cps = 14; // chars per second
         const base = 0.4; // entry pause
@@ -516,8 +533,8 @@ export default function CourseDetail() {
         return Math.max(1.2, Math.min(6.5, sec));
       };
 
-      const targetDur = duration > 0 ? duration : Math.max(viSentences.length * 3, 30);
-      let durArr = viSentences.map(estimateDurSec);
+      const targetDur = duration > 0 ? duration : Math.max(sourceSentences.length * 3, 30);
+      let durArr = sourceSentences.map(estimateDurSec);
       const sum = durArr.reduce((a, b) => a + b, 0);
       const scale = sum > 0 ? targetDur / sum : 1;
       durArr = durArr.map((d) => Math.max(0.9, Math.min(7.5, d * scale)));
@@ -525,8 +542,9 @@ export default function CourseDetail() {
       const gap = 0.08;
       const cues: BilingualCue[] = [];
       let cursor = 0;
-      for (let i = 0; i < viSentences.length; i++) {
-        const text = viSentences[i];
+      for (let i = 0; i < sourceSentences.length; i++) {
+        const sourceText = sourceSentences[i] || "";
+        const targetText = targetSentences[i] || "";
         const start = cursor;
         const end = start + durArr[i];
         const wrapTwoLines = (t: string): string => {
@@ -538,7 +556,12 @@ export default function CourseDetail() {
           }
           return t;
         };
-        cues.push({ start: Math.max(0, start), end: Math.max(start + 0.1, end), source: "", target: wrapTwoLines(text) });
+        cues.push({ 
+          start: Math.max(0, start), 
+          end: Math.max(start + 0.1, end), 
+          source: wrapTwoLines(sourceText), 
+          target: wrapTwoLines(targetText) 
+        });
         cursor = end + gap;
       }
 
@@ -563,11 +586,12 @@ export default function CourseDetail() {
       }
 
       setSubCues(cues);
-      setSubMode("vi");
+      setSubMode("both"); // Default to bilingual mode
       setSubVisible(true);
       await subtitleApi.save(selectedLessonId, { cues });
     } catch (e) {
       console.error("Auto-generate subtitles failed:", e);
+      alert("Không thể tạo phụ đề. Vui lòng thử lại.");
     } finally {
       setLoadingSubs(false);
     }
@@ -722,10 +746,10 @@ export default function CourseDetail() {
 
             <button
               disabled={!isEnrolled || !playbackUrl || loadingSubs}
-              onClick={handleAutoGenerateViOnly}
+              onClick={handleAutoGenerateBilingual}
               className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1.5 rounded border"
             >
-              Tự tạo phụ đề (chỉ VI)
+              Tự tạo phụ đề (Song ngữ)
             </button>
 
             <select
@@ -733,7 +757,7 @@ export default function CourseDetail() {
               onChange={(e) => setSubMode((e.target as HTMLSelectElement).value as any)}
               className="border rounded px-2 py-1"
             >
-              {/* <option value="both">Song ngữ</option> */}
+              <option value="both">Song ngữ</option>
               <option value="en">Tiếng Anh</option>
               <option value="vi">Tiếng Việt</option>
             </select>
