@@ -356,6 +356,79 @@ export const getPendingLessons = async (_req: Request, res: Response) => {
 };
 
 /**
+ * POST /api/lessons/:lessonId/request-delete
+ * Teacher: request delete lesson (creates pending delete request)
+ */
+export const requestDeleteLesson = async (req: AuthRequest, res: Response) => {
+  try {
+    const { lessonId } = req.params as any;
+    const lid = toObjectId(lessonId);
+    if (!lid) return res.status(400).json({ message: 'Invalid lessonId' });
+
+    const lesson: any = await LessonModel.findById(lid);
+    if (!lesson) return res.status(404).json({ message: 'Lesson not found' });
+
+    const user: any = req.user || {};
+    const uid = getUserId(req);
+    if (!uid) return res.status(401).json({ message: 'Unauthenticated' });
+
+    // Check if user is teacher or admin
+    const role = user?.role || '';
+    if (role !== 'teacher' && role !== 'admin') {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    // Check if there's already a pending delete request for this lesson
+    const existingPending = await EditHistory.findOne({
+      target_type: 'lesson',
+      target_id: lid,
+      status: 'pending',
+      'changes.deleted': { $exists: true },
+    }).lean();
+
+    if (existingPending) {
+      return res.status(400).json({ 
+        message: 'Đã có yêu cầu xóa đang chờ phê duyệt cho bài học này. Vui lòng chờ admin xử lý.' 
+      });
+    }
+
+    // Check if lesson already has pending delete request
+    if ((lesson as any).has_pending_changes && (lesson as any).draft?.__action === 'delete') {
+      return res.status(400).json({ 
+        message: 'Đã có yêu cầu xóa đang chờ phê duyệt cho bài học này. Vui lòng chờ admin xử lý.' 
+      });
+    }
+
+    // Create pending delete request
+    const updated = await LessonModel.findByIdAndUpdate(lid, {
+      $set: {
+        draft: { __action: 'delete' },
+        has_pending_changes: true,
+        pending_by: new mongoose.Types.ObjectId(uid),
+        pending_at: new Date(),
+      },
+    }, { new: true });
+
+    try {
+      await EditHistory.create({
+        target_type: 'lesson',
+        target_id: lid,
+        submitted_by: new mongoose.Types.ObjectId(uid),
+        submitted_role: role,
+        status: 'pending',
+        before: { deleted: false },
+        after: { deleted: true },
+        changes: { deleted: { from: false, to: true } },
+      });
+    } catch {}
+
+    return res.json({ message: 'Delete request submitted', lesson: updated });
+  } catch (error: any) {
+    return res.status(500).json({ message: error.message || 'Server error' });
+  }
+};
+
+/**
  * DELETE /api/lessons/:lessonId
  * Xoá lesson và kéo ra khỏi course.lessons
  */

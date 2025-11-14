@@ -76,10 +76,12 @@ export default function LessonManageDetail() {
 
   const handleDelete = async () => {
     if (!lessonId) return;
-    if (!confirm("Bạn chắc chắn muốn xóa bài học này?")) return;
+    if (!confirm("Bạn chắc chắn muốn xóa bài học này? Yêu cầu sẽ được gửi đến admin để phê duyệt.")) return;
     setDeleting(true);
     try {
-      await lessonApi.delete(lessonId);
+      // Always send delete request to admin
+      await lessonApi.requestDelete(lessonId);
+      alert("Yêu cầu xóa bài học đã được gửi. Vui lòng chờ admin phê duyệt.");
       navigate(`/teacher/manage-courses/${courseId}`);
     } catch (e: any) {
       setError(e?.message || "Xóa bài học thất bại");

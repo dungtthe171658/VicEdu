@@ -263,36 +263,11 @@ export default function PendingEditsTeacher() {
             )}
           </section>
 
-          <section>
+          {/* Lịch sử gần đây - Hidden */}
+          {/* <section>
             <h3>Lịch sử gần đây</h3>
-            {recent.length === 0 ? (
-              <div>Chưa có thay đổi gần đây.</div>
-            ) : (
-              <div style={{ display: 'grid', gap: 12 }}>
-                {recent.map((h) => (
-                  <div key={h._id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <span>{h.target_type.toUpperCase()}</span>
-                      <span style={{ color: '#6b7280' }}>{h.created_at ? new Date(h.created_at).toLocaleString('vi-VN') : ''}</span>
-                      <span style={{ marginLeft: 'auto' }}>{h.status}</span>
-                    </div>
-                    <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
-                      <div style={{ fontWeight: 600 }}>Field</div>
-                      <div style={{ fontWeight: 600 }}>Before</div>
-                      <div style={{ fontWeight: 600 }}>After</div>
-                      {Object.entries(h.changes || {}).map(([k, v]) => (
-                        <>
-                          <div key={h._id + k + 'f'} style={{ fontFamily: 'monospace' }}>{k}</div>
-                          <div key={h._id + k + 'b'} style={{ whiteSpace: 'pre-wrap' }}>{String((v as any).from ?? '')}</div>
-                          <div key={h._id + k + 'a'} style={{ whiteSpace: 'pre-wrap' }}>{String((v as any).to ?? '')}</div>
-                        </>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+            ...
+          </section> */}
         </div>
       )}
     </div>

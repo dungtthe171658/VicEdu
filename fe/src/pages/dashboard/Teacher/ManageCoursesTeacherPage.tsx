@@ -74,21 +74,11 @@ const ManageCoursesTeacherPage = () => {
   };
 
   const handleDelete = async (id: string) => {
-    const course = courses.find(c => c._id === id);
-    const isPublished = (course as any)?.is_published;
-    
-    if (confirm(isPublished 
-      ? "Bạn chắc chắn muốn xóa khóa học này? Yêu cầu sẽ được gửi đến admin để phê duyệt." 
-      : "Bạn chắc chắn muốn xóa khóa học này?")) {
+    if (confirm("Bạn chắc chắn muốn xóa khóa học này? Yêu cầu sẽ được gửi đến admin để phê duyệt.")) {
       try {
-        if (isPublished) {
-          // For published courses, create a pending delete request
-          await courseTeacherApi.requestDelete(id);
-          alert("Yêu cầu xóa khóa học đã được gửi. Vui lòng chờ admin phê duyệt.");
-        } else {
-          // For unpublished courses, delete directly
-          await courseTeacherApi.delete(id);
-        }
+        // Always send delete request to admin (for both published and hidden courses)
+        await courseTeacherApi.requestDelete(id);
+        alert("Yêu cầu xóa khóa học đã được gửi. Vui lòng chờ admin phê duyệt.");
         loadCourses();
       } catch (error: any) {
         console.error("Error deleting course:", error);

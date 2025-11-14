@@ -21,13 +21,37 @@ const CourseFormTeacher = ({ initialData = {}, onSubmit }: CourseFormTeacherProp
       ? (initialData as any).price 
       : undefined;
   
+  // Extract category_id from various formats (object, array, or string)
+  const extractCategoryId = (data: Partial<Course>): string => {
+    // If category_id is already a string, use it
+    if (typeof data.category_id === "string" && data.category_id) {
+      return data.category_id;
+    }
+    
+    // If category_id is an object with _id
+    if (typeof data.category_id === "object" && data.category_id?._id) {
+      return String(data.category_id._id);
+    }
+    
+    // If category is populated (object or array)
+    const cat = (data as any).category;
+    if (cat) {
+      if (Array.isArray(cat) && cat.length > 0) {
+        // If it's an array, take the first one
+        return String(cat[0]._id || cat[0]);
+      } else if (typeof cat === "object" && cat._id) {
+        // If it's an object
+        return String(cat._id);
+      }
+    }
+    
+    return "";
+  };
+
   const [formData, setFormData] = useState<Partial<Course>>({
     ...initialData,
     price_cents: price_cents,
-    category_id:
-      typeof initialData.category_id === "object"
-        ? initialData.category_id?._id
-        : initialData.category_id || "",
+    category_id: extractCategoryId(initialData),
   });
 
   const [categories, setCategories] = useState<Category[]>([]);

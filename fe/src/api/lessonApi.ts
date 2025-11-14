@@ -23,6 +23,10 @@ const lessonApi = {
 
   delete: (lessonId: string): Promise<{ message: string }> => axios.delete(`/lesson/${lessonId}`),
 
+  // Request delete (creates pending delete request for admin approval)
+  requestDelete: (lessonId: string): Promise<{ message: string; lesson?: any }> =>
+    axios.post(`/lesson/${lessonId}/request-delete`),
+
   playback: (lessonId: string): Promise<{ playbackUrl: string; expiresIn?: number }> =>
     axios.get(`/lesson/${lessonId}/playback`),
 

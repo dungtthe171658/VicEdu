@@ -613,6 +613,27 @@ export const requestDeleteCourse = async (req: AuthRequest, res: Response) => {
     const owns = (Array.isArray(course.teacher) ? course.teacher : []).some((t: any) => String(t) === String(uid));
     if (!owns && user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
 
+    // Check if there's already a pending delete request for this course
+    const existingPending = await EditHistory.findOne({
+      target_type: 'course',
+      target_id: new mongoose.Types.ObjectId(id),
+      status: 'pending',
+      'changes.deleted': { $exists: true },
+    }).lean();
+
+    if (existingPending) {
+      return res.status(400).json({ 
+        message: 'Đã có yêu cầu xóa đang chờ phê duyệt cho khóa học này. Vui lòng chờ admin xử lý.' 
+      });
+    }
+
+    // Check if course already has pending delete request
+    if ((course as any).has_pending_changes && (course as any).draft?.__action === 'delete') {
+      return res.status(400).json({ 
+        message: 'Đã có yêu cầu xóa đang chờ phê duyệt cho khóa học này. Vui lòng chờ admin xử lý.' 
+      });
+    }
+
     const updated = await CourseModel.findByIdAndUpdate(id, {
       $set: {
         draft: { __action: 'delete' },
