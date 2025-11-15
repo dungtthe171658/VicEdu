@@ -52,6 +52,7 @@ import ManageCommentTeacherPages from "../pages/dashboard/Teacher/ManageCommentT
 import ProtectedRoute from "./ProtectedRoute";
 import About from "../pages/user/about.tsx";
 import QuizPage from "@/pages/quiz/QuizPage.tsx";
+import {QuizzManage} from "@/pages/dashboard/Admin/QuizzManage.tsx";
 
 const AppRoutes: React.FC = () => {
     return (
@@ -84,7 +85,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/my-books" element={<MyBooksPage />} />
                 {/* Route test BookManagementPage */}
                 <Route path="test/manage-books" element={<BookManagementPage/>}/>
-                <Route path="/quiz/:lessonId" element={<QuizPage/>}/>
+                <Route path="/quiz/:quizId" element={<QuizPage/>}/>
 
             </Route>
 
@@ -151,7 +152,14 @@ const AppRoutes: React.FC = () => {
                         </ProtectedRoute>
                     }
                 />
-
+                <Route
+                    path="manage-courses/:courseId/lessons/:lessonId/quizzes"
+                    element={
+                        <ProtectedRoute allowedRoles={["admin"]}>
+                            <QuizzManage />
+                        </ProtectedRoute>
+                    }
+                />
                 <Route
                     path="manage-categories"
                     element={

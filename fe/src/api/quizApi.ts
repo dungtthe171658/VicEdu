@@ -1,13 +1,12 @@
 import axios from "./axios.ts";
-import type {Quiz, QuizSubmitResult} from "@/types/quiz";
+import type {Quiz, QuizStartResponse, QuizSubmitResult} from "@/types/quiz";
 
 const quizApi = {
-    getByLesson: (lessonId: string): Promise<Quiz> =>
-        axios.get(`/quizzes/by-lesson/${lessonId}`),
 
-    submit: (quizId: string, answers: number[]): Promise<QuizSubmitResult> =>
-        axios.post(`/quizzes/${quizId}/submit`, { answers }),
-
+    getByLessonDashboad: (lessonId: string): Promise<Quiz[]> =>
+        axios.get(`/quizzes/dashboard/${lessonId}`),
+    getDetail: (quizId: string): Promise<Quiz> =>
+        axios.get(`/quizzes/dashboard/${quizId}`),
     create: (payload: {
         title: string;
         lesson_id: string;
@@ -19,7 +18,52 @@ const quizApi = {
             options: string[];
             correct_option_index: number;
         }>;
-    }): Promise<Quiz> => axios.post("/quizzes", payload),
+    }): Promise<Quiz> => axios.post("/quizzes/dashboard", payload),
+    update: (
+        quizId: string,
+        payload: {
+            title?: string;
+            duration_seconds?: number;
+            questions?: Array<{
+                question_text?: string;
+                question_image?: string;
+                images?: string[];
+                options: string[];
+                correct_option_index: number;
+            }>;
+        }
+    ): Promise<Quiz> => axios.put(`/quizzes/dashboard/${quizId}`, payload),
+
+    delete: (quizId: string): Promise<void> =>
+        axios.delete(`/quizzes/dashboard/${quizId}`),
+    getAttempts(quizId: string) {
+        return axios.get(`/quizzes/dashboard/${quizId}/attempts`).then(res => res);
+    },
+    get: (id: string): Promise<Quiz> =>
+        axios.get(`/quizzes/${id}`),
+    start(quizId: string): Promise<QuizStartResponse> {
+        return axios.post(`/quizzes/${quizId}/start`);
+    },
+    autoSave(quizId: string, payload: any) {
+        return axios.post(`/quizzes/${quizId}/autosave`, payload);
+    },
+    submit: (quizId: string, payload: any) =>
+        axios.post(`/quizzes/${quizId}/submit`, payload),
+    startAttempt: (quizId: string) =>
+        axios.post(`/quizzes/${quizId}/attempts/start`),
+
+    // ➕ log kết quả bài làm
+    logAttempt: (
+        quizId: string,
+        payload: {
+            answers: number[];
+            violations: number;
+            spent_seconds: number;
+            score?: number;
+            total?: number;
+            correct?: number;
+        }
+    ) => axios.post(`/quizzes/${quizId}/attempts/log`, payload),
 };
 
 export default quizApi;
