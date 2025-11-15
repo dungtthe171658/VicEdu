@@ -14,11 +14,7 @@ import {
 } from '@mui/material';
 import {
   Home as HomeIcon,
-  People as PeopleIcon,
-  ShoppingCart as ShoppingCartIcon,
   Article as ArticleIcon,
-  Category as CategoryIcon,
-  Reviews as ReviewsIcon,
   QuestionAnswer as QuestionAnswerIcon,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
@@ -93,7 +89,8 @@ const MuiSidebar: React.FC<SidebarProps> = ({
               <ListItemButton
                 component={NavLink}
                 to={item.path}
-                className={({ isActive }) => (isActive ? 'active' : undefined)}
+                // @ts-expect-error - NavLink className can be a function, but MUI types don't support it
+                className={({ isActive }: { isActive: boolean }) => (isActive ? 'active' : undefined)}
                 sx={{
                   minHeight: 48,
                   justifyContent: open ? 'initial' : 'center',
