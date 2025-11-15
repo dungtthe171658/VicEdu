@@ -371,12 +371,12 @@ const OverviewPage: React.FC = () => {
           value={stats.totalReviews ?? 0} 
           colorClass="rgba(251, 191, 36, 1)" 
         />
-        <StatCard 
+        {/* <StatCard 
           icon={<FaEdit size={24} />} 
-          title="Chỉnh sửa chờ duyệt" 
+          title="Đã Chỉnh sửa" 
           value={stats.pendingEdits ?? 0} 
           colorClass="rgba(236, 72, 153, 1)" 
-        />
+        /> */}
       </Grid>
 
       {/* Income Card */}

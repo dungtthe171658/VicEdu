@@ -1,0 +1,534 @@
+================================================================================
+SEQUENCE DIAGRAMS - VICEDU PLATFORM
+Mô tả các luồng xử lý quan trọng: Course, Lesson, Payment, Chatbot
+================================================================================
+
+================================================================================
+1. COURSE MANAGEMENT FLOWS
+================================================================================
+
+1.1. TẠO KHÓA HỌC (Teacher/Admin)
+----------------------------------
+Client -> Auth Middleware: POST /api/courses (JWT Token)
+Auth Middleware -> Course Controller: Verify token & role
+Course Controller -> Course Model: Validate input (title, description, category_id)
+Course Controller -> Course Model: Create course với status='approved'
+Course Controller -> EditHistory Model: Tạo history entry (status='applied')
+Course Controller -> Client: Return 201 Created (course data)
+
+Lưu ý:
+- Teacher: Tạo trực tiếp, không cần approval
+- Admin: Tạo trực tiếp, có thể assign nhiều teachers
+- Tự động tạo slug từ title
+- Tự động tạo EditHistory để tracking
+
+1.2. CẬP NHẬT KHÓA HỌC (Teacher)
+----------------------------------
+Client -> Auth Middleware: PUT /api/courses/:id (JWT Token)
+Auth Middleware -> Course Controller: Verify token & role='teacher'
+Course Controller -> Course Model: Check ownership (teacher owns course?)
+Course Controller -> Course Model: Check is_published status
+
+IF course NOT published:
+  Course Controller -> Course Model: Update trực tiếp (title, description, thumbnail, category)
+  Course Controller -> EditHistory Model: Log changes (status='applied')
+  Course Controller -> Client: Return updated course
+
+IF course IS published:
+  Course Controller -> Course Model: Update trực tiếp (non-pricing fields)
+  Course Controller -> EditHistory Model: Log changes (status='applied')
+  Course Controller -> Client: Return updated course
+
+Lưu ý:
+- Teacher chỉ update được course của mình
+- Pre-publish: apply trực tiếp tất cả fields
+- Post-publish: apply trực tiếp non-pricing fields (title, description, thumbnail, category)
+
+1.3. YÊU CẦU PUBLISH KHÓA HỌC (Teacher)
+----------------------------------------
+Client -> Auth Middleware: POST /api/courses/:id/request-publish (JWT Token)
+Auth Middleware -> Course Controller: Verify token & role='teacher'
+Course Controller -> Course Model: Check ownership & is_published status
+Course Controller -> Course Model: Set publish_requested_at, publish_requested_by, status='pending'
+Course Controller -> User Model: Find all admin users
+Course Controller -> Email Service: Send email notification to admins
+Course Controller -> Client: Return success message
+
+1.4. PHÊ DUYỆT PUBLISH (Admin)
+-------------------------------
+Client -> Auth Middleware: POST /api/courses/:id/approve-publish (JWT Token)
+Auth Middleware -> Course Controller: Verify token & role='admin'
+Course Controller -> Course Model: Update is_published=true, published_at, status='approved'
+Course Controller -> Course Model: Clear publish_requested_at, publish_requested_by
+Course Controller -> Client: Return updated course
+
+1.5. YÊU CẦU XÓA KHÓA HỌC (Teacher)
+-------------------------------------
+Client -> Auth Middleware: POST /api/courses/:id/request-delete (JWT Token)
+Auth Middleware -> Course Controller: Verify token & role='teacher'
+Course Controller -> Course Model: Check ownership
+Course Controller -> EditHistory Model: Check existing pending delete request
+IF pending exists:
+  Course Controller -> Client: Return 400 (already pending)
+ELSE:
+  Course Controller -> Course Model: Set draft={__action: 'delete'}, has_pending_changes=true
+  Course Controller -> EditHistory Model: Create pending delete request
+  Course Controller -> Client: Return success message
+
+1.6. PHÊ DUYỆT XÓA KHÓA HỌC (Admin)
+-------------------------------------
+Client -> Auth Middleware: POST /api/courses/:id/approve-changes (JWT Token)
+Auth Middleware -> Course Controller: Verify token & role='admin'
+Course Controller -> Course Model: Check draft.__action === 'delete'
+Course Controller -> Lesson Model: Delete all lessons of course
+Course Controller -> Course Model: Delete course
+Course Controller -> EditHistory Model: Mark latest pending as 'approved'
+Course Controller -> Client: Return success
+
+================================================================================
+2. LESSON MANAGEMENT FLOWS
+================================================================================
+
+2.1. TẠO LESSON (Teacher/Admin)
+---------------------------------
+Client -> Auth Middleware: POST /api/courses/:courseId/lessons (JWT Token)
+Auth Middleware -> Lesson Controller: Verify token & role
+Lesson Controller -> Course Model: Find course by courseId
+Lesson Controller -> Course Model: Calculate position (lessons.length + 1)
+Lesson Controller -> Lesson Model: Create lesson (title, video_url, duration_minutes, position, course_id)
+Lesson Controller -> Course Model: Push lesson._id vào course.lessons array
+Lesson Controller -> EditHistory Model: Create history entry (status='applied')
+Lesson Controller -> Client: Return 201 Created (lesson data)
+
+2.2. CẬP NHẬT LESSON (Teacher)
+--------------------------------
+Client -> Auth Middleware: PUT /api/lessons/:lessonId (JWT Token)
+Auth Middleware -> Lesson Controller: Verify token & role='teacher'
+Lesson Controller -> Lesson Model: Find lesson by lessonId
+Lesson Controller -> Lesson Model: Update trực tiếp (title, video_url, duration, position, description, playback_url)
+Lesson Controller -> EditHistory Model: Log changes (status='applied')
+Lesson Controller -> Client: Return updated lesson
+
+Lưu ý:
+- Teacher update trực tiếp, không cần approval
+- Admin cũng update trực tiếp
+
+2.3. XÓA LESSON (Teacher/Admin)
+---------------------------------
+Client -> Auth Middleware: DELETE /api/lessons/:lessonId (JWT Token)
+Auth Middleware -> Lesson Controller: Verify token & role
+Lesson Controller -> Lesson Model: Find lesson by lessonId
+Lesson Controller -> Course Model: Check course.is_published
+
+IF course NOT published:
+  Lesson Controller -> Lesson Model: Delete lesson
+  Lesson Controller -> Course Model: Pull lesson._id from course.lessons
+  Lesson Controller -> Client: Return success
+
+IF course IS published:
+  Lesson Controller -> Lesson Model: Set draft={__action: 'delete'}, has_pending_changes=true
+  Lesson Controller -> EditHistory Model: Create pending delete request
+  Lesson Controller -> Client: Return success (pending delete)
+
+2.4. LẤY PLAYBACK URL (Student - Đã Enroll)
+---------------------------------------------
+Client -> Auth Middleware: GET /api/lessons/:lessonId/playback (JWT Token)
+Auth Middleware -> Lesson Controller: Verify token
+Lesson Controller -> Lesson Model: Find lesson by lessonId
+Lesson Controller -> Enrollment Model: Check enrollment (user_id, course_id)
+IF NOT enrolled:
+  Lesson Controller -> Client: Return 403 Forbidden
+ELSE:
+  Lesson Controller -> Lesson Model: Get playback_url hoặc video_url
+  IF storage_provider === 'supabase':
+    Lesson Controller -> Supabase Service: Generate signed URL (TTL 30 phút)
+  Lesson Controller -> CloudFront Service: Sign URL với CloudFront (nếu có config)
+  Lesson Controller -> Client: Return {playbackUrl, expiresIn: 1800}
+
+Lưu ý:
+- Chỉ học viên đã enroll mới xem được
+- URL có TTL 30 phút
+- Hỗ trợ Supabase signed URL và CloudFront signed URL
+
+================================================================================
+3. PAYMENT FLOWS (PayOS Integration)
+================================================================================
+
+3.1. TẠO PAYMENT LINK
+----------------------
+Client -> Auth Middleware: POST /api/payments/create-payment-link (JWT Token)
+Auth Middleware -> Payment Controller: Verify token
+Payment Controller -> Request Body: Validate items array, totalAmount
+Payment Controller -> Order Model: Create order (status='failed', order_code=timestamp)
+Payment Controller -> OrderItem Model: Create order items (product_id, product_type, price, quantity)
+Payment Controller -> Enrollment Model: Upsert enrollment (status='pending') cho các Course
+Payment Controller -> PayOS SDK: Create payment request
+  - orderCode: timestamp
+  - amount: totalAmount
+  - description: "DH#orderCode"
+  - returnUrl: /api/payments/payos/return?orderId&orderCode&ts&sig
+  - cancelUrl: /api/payments/payos/cancel?orderId&orderCode&ts&sig
+Payment Controller -> PayOS API: Request payment link
+PayOS API -> Payment Controller: Return checkoutUrl
+Payment Controller -> Client: Return {checkoutUrl}
+
+Lưu ý:
+- Order tạo với status='failed' ban đầu
+- Enrollment tạo với status='pending' (chưa active)
+- Signature (sig) được tạo từ orderCode + timestamp để verify return/cancel
+
+3.2. RETURN URL (Thanh toán thành công)
+----------------------------------------
+PayOS -> Payment Controller: GET /api/payments/payos/return?orderId&orderCode&ts&sig
+Payment Controller -> Signature Verification: Verify sig (HMAC SHA256)
+IF invalid/expired:
+  Payment Controller -> Client: Redirect to FE (payment-success page)
+ELSE:
+  Payment Controller -> Client: Redirect to FE (payment-success page) [ASYNC]
+  
+  [ASYNC Processing]
+  Payment Controller -> Order Model: Update status='pending' (if not completed)
+  Payment Controller -> OrderItem Model: Find book items
+  IF book items exist AND stock NOT deducted:
+    Payment Controller -> Book Model: Decrement stock (idempotent)
+    Payment Controller -> Order Model: Mark stock_deducted=true
+  Payment Controller -> OrderItem Model: Find course items
+  IF course items exist:
+    Payment Controller -> Enrollment Model: Update status='active', activated_at (idempotent)
+    Payment Controller -> Order Model: Mark activation_source='returnUrl'
+  Payment Controller -> [Done]
+
+Lưu ý:
+- Redirect FE ngay lập tức để tránh lag
+- Xử lý async sau redirect
+- Idempotent: chỉ trừ stock/kích hoạt enrollment 1 lần
+- Có thể kích hoạt enrollment ngay tại returnUrl
+
+3.3. CANCEL URL (Hủy thanh toán)
+----------------------------------
+PayOS -> Payment Controller: GET /api/payments/payos/cancel?orderId&orderCode&ts&sig
+Payment Controller -> Signature Verification: Verify sig
+IF invalid/expired:
+  Payment Controller -> Client: Redirect to FE (payment-cancel page)
+ELSE:
+  Payment Controller -> Client: Redirect to FE (payment-cancel page) [ASYNC]
+  
+  [ASYNC Processing]
+  Payment Controller -> Order Model: Update status='cancelled' (if not completed)
+  Payment Controller -> [Done]
+
+3.4. WEBHOOK (Nguồn chân lý - PayOS gọi)
+-----------------------------------------
+PayOS -> Payment Controller: POST /api/payments/payos/webhook (raw JSON body)
+Payment Controller -> PayOS SDK: Verify webhook signature
+Payment Controller -> Order Model: Find order by order_code
+IF order.status !== 'completed':
+  Payment Controller -> Order Model: Update status='completed', paid_at, gateway_txn_id
+  Payment Controller -> OrderItem Model: Find book items
+  IF book items exist AND stock NOT deducted:
+    Payment Controller -> Book Model: Decrement stock (idempotent)
+    Payment Controller -> Order Model: Mark stock_deducted=true
+  Payment Controller -> OrderItem Model: Find course items
+  IF course items exist:
+    Payment Controller -> Enrollment Model: Update status='active', activated_at (idempotent)
+    Payment Controller -> Order Model: Mark activation_source='webhook'
+Payment Controller -> PayOS: Return {ok: true}
+
+Lưu ý:
+- Webhook là nguồn chân lý (single source of truth)
+- Idempotent: chỉ update 1 lần
+- Đảm bảo enrollment được kích hoạt ngay khi webhook đến
+
+3.5. KÍCH HOẠT ENROLLMENT THỦ CÔNG (Bảo hiểm)
+----------------------------------------------
+Client -> Auth Middleware: POST /api/payments/activate (JWT Token)
+Auth Middleware -> Payment Controller: Verify token
+Payment Controller -> Request Body: Validate orderId
+Payment Controller -> Order Model: Find order (user_id, orderId)
+Payment Controller -> OrderItem Model: Find course items
+Payment Controller -> Enrollment Model: Update status='active', activated_at (idempotent)
+Payment Controller -> Order Model: Mark activation_source='fe_activation'
+Payment Controller -> Client: Return {ok: true}
+
+Lưu ý:
+- Dùng khi returnUrl/webhook không kích hoạt được (edge case)
+- Idempotent: có thể gọi nhiều lần an toàn
+
+================================================================================
+4. CHATBOT FLOWS (Gemini AI Integration)
+================================================================================
+
+4.1. GỬI TIN NHẮN VÀ NHẬN PHẢN HỒI
+-----------------------------------
+Client -> Auth Middleware: POST /api/chat/send (JWT Token)
+Auth Middleware -> Chat Controller: Verify token
+Chat Controller -> Request Body: Validate message
+Chat Controller -> User Model: Find user by userId (from token)
+Chat Controller -> ChatSession Model: Find or create active session (userId, isActive=true)
+Chat Controller -> ChatMessage Model: Create user message (role='user', content=message)
+Chat Controller -> ChatSession Model: Push user message vào session.messages
+Chat Controller -> Gemini Service: getSystemData(userRole)
+IF userRole === 'teacher':
+  Chat Controller -> Gemini Service: getTeacherSystemData(userId)
+Chat Controller -> Gemini Service: generateResponse(message, context)
+  Context includes:
+    - userRole
+    - userId
+    - systemData (courses, books, users, enrollments, orders, teacherStats)
+Chat Controller -> Gemini API: Send request với system prompt + user message
+Gemini API -> Chat Controller: Return AI response text
+Chat Controller -> ChatMessage Model: Create AI message (role='assistant', content=aiResponse)
+Chat Controller -> ChatSession Model: Push AI message vào session.messages
+Chat Controller -> ChatSession Model: Save session
+Chat Controller -> Client: Return {
+  success: true,
+  data: {
+    userMessage: {id, content, timestamp},
+    aiResponse: {id, content, timestamp}
+  }
+}
+
+Lưu ý:
+- Mỗi user có 1 active session
+- System prompt thay đổi theo role (admin/teacher/customer)
+- Teacher có thêm context về courses, enrollments, orderItems, teacherStats
+- AI response được lưu vào session để maintain context
+
+4.2. LẤY LỊCH SỬ CHAT
+----------------------
+Client -> Auth Middleware: GET /api/chat/history (JWT Token)
+Auth Middleware -> Chat Controller: Verify token
+Chat Controller -> ChatSession Model: Find active session (userId, isActive=true)
+IF session exists:
+  Chat Controller -> Client: Return {
+    success: true,
+    data: {
+      messages: [{id, role, content, timestamp}],
+      sessionId: session._id
+    }
+  }
+ELSE:
+  Chat Controller -> Client: Return {
+    success: true,
+    data: {
+      messages: [],
+      sessionId: null
+    }
+  }
+
+4.3. XÓA LỊCH SỬ CHAT
+----------------------
+Client -> Auth Middleware: DELETE /api/chat/clear (JWT Token)
+Auth Middleware -> Chat Controller: Verify token
+Chat Controller -> ChatSession Model: Update all active sessions (userId, isActive=true) -> isActive=false
+Chat Controller -> Client: Return {
+  success: true,
+  message: "Chat history cleared successfully"
+}
+
+Lưu ý:
+- Không xóa thực sự, chỉ đánh dấu isActive=false
+- Có thể tạo session mới sau khi clear
+
+4.4. LẤY TẤT CẢ SESSIONS (Admin Only)
+--------------------------------------
+Client -> Auth Middleware: GET /api/chat/sessions (JWT Token)
+Auth Middleware -> Chat Controller: Verify token & role='admin'
+Chat Controller -> ChatSession Model: Find all active sessions
+  - Populate userId (name, email, role)
+  - Sort by updatedAt desc
+  - Limit 50
+Chat Controller -> Client: Return {
+  success: true,
+  data: [{
+    id,
+    userId: {name, email, role},
+    messageCount,
+    lastMessage,
+    createdAt,
+    updatedAt
+  }]
+}
+
+================================================================================
+5. AUTHENTICATION & AUTHORIZATION FLOW
+================================================================================
+
+5.1. AUTHENTICATION MIDDLEWARE
+-------------------------------
+Request -> Auth Middleware: Extract JWT token from Authorization header
+Auth Middleware -> JWT Library: Verify token với JWT_SECRET
+IF invalid/expired:
+  Auth Middleware -> Client: Return 403 Forbidden
+ELSE:
+  Auth Middleware -> Request: Attach user object (decoded JWT payload)
+  Auth Middleware -> Next Middleware/Controller: Continue
+
+5.2. ROLE CHECK MIDDLEWARE
+---------------------------
+Request -> Role Check Middleware: Check user.role
+IF user.role NOT in allowedRoles:
+  Role Check Middleware -> Client: Return 403 Forbidden
+ELSE:
+  Role Check Middleware -> Next Middleware/Controller: Continue
+
+================================================================================
+6. DATABASE MODELS & RELATIONSHIPS
+================================================================================
+
+6.1. COURSE MODEL
+-----------------
+- _id: ObjectId
+- title: String
+- slug: String (auto-generated from title)
+- description: String
+- price: Number
+- thumbnail_url: String
+- category: [ObjectId] (ref: Category)
+- teacher: [ObjectId] (ref: User)
+- lessons: [ObjectId] (ref: Lesson)
+- status: String ('pending' | 'approved' | 'rejected')
+- is_published: Boolean
+- draft: Object (pending changes)
+- has_pending_changes: Boolean
+- publish_requested_at: Date
+- publish_requested_by: ObjectId
+
+6.2. LESSON MODEL
+-----------------
+- _id: ObjectId
+- title: String
+- description: String
+- video_url: String
+- playback_url: String (HLS URL)
+- duration_minutes: Number
+- course_id: ObjectId (ref: Course)
+- position: Number
+- storage_provider: String ('supabase' | 'cloudfront' | ...)
+- storage_bucket: String
+- storage_path: String
+- draft: Object (pending changes)
+- has_pending_changes: Boolean
+
+6.3. ORDER MODEL
+----------------
+- _id: ObjectId
+- user_id: ObjectId (ref: User)
+- total_amount: Number
+- payment_method: String ('payos' | 'vnpay')
+- status: String ('failed' | 'pending' | 'completed' | 'cancelled')
+- order_code: Number (unique, timestamp)
+- gateway_txn_id: String
+- paid_at: Date
+- meta: Object (location, phone, email, stock_deducted, activation_source, ...)
+
+6.4. ORDER_ITEM MODEL
+----------------------
+- _id: ObjectId
+- order_id: ObjectId (ref: Order)
+- product_id: ObjectId (ref: Course | Book)
+- product_type: String ('Course' | 'Book')
+- price_at_purchase: Number
+- quantity: Number
+
+6.5. ENROLLMENT MODEL
+---------------------
+- _id: ObjectId
+- user_id: ObjectId (ref: User)
+- course_id: ObjectId (ref: Course)
+- order_id: ObjectId (ref: Order)
+- status: String ('pending' | 'active')
+- progress: Number (0-100)
+- completed_lessons: [ObjectId]
+- activated_at: Date
+
+6.6. CHAT_SESSION MODEL
+-----------------------
+- _id: ObjectId
+- userId: ObjectId (ref: User)
+- messages: [ChatMessage]
+- isActive: Boolean
+- createdAt: Date
+- updatedAt: Date
+
+6.7. CHAT_MESSAGE MODEL (Embedded)
+-----------------------------------
+- _id: ObjectId
+- userId: ObjectId
+- role: String ('user' | 'assistant')
+- content: String
+- timestamp: Date
+
+6.8. EDIT_HISTORY MODEL
+------------------------
+- _id: ObjectId
+- target_type: String ('course' | 'lesson')
+- target_id: ObjectId
+- submitted_by: ObjectId (ref: User)
+- submitted_role: String ('teacher' | 'admin' | 'system')
+- status: String ('pending' | 'approved' | 'rejected' | 'applied')
+- before: Object
+- after: Object
+- changes: Object
+- approved_by: ObjectId
+- approved_at: Date
+- reason: String
+
+================================================================================
+7. ERROR HANDLING & EDGE CASES
+================================================================================
+
+7.1. PAYMENT EDGE CASES
+------------------------
+- Return URL đến trước Webhook: Enrollment được kích hoạt tại returnUrl
+- Webhook đến sau: Re-assert enrollment active (idempotent)
+- Stock deduction: Chỉ trừ 1 lần (check stock_deducted flag)
+- Multiple return calls: Idempotent, không duplicate activation
+
+7.2. COURSE/LESSON EDGE CASES
+------------------------------
+- Teacher update published course: Apply trực tiếp (non-pricing fields)
+- Teacher delete published course lesson: Tạo pending delete request
+- Admin approve/reject: Update EditHistory status
+- Duplicate pending requests: Check existing pending trước khi tạo mới
+
+7.3. CHATBOT EDGE CASES
+------------------------
+- No active session: Tạo mới session khi send message
+- Gemini API error: Return error message, không crash
+- Long conversation: Session có thể có nhiều messages (no limit)
+- Clear history: Set isActive=false, không xóa data
+
+================================================================================
+8. SECURITY CONSIDERATIONS
+================================================================================
+
+8.1. AUTHENTICATION
+--------------------
+- JWT token trong Authorization header
+- Token verify với JWT_SECRET
+- Token expiration được handle bởi JWT library
+
+8.2. AUTHORIZATION
+------------------
+- Role-based access control (admin, teacher, customer)
+- Ownership check (teacher chỉ access course của mình)
+- Enrollment check (student chỉ xem lesson đã enroll)
+
+8.3. PAYMENT SECURITY
+---------------------
+- Signature verification cho return/cancel URLs
+- Webhook signature verification (PayOS SDK)
+- Idempotent operations để tránh duplicate processing
+
+8.4. DATA PRIVACY
+-----------------
+- Teacher chỉ xem data của courses mình sở hữu
+- Student chỉ xem lessons đã enroll
+- Admin có full access
+- PII (email, phone) được ẩn trong chatbot responses
+
+================================================================================
+END OF SEQUENCE DIAGRAMS
+================================================================================
+

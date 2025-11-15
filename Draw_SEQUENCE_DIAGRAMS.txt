@@ -1,0 +1,337 @@
+================================================================================
+DRAW SEQUENCE DIAGRAMS - COURSE MANAGEMENT FLOWS
+VICEDU PLATFORM - ASCII Art Sequence Diagrams
+================================================================================
+
+Các sequence diagram này mô tả chi tiết các luồng xử lý trong Course Management.
+Vẽ trực tiếp bằng ASCII art trong file txt.
+
+================================================================================
+1.1. TẠO KHÓA HỌC (Teacher/Admin)
+================================================================================
+
+    Client          AuthMiddleware    CourseController    CourseModel    EditHistoryModel
+       |                   |                   |               |                  |
+       |--POST /api/courses (JWT Token)------->|               |                  |
+       |                   |                   |               |                  |
+       |                   |--Verify JWT Token->|              |                  |
+       |                   |                   |               |                  |
+       |                   |--Check role-------->|              |                  |
+       |                   |  (teacher/admin)    |              |                  |
+       |                   |                   |               |                  |
+       |                   |<--Request với user info----------|                  |
+       |                   |                   |               |                  |
+       |                   |                   |--Validate input->|                |
+       |                   |                   |  (title, desc)  |                |
+       |                   |                   |               |                  |
+       |                   |                   |--Create course--->|               |
+       |                   |                   |  status='approved'|               |
+       |                   |                   |               |                  |
+       |                   |                   |               |--Auto-generate--|
+       |                   |                   |               |  slug từ title  |
+       |                   |                   |               |                  |
+       |                   |                   |<--Course created--|              |
+       |                   |                   |               |                  |
+       |                   |                   |--Tạo history entry--->|         |
+       |                   |                   |  (status='applied')   |         |
+       |                   |                   |               |                  |
+       |                   |                   |<--History saved-------|         |
+       |                   |                   |               |                  |
+       |<--Return 201 Created (course data)----|               |                  |
+       |                   |                   |               |                  |
+
+    Lưu ý: Teacher/Admin tạo trực tiếp, không cần approval
+    Tự động tạo slug và EditHistory để tracking
+
+================================================================================
+1.2. CẬP NHẬT KHÓA HỌC (Teacher) - Course NOT Published
+================================================================================
+
+    Client          AuthMiddleware    CourseController    CourseModel    EditHistoryModel
+       |                   |                   |               |                  |
+       |--PUT /api/courses/:id (JWT Token)---->|               |                  |
+       |                   |                   |               |                  |
+       |                   |--Verify JWT Token->|              |                  |
+       |                   |                   |               |                  |
+       |                   |--Check role='teacher'------------>|                  |
+       |                   |                   |               |                  |
+       |                   |<--Request với user info----------|                  |
+       |                   |                   |               |                  |
+       |                   |                   |--Find course by id--->|          |
+       |                   |                   |               |                  |
+       |                   |                   |<--Course data--------|          |
+       |                   |                   |               |                  |
+       |                   |                   |--Check ownership---->|          |
+       |                   |                   |  (teacher owns?)      |          |
+       |                   |                   |               |                  |
+       |                   |                   |--Check is_published--->|       |
+       |                   |                   |               |                  |
+       |                   |                   |<--is_published = false-|       |
+       |                   |                   |               |                  |
+       |                   |                   |--Update trực tiếp------>|       |
+       |                   |                   |  (title, desc, thumb,   |       |
+       |                   |                   |   category)             |       |
+       |                   |                   |               |                  |
+       |                   |                   |<--Course updated--------|       |
+       |                   |                   |               |                  |
+       |                   |                   |--Log changes------------>|      |
+       |                   |                   |  (status='applied')      |      |
+       |                   |                   |               |                  |
+       |                   |                   |<--History saved----------|      |
+       |                   |                   |               |                  |
+       |<--Return updated course----------------|               |                  |
+       |                   |                   |               |                  |
+
+    Lưu ý: Pre-publish: apply trực tiếp tất cả fields
+
+================================================================================
+1.2. CẬP NHẬT KHÓA HỌC (Teacher) - Course IS Published
+================================================================================
+
+    Client          AuthMiddleware    CourseController    CourseModel    EditHistoryModel
+       |                   |                   |               |                  |
+       |--PUT /api/courses/:id (JWT Token)---->|               |                  |
+       |                   |                   |               |                  |
+       |                   |--Verify JWT Token->|              |                  |
+       |                   |                   |               |                  |
+       |                   |--Check role='teacher'------------>|                  |
+       |                   |                   |               |                  |
+       |                   |<--Request với user info----------|                  |
+       |                   |                   |               |                  |
+       |                   |                   |--Find course by id--->|          |
+       |                   |                   |               |                  |
+       |                   |                   |<--Course data--------|          |
+       |                   |                   |               |                  |
+       |                   |                   |--Check ownership---->|          |
+       |                   |                   |               |                  |
+       |                   |                   |--Check is_published--->|       |
+       |                   |                   |               |                  |
+       |                   |                   |<--is_published = true--|       |
+       |                   |                   |               |                  |
+       |                   |                   |--Update trực tiếp------>|       |
+       |                   |                   |  (non-pricing fields:   |       |
+       |                   |                   |   title, desc, thumb,    |       |
+       |                   |                   |   category)             |       |
+       |                   |                   |               |                  |
+       |                   |                   |<--Course updated--------|       |
+       |                   |                   |               |                  |
+       |                   |                   |--Log changes------------>|      |
+       |                   |                   |  (status='applied')      |      |
+       |                   |                   |               |                  |
+       |                   |                   |<--History saved----------|      |
+       |                   |                   |               |                  |
+       |<--Return updated course----------------|               |                  |
+       |                   |                   |               |                  |
+
+    Lưu ý: Post-publish: apply trực tiếp non-pricing fields
+    Pricing fields không được update trực tiếp khi published
+
+================================================================================
+1.3. YÊU CẦU PUBLISH KHÓA HỌC (Teacher)
+================================================================================
+
+    Client          AuthMiddleware    CourseController    CourseModel    UserModel    EmailService
+       |                   |                   |               |              |            |
+       |--POST /api/courses/:id/request-publish (JWT Token)-->|               |            |
+       |                   |                   |               |              |            |
+       |                   |--Verify JWT Token->|              |              |            |
+       |                   |                   |               |              |            |
+       |                   |--Check role='teacher'------------>|              |            |
+       |                   |                   |               |              |            |
+       |                   |<--Request với user info----------|              |            |
+       |                   |                   |               |              |            |
+       |                   |                   |--Find course by id--->|      |            |
+       |                   |                   |               |              |            |
+       |                   |                   |<--Course data--------|      |            |
+       |                   |                   |               |              |            |
+       |                   |                   |--Check ownership & is_published->|      |
+       |                   |                   |               |              |            |
+       |                   |                   |--Set publish_requested_at,------>|      |
+       |                   |                   |  publish_requested_by,           |      |
+       |                   |                   |  status='pending'               |      |
+       |                   |                   |               |              |            |
+       |                   |                   |<--Course updated--------|      |            |
+       |                   |                   |               |              |            |
+       |                   |                   |--Find all admin users---------->|        |
+       |                   |                   |               |              |            |
+       |                   |                   |<--Admin users list---------------|        |
+       |                   |                   |               |              |            |
+       |                   |                   |--Send email notification-------->|       |
+       |                   |                   |  to admins                       |       |
+       |                   |                   |               |              |            |
+       |                   |                   |<--Email sent---------------------|       |
+       |                   |                   |               |              |            |
+       |<--Return success message--------------|               |              |            |
+       |                   |                   |               |              |            |
+
+    Lưu ý: Teacher yêu cầu publish, admin sẽ nhận email thông báo
+
+================================================================================
+1.4. PHÊ DUYỆT PUBLISH (Admin)
+================================================================================
+
+    Client          AuthMiddleware    CourseController    CourseModel
+       |                   |                   |               |
+       |--POST /api/courses/:id/approve-publish (JWT Token)-->|               |
+       |                   |                   |               |
+       |                   |--Verify JWT Token->|              |
+       |                   |                   |               |
+       |                   |--Check role='admin'-------------->|
+       |                   |                   |               |
+       |                   |<--Request với user info----------|
+       |                   |                   |               |
+       |                   |                   |--Find course by id--->|
+       |                   |                   |               |
+       |                   |                   |<--Course data--------|
+       |                   |                   |               |
+       |                   |                   |--Update is_published=true,----->|
+       |                   |                   |  published_at,                   |
+       |                   |                   |  status='approved'              |
+       |                   |                   |               |
+       |                   |                   |--Clear publish_requested_at,---->|
+       |                   |                   |  publish_requested_by             |
+       |                   |                   |               |
+       |                   |                   |<--Course updated--------|
+       |                   |                   |               |
+       |<--Return updated course--------------|               |
+       |                   |                   |               |
+
+    Lưu ý: Admin phê duyệt publish, course được public
+
+================================================================================
+1.5. YÊU CẦU XÓA KHÓA HỌC (Teacher)
+================================================================================
+
+    Client          AuthMiddleware    CourseController    CourseModel    EditHistoryModel
+       |                   |                   |               |                  |
+       |--POST /api/courses/:id/request-delete (JWT Token)---->|                  |
+       |                   |                   |               |                  |
+       |                   |--Verify JWT Token->|              |                  |
+       |                   |                   |               |                  |
+       |                   |--Check role='teacher'------------>|                  |
+       |                   |                   |               |                  |
+       |                   |<--Request với user info----------|                  |
+       |                   |                   |               |                  |
+       |                   |                   |--Find course by id--->|          |
+       |                   |                   |               |                  |
+       |                   |                   |<--Course data--------|          |
+       |                   |                   |               |                  |
+       |                   |                   |--Check ownership---->|          |
+       |                   |                   |               |                  |
+       |                   |                   |--Check existing pending-------->|
+       |                   |                   |  delete request                  |
+       |                   |                   |               |                  |
+       |                   |                   |<--Pending status----------------|
+       |                   |                   |               |                  |
+       |                   |                   |               |                  |
+       |     +-------------+                   |               |                  |
+       |     |                                 |               |                  |
+       |     |  IF Pending delete request exists:              |                  |
+       |     |                                 |               |                  |
+       |     |<--Return 400 (already pending)--|               |                  |
+       |     |                                 |               |                  |
+       |     |  ELSE No pending request:       |               |                  |
+       |     |                                 |               |                  |
+       |     |  --Set draft={__action: 'delete'},------------->|                  |
+       |     |    has_pending_changes=true                     |                  |
+       |     |                                 |               |                  |
+       |     |  <--Course updated--------------|               |                  |
+       |     |                                 |               |                  |
+       |     |  --Create pending delete request--------------->|                  |
+       |     |                                 |               |                  |
+       |     |  <--History saved---------------|               |                  |
+       |     |                                 |               |                  |
+       |     |<--Return success message--------|               |                  |
+       |     |                                 |               |                  |
+       |     +---------------------------------+               |                  |
+
+    Lưu ý: Teacher yêu cầu xóa, cần admin phê duyệt
+
+================================================================================
+1.6. PHÊ DUYỆT XÓA KHÓA HỌC (Admin)
+================================================================================
+
+    Client          AuthMiddleware    CourseController    CourseModel    LessonModel    EditHistoryModel
+       |                   |                   |               |              |                |
+       |--POST /api/courses/:id/approve-changes (JWT Token)---->|              |                |
+       |                   |                   |               |              |                |
+       |                   |--Verify JWT Token->|              |              |                |
+       |                   |                   |               |              |                |
+       |                   |--Check role='admin'-------------->|              |                |
+       |                   |                   |               |              |                |
+       |                   |<--Request với user info----------|              |                |
+       |                   |                   |               |              |                |
+       |                   |                   |--Find course by id--->|      |                |
+       |                   |                   |               |              |                |
+       |                   |                   |<--Course data--------|      |                |
+       |                   |                   |               |              |                |
+       |                   |                   |--Check draft.__action === 'delete'->|        |
+       |                   |                   |               |              |                |
+       |                   |                   |--Delete all lessons of course---->|         |
+       |                   |                   |               |              |                |
+       |                   |                   |<--Lessons deleted----------------|         |
+       |                   |                   |               |              |                |
+       |                   |                   |--Delete course------------------->|         |
+       |                   |                   |               |              |                |
+       |                   |                   |<--Course deleted-----------------|         |
+       |                   |                   |               |              |                |
+       |                   |                   |--Mark latest pending as 'approved'---------->|
+       |                   |                   |               |              |                |
+       |                   |                   |<--History updated---------------------------|
+       |                   |                   |               |              |                |
+       |<--Return success----------------------|               |              |                |
+       |                   |                   |               |              |                |
+
+    Lưu ý: Admin phê duyệt xóa, course và lessons bị xóa
+
+================================================================================
+TỔNG HỢP CÁC FLOWS
+================================================================================
+
+Các flows chính trong Course Management:
+
+1. CREATE FLOW (1.1)
+   - Teacher/Admin tạo course trực tiếp
+   - Status = 'approved' ngay lập tức
+   - Tự động tạo EditHistory
+
+2. UPDATE FLOW (1.2)
+   - Pre-publish: Update tất cả fields trực tiếp
+   - Post-publish: Chỉ update non-pricing fields trực tiếp
+   - Luôn log EditHistory
+
+3. PUBLISH REQUEST FLOW (1.3)
+   - Teacher yêu cầu publish
+   - Set status='pending'
+   - Gửi email thông báo cho admin
+
+4. PUBLISH APPROVAL FLOW (1.4)
+   - Admin phê duyệt publish
+   - Set is_published=true
+   - Clear publish request fields
+
+5. DELETE REQUEST FLOW (1.5)
+   - Teacher yêu cầu xóa
+   - Set draft.__action='delete'
+   - Tạo pending EditHistory
+
+6. DELETE APPROVAL FLOW (1.6)
+   - Admin phê duyệt xóa
+   - Xóa tất cả lessons
+   - Xóa course
+   - Update EditHistory status
+
+================================================================================
+LƯU Ý QUAN TRỌNG
+================================================================================
+
+- Teacher chỉ có thể update/delete course của chính mình
+- Published courses: chỉ update được non-pricing fields
+- Tất cả thay đổi đều được log vào EditHistory
+- Delete request cần admin approval
+- Publish request cần admin approval
+- Email notification được gửi khi có publish request
+
+================================================================================
+END OF DRAW SEQUENCE DIAGRAMS - COURSE MANAGEMENT FLOWS
+================================================================================

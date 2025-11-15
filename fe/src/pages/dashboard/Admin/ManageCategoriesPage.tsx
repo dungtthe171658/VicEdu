@@ -96,9 +96,15 @@ const ManageCategoriesPage = () => {
       {showModal && (
         <div className="modal">
           <div className="modal-content">
-            <h3>{selectedCategory ? "Edit Category" : "Add Category"}</h3>
-            <CategoryForm initialData={selectedCategory || {}} onSubmit={handleSave} />
-            <button className="close-btn" onClick={() => setShowModal(false)}>
+            <h3>{selectedCategory?._id ? "Edit Category" : "Add Category"}</h3>
+            <CategoryForm 
+              initialData={selectedCategory || {}} 
+              onSubmit={handleSave} 
+            />
+            <button className="close-btn" onClick={() => {
+              setShowModal(false);
+              setSelectedCategory(null);
+            }}>
               Close
             </button>
           </div>

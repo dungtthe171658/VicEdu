@@ -586,7 +586,7 @@ export default function CourseDetail() {
       }
 
       setSubCues(cues);
-      setSubMode("both"); // Default to bilingual mode
+      setSubMode("vi"); // Chỉ hiển thị tiếng Việt
       setSubVisible(true);
       await subtitleApi.save(selectedLessonId, { cues });
     } catch (e) {
@@ -749,18 +749,8 @@ export default function CourseDetail() {
               onClick={handleAutoGenerateBilingual}
               className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1.5 rounded border"
             >
-              Tự tạo phụ đề (Song ngữ)
+              Tạo phụ đề
             </button>
-
-            <select
-              value={subMode}
-              onChange={(e) => setSubMode((e.target as HTMLSelectElement).value as any)}
-              className="border rounded px-2 py-1"
-            >
-              <option value="both">Song ngữ</option>
-              <option value="en">Tiếng Anh</option>
-              <option value="vi">Tiếng Việt</option>
-            </select>
             <button
               disabled={subCues.length === 0}
               onClick={() => setSubVisible((v) => !v)}

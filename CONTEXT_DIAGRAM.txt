@@ -1,0 +1,316 @@
+================================================================================
+                    CONTEXT DIAGRAM - HỆ THỐNG VICEDU
+================================================================================
+
+I. TỔNG QUAN HỆ THỐNG
+--------------------------------------------------------------------------------
+VicEdu là một nền tảng giáo dục trực tuyến (E-Learning Platform) cung cấp các 
+chức năng quản lý khóa học, sách, bài học, thanh toán, và tương tác học tập.
+
+Hệ thống được xây dựng với kiến trúc:
+- Frontend: React + TypeScript (Vite)
+- Backend: Node.js + Express + TypeScript
+- Database: MongoDB
+- Các dịch vụ bên ngoài tích hợp
+
+================================================================================
+
+II. CÁC THỰC THỂ BÊN NGOÀI (EXTERNAL ENTITIES)
+================================================================================
+
+1. NGƯỜI DÙNG (USERS)
+   - Mô tả: Các đối tượng sử dụng hệ thống
+   - Phân loại:
+     + Học viên (Student): Đăng ký khóa học, học bài, làm quiz, xem video
+     + Giáo viên (Teacher): Tạo khóa học, quản lý bài học, xem đánh giá
+     + Quản trị viên (Admin): Quản lý toàn bộ hệ thống, duyệt chỉnh sửa
+   - Luồng dữ liệu:
+     → Gửi: Yêu cầu đăng nhập, đăng ký, xem khóa học, thanh toán, chat AI
+     ← Nhận: Giao diện web, thông báo, email xác nhận, kết quả học tập
+
+2. GOOGLE OAUTH SERVICE
+   - Mô tả: Dịch vụ xác thực đăng nhập bằng tài khoản Google
+   - Luồng dữ liệu:
+     → Gửi: Yêu cầu xác thực, thông tin profile Google
+     ← Nhận: Token xác thực, thông tin người dùng (email, tên, avatar)
+   - Tích hợp: Passport.js với Google OAuth 2.0 Strategy
+
+3. GOOGLE GEMINI AI SERVICE
+   - Mô tả: Dịch vụ AI của Google cho chat và dịch phụ đề
+   - Chức năng:
+     + Chat AI: Trả lời câu hỏi của người dùng dựa trên context hệ thống
+     + Dịch phụ đề: Dịch phụ đề video từ ngôn ngữ này sang ngôn ngữ khác
+   - Luồng dữ liệu:
+     → Gửi: Câu hỏi người dùng, đoạn phụ đề cần dịch, context hệ thống
+     ← Nhận: Phản hồi AI, bản dịch phụ đề
+   - Model sử dụng: gemini-2.0-flash
+
+4. PAYOS PAYMENT GATEWAY
+   - Mô tả: Cổng thanh toán trực tuyến của Việt Nam
+   - Chức năng: Xử lý thanh toán cho đơn hàng khóa học, sách
+   - Luồng dữ liệu:
+     → Gửi: Thông tin đơn hàng, số tiền, thông tin người dùng
+     ← Nhận: Link thanh toán, kết quả thanh toán (webhook), mã giao dịch
+   - Tích hợp: @payos/node SDK
+
+5. SENDGRID EMAIL SERVICE
+   - Mô tả: Dịch vụ gửi email tự động
+   - Chức năng:
+     + Gửi email xác thực tài khoản
+     + Gửi thông báo đơn hàng
+     + Gửi email thông báo hệ thống
+   - Luồng dữ liệu:
+     → Gửi: Địa chỉ email người nhận, template email, dữ liệu động
+     ← Nhận: Trạng thái gửi email (thành công/thất bại)
+   - Tích hợp: @sendgrid/mail SDK
+
+6. CLOUDINARY
+   - Mô tả: Dịch vụ lưu trữ và quản lý media (ảnh, video)
+   - Chức năng: Lưu trữ hình ảnh khóa học, sách, avatar người dùng
+   - Luồng dữ liệu:
+     → Gửi: File ảnh/video, metadata
+     ← Nhận: URL công khai của file, thông tin file
+   - Tích hợp: cloudinary SDK
+
+7. SUPABASE STORAGE
+   - Mô tả: Dịch vụ lưu trữ file (PDF, video, tài liệu)
+   - Chức năng: Lưu trữ file PDF sách, video bài học, tài liệu
+   - Luồng dữ liệu:
+     → Gửi: File PDF/video, metadata
+     ← Nhận: URL file, thông tin upload
+   - Tích hợp: @supabase/supabase-js SDK
+
+8. MONGODB DATABASE
+   - Mô tả: Cơ sở dữ liệu NoSQL lưu trữ toàn bộ dữ liệu hệ thống
+   - Chức năng: Lưu trữ persistent data
+   - Dữ liệu lưu trữ:
+     + Users (người dùng)
+     + Courses (khóa học)
+     + Lessons (bài học)
+     + Books (sách)
+     + Orders (đơn hàng)
+     + Enrollments (đăng ký khóa học)
+     + Reviews (đánh giá)
+     + Comments (bình luận)
+     + Quizzes (câu hỏi)
+     + Chat Sessions (phiên chat)
+     + Subtitles (phụ đề)
+     + Categories (danh mục)
+   - Luồng dữ liệu:
+     → Gửi: Query, dữ liệu cần lưu/cập nhật
+     ← Nhận: Kết quả query, dữ liệu từ database
+   - Tích hợp: Mongoose ODM
+
+================================================================================
+
+III. LUỒNG DỮ LIỆU CHÍNH (DATA FLOWS)
+================================================================================
+
+A. LUỒNG XÁC THỰC VÀ ĐĂNG NHẬP
+   1. Đăng nhập thông thường:
+      User → Frontend → Backend API → MongoDB
+      (Kiểm tra email/password) → JWT Token → Frontend → User
+
+   2. Đăng nhập Google OAuth:
+      User → Frontend → Backend API → Google OAuth Service
+      → Thông tin Google → Backend API → MongoDB (tạo/cập nhật user)
+      → JWT Token → Frontend → User
+
+B. LUỒNG QUẢN LÝ KHÓA HỌC
+   1. Tạo khóa học:
+      Teacher → Frontend → Backend API → MongoDB (lưu khóa học)
+      → Cloudinary (upload ảnh) → Backend API → Frontend → Teacher
+
+   2. Xem khóa học:
+      User → Frontend → Backend API → MongoDB (lấy danh sách)
+      → Frontend → User
+
+C. LUỒNG THANH TOÁN
+   1. Tạo đơn hàng:
+      User → Frontend → Backend API → MongoDB (tạo order)
+      → PayOS (tạo payment link) → Backend API → Frontend → User
+
+   2. Xử lý thanh toán:
+      PayOS → Backend API (webhook) → MongoDB (cập nhật order)
+      → MongoDB (tạo enrollment) → SendGrid (gửi email xác nhận)
+      → Backend API → PayOS (xác nhận)
+
+D. LUỒNG HỌC TẬP
+   1. Xem bài học:
+      Student → Frontend → Backend API → MongoDB (kiểm tra enrollment)
+      → Supabase (lấy video) → Backend API → Frontend → Student
+
+   2. Chat với AI:
+      Student → Frontend → Backend API → MongoDB (lấy context)
+      → Google Gemini AI (gửi câu hỏi + context) → Phản hồi AI
+      → Backend API → MongoDB (lưu chat history) → Frontend → Student
+
+   3. Dịch phụ đề:
+      User → Frontend → Backend API → MongoDB (lấy phụ đề gốc)
+      → Google Gemini AI (dịch) → Bản dịch
+      → Backend API → MongoDB (lưu phụ đề dịch) → Frontend → User
+
+E. LUỒNG QUẢN LÝ NỘI DUNG
+   1. Upload file:
+      Teacher/Admin → Frontend → Backend API → Supabase (upload file)
+      → URL file → Backend API → MongoDB (lưu metadata) → Frontend
+
+   2. Upload ảnh:
+      User → Frontend → Backend API → Cloudinary (upload ảnh)
+      → URL ảnh → Backend API → MongoDB → Frontend
+
+F. LUỒNG THÔNG BÁO
+   1. Gửi email xác thực:
+      User → Frontend → Backend API → MongoDB (tạo OTP)
+      → SendGrid (gửi email) → User
+
+   2. Gửi email thông báo:
+      System → Backend API → SendGrid (gửi email) → User
+
+================================================================================
+
+IV. CÁC CHỨC NĂNG CHÍNH CỦA HỆ THỐNG
+================================================================================
+
+1. QUẢN LÝ NGƯỜI DÙNG
+   - Đăng ký, đăng nhập (thường + Google OAuth)
+   - Quản lý profile
+   - Phân quyền (Student, Teacher, Admin)
+
+2. QUẢN LÝ KHÓA HỌC
+   - Tạo, sửa, xóa khóa học
+   - Quản lý bài học (lessons)
+   - Quản lý quiz
+   - Quản lý phụ đề (subtitles)
+
+3. QUẢN LÝ SÁCH
+   - Tạo, sửa, xóa sách
+   - Upload PDF
+   - Phân loại theo category
+
+4. HỌC TẬP
+   - Đăng ký khóa học
+   - Xem video bài học
+   - Làm quiz
+   - Xem phụ đề (có thể dịch)
+   - Chat với AI trợ lý
+
+5. THANH TOÁN
+   - Tạo đơn hàng
+   - Thanh toán qua PayOS
+   - Quản lý enrollment sau thanh toán
+
+6. ĐÁNH GIÁ VÀ BÌNH LUẬN
+   - Đánh giá khóa học
+   - Bình luận bài học
+   - Xem lịch sử học tập
+
+7. QUẢN TRỊ
+   - Dashboard thống kê
+   - Duyệt chỉnh sửa nội dung (Pending Edits)
+   - Quản lý người dùng
+
+================================================================================
+
+V. CÁC API ENDPOINTS CHÍNH
+================================================================================
+
+- /api/auth          : Xác thực (login, register, Google OAuth)
+- /api/users         : Quản lý người dùng
+- /api/courses       : Quản lý khóa học
+- /api/lessons       : Quản lý bài học
+- /api/books         : Quản lý sách
+- /api/categories    : Quản lý danh mục
+- /api/orders        : Quản lý đơn hàng
+- /api/payments      : Xử lý thanh toán
+- /api/enrollments   : Quản lý đăng ký khóa học
+- /api/reviews       : Quản lý đánh giá
+- /api/comments      : Quản lý bình luận
+- /api/quizzes       : Quản lý quiz
+- /api/chat          : Chat với AI
+- /api/subtitles     : Quản lý phụ đề
+- /api/uploads       : Upload file
+- /api/history       : Lịch sử học tập
+- /api/dashboard     : Dashboard thống kê
+
+================================================================================
+
+VI. BẢO MẬT VÀ XÁC THỰC
+================================================================================
+
+1. JWT (JSON Web Token)
+   - Sử dụng để xác thực người dùng
+   - Lưu trong localStorage/cookie của frontend
+   - Middleware auth kiểm tra token ở mỗi request
+
+2. Passport.js
+   - Xác thực Google OAuth
+   - Session management
+
+3. Middleware
+   - Auth middleware: Kiểm tra quyền truy cập
+   - CanWatchLesson: Kiểm tra quyền xem bài học (phải đã đăng ký)
+
+4. Encryption
+   - AES encryption cho dữ liệu nhạy cảm
+   - Bcrypt cho mật khẩu
+
+================================================================================
+
+VII. SƠ ĐỒ TỔNG QUAN (TEXTUAL REPRESENTATION)
+================================================================================
+
+                    ┌─────────────┐
+                    │   USERS     │
+                    │ (Students,  │
+                    │ Teachers,   │
+                    │  Admins)    │
+                    └──────┬──────┘
+                           │
+                           │ HTTP/HTTPS
+                           │
+        ┌──────────────────┴──────────────────┐
+        │                                      │
+        ▼                                      ▼
+   ┌─────────┐                          ┌─────────┐
+   │Frontend │                          │Backend  │
+   │(React)  │◄────────────────────────►│(Express)│
+   └─────────┘                          └────┬────┘
+                                             │
+                    ┌───────────────────────┼───────────────────────┐
+                    │                       │                       │
+                    ▼                       ▼                       ▼
+              ┌─────────┐            ┌──────────┐            ┌──────────┐
+              │ MongoDB │            │ Google   │            │  PayOS   │
+              │Database │            │ OAuth    │            │ Payment  │
+              └─────────┘            └──────────┘            └──────────┘
+                    │                       │                       │
+                    │                       ▼                       │
+                    │              ┌──────────────┐                │
+                    │              │ Google Gemini│                │
+                    │              │     AI       │                │
+                    │              └──────────────┘                │
+                    │                                             │
+                    ▼                       ▼                       ▼
+              ┌─────────┐            ┌──────────┐            ┌──────────┐
+              │Cloudinary│           │ SendGrid │            │ Supabase │
+              │  Storage │           │  Email   │            │ Storage  │
+              └─────────┘            └──────────┘            └──────────┘
+
+================================================================================
+
+VIII. GHI CHÚ KỸ THUẬT
+================================================================================
+
+- Frontend chạy trên port mặc định (Vite: 5173)
+- Backend chạy trên port 8888 (có thể cấu hình qua env)
+- Database: MongoDB (connection string từ MONGO_URI)
+- Tất cả API endpoints có prefix /api
+- CORS được bật để frontend có thể gọi API
+- Morgan logger cho development
+- Body parser cho JSON và URL-encoded data
+
+================================================================================
+                        KẾT THÚC TÀI LIỆU
+================================================================================
+

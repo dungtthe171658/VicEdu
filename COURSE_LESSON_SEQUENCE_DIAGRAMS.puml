@@ -1,0 +1,139 @@
+@startuml
+actor User
+participant "React UI" as Frontend
+participant "Express API" as Backend
+database "MongoDB" as DB
+participant "Supabase Storage" as Supabase
+
+== User Creates Course ==
+
+User -> Frontend: Fill course form (title, description, price, category, etc.)
+User -> Frontend: Click "Save" button
+Frontend -> Backend: POST /courses (JWT + course data)
+Backend -> Backend: authenticateToken
+Backend -> Backend: checkRole (admin/teacher)
+Backend -> Backend: Validate input (title, description, category_id)
+Backend -> Backend: Generate slug from title
+Backend -> DB: Insert course document (status='approved')
+DB --> Backend: Return course created
+Backend -> DB: Create EditHistory entry (status='applied')
+DB --> Backend: Return history saved
+Backend --> Frontend: 201 Created + course info
+Frontend --> User: Show success / Refresh course list
+
+@enduml
+
+@startuml
+actor User
+participant "React UI" as Frontend
+participant "Express API" as Backend
+database "MongoDB" as DB
+
+== User Edits Course ==
+
+User -> Frontend: Click "Edit" on existing course
+Frontend -> Frontend: Load course data into form
+User -> Frontend: Modify course fields (title, description, price, etc.)
+User -> Frontend: Click "Save" button
+Frontend -> Backend: PUT /courses/:id (JWT + updated data)
+Backend -> Backend: authenticateToken
+Backend -> Backend: checkRole (admin/teacher)
+Backend -> DB: Find course by id
+DB --> Backend: Return course data
+Backend -> Backend: Check ownership (if teacher)
+Backend -> Backend: Check is_published status
+Backend -> Backend: Build update payload
+Backend -> Backend: Update slug if title changed
+Backend -> DB: Update course document
+DB --> Backend: Return updated course
+Backend -> DB: Create EditHistory entry (status='applied')
+DB --> Backend: Return history saved
+Backend --> Frontend: 200 OK + updated course
+Frontend --> User: Show success / Refresh course list
+
+@enduml
+
+@startuml
+actor User
+participant "React UI" as Frontend
+participant "Express API" as Backend
+database "MongoDB" as DB
+participant "Supabase Storage" as Supabase
+
+== User Creates Lesson ==
+
+User -> Frontend: Fill lesson form (title, description)
+User -> Frontend: Select video file
+User -> Frontend: Click "Create Lesson" button
+Frontend -> Backend: POST /upload/supabase/signed (JWT + courseId, filename, contentType)
+Backend -> Backend: authenticateToken
+Backend -> Backend: Generate signed upload URL
+Backend --> Frontend: Return signed URL (path, token, bucket)
+Frontend -> Supabase: Upload video file (signed URL)
+Supabase --> Frontend: Return upload success
+Frontend -> Supabase: Get public URL for uploaded file
+Supabase --> Frontend: Return public URL
+Frontend -> Backend: POST /lesson/courses/:courseId/lessons (JWT + lesson data + video_url)
+Backend -> Backend: authenticateToken
+Backend -> Backend: checkRole (admin/teacher)
+Backend -> DB: Find course by id
+DB --> Backend: Return course data
+Backend -> Backend: Calculate position (lessons.length + 1)
+Backend -> DB: Insert lesson document
+DB --> Backend: Return lesson created
+Backend -> DB: Update course.lessons array (push lesson_id)
+DB --> Backend: Return course updated
+Backend -> DB: Create EditHistory entry (status='applied')
+DB --> Backend: Return history saved
+Backend --> Frontend: 201 Created + lesson info
+Frontend --> User: Show success / Refresh lesson list
+
+@enduml
+
+@startuml
+actor User
+participant "React UI" as Frontend
+participant "Express API" as Backend
+database "MongoDB" as DB
+participant "Supabase Storage" as Supabase
+
+== User Edits Lesson ==
+
+User -> Frontend: Click "Edit" on existing lesson
+Frontend -> Backend: GET /lesson/:lessonId (JWT)
+Backend -> Backend: authenticateToken
+Backend -> DB: Find lesson by id
+DB --> Backend: Return lesson data
+Backend --> Frontend: 200 OK + lesson info
+Frontend -> Frontend: Load lesson data into form
+User -> Frontend: Modify lesson fields (title, description)
+User -> Frontend: (Optional) Select new video file
+User -> Frontend: Click "Save" button
+
+alt New video file selected
+    Frontend -> Backend: POST /upload/supabase/signed (JWT + courseId, filename, contentType)
+    Backend -> Backend: authenticateToken
+    Backend -> Backend: Generate signed upload URL
+    Backend --> Frontend: Return signed URL (path, token, bucket)
+    Frontend -> Supabase: Upload video file (signed URL)
+    Supabase --> Frontend: Return upload success
+    Frontend -> Supabase: Get public URL for uploaded file
+    Supabase --> Frontend: Return public URL
+    Frontend -> Frontend: Add video_url to payload
+end
+
+Frontend -> Backend: PUT /lesson/:lessonId (JWT + updated data)
+Backend -> Backend: authenticateToken
+Backend -> Backend: checkRole (admin/teacher)
+Backend -> DB: Find lesson by id
+DB --> Backend: Return current lesson data
+Backend -> Backend: Build update payload
+Backend -> DB: Update lesson document
+DB --> Backend: Return updated lesson
+Backend -> DB: Create EditHistory entry (status='applied')
+DB --> Backend: Return history saved
+Backend --> Frontend: 200 OK + updated lesson
+Frontend --> User: Show success / Refresh lesson list
+
+@enduml
+

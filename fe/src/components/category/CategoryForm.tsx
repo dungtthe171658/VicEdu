@@ -1,6 +1,6 @@
 // src/components/category/CategoryForm.tsx
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
 import type { Category } from "../../types/category";
 import "./CategoryForm.css";
@@ -16,6 +16,15 @@ const CategoryForm = ({ initialData = {}, onSubmit }: CategoryFormProps) => {
     slug: initialData.slug || "",
     description: initialData.description || "",
   });
+
+  // Update form data when initialData changes
+  useEffect(() => {
+    setFormData({
+      name: initialData.name || "",
+      slug: initialData.slug || "",
+      description: initialData.description || "",
+    });
+  }, [initialData]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
