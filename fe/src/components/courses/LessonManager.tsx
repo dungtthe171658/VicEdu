@@ -4,6 +4,7 @@ import lessonApi, { type LessonPayload } from "../../api/lessonApi";
 import type { Lesson } from "../../types/lesson";
 import { supabase } from "../../lib/supabase";
 import uploadApi from "../../api/uploadApi";
+import {QuizzManage} from "@/pages/dashboard/Admin/QuizzManage.tsx";
 
 type Props = {
   courseId: string;
@@ -310,6 +311,7 @@ export default function LessonManager({ courseId }: Props) {
                         {/* <button onClick={() => openPlayback(ls._id)} style={{ fontSize: 12 }}>Play (auth)</button> */}
                         {/* <button onClick={() => navigate(`/dashboard/manage-courses/${courseId}/lessons/${ls._id}`)} style={{ fontSize: 12 }}>Xem chi tiết</button> */}
                         <button onClick={() => viewDetail(ls._id)} style={{ fontSize: 12 }}>Xem chi tiết</button>
+                        <button onClick={() => navigate(`/dashboard/manage-courses/${courseId}/lessons/${ls._id}/quizzes`)} style={{ fontSize: 12 }}>Quizz</button>
                       </div>
                     </>
                   )}

@@ -6,6 +6,8 @@ export interface IQuestion {
   images?: string[];
   options: string[];
   correct_option_index: number;
+  toObject?: () => any;
+  _doc?: any;
 }
 export interface IQuiz extends Document {
   title: string;
