@@ -21,21 +21,22 @@ const BookModal = ({ book, isOpen, onClose }: BookModalProps) => {
         </button>
 
         <h2>{book.title}</h2>
+
         <p>
           <strong>Tác giả:</strong> {book.author || "Chưa cập nhật"}
         </p>
+
         <p>
           <strong>Danh mục:</strong>{" "}
           {typeof book.category_id === "object"
             ? book.category_id.name
-            : book.category_id || "Chưa có"}
+            : book.category_id || "Chưa có danh mục"}
         </p>
+
         <p>
-          <strong>Giá:</strong> {book.price_cents?.toLocaleString()} VND
+          <strong>Giá:</strong> {book.price_cents?.toLocaleString("vi-VN")} VND
         </p>
-        <p>
-          <strong>Stock:</strong> {book.stock ?? 0}
-        </p>
+
         <p>
           <strong>Mô tả:</strong> {book.description || "Không có mô tả"}
         </p>
@@ -51,24 +52,29 @@ const BookModal = ({ book, isOpen, onClose }: BookModalProps) => {
         {/* PDF link */}
         {book.pdf_url && book.pdf_url !== "" ? (
           <p>
-            <strong>PDF:</strong>{" "}
+            <strong>Tệp PDF:</strong>{" "}
             <a href={book.pdf_url} target="_blank" rel="noopener noreferrer">
-              Xem PDF
+              Xem tài liệu PDF
             </a>
           </p>
         ) : (
           <p>
-            <strong>PDF:</strong> Chưa upload PDF
+            <strong>Tệp PDF:</strong> Chưa có tệp PDF
           </p>
         )}
 
         <p>
           <strong>Ngày tạo:</strong>{" "}
-          {book.created_at ? new Date(book.created_at).toLocaleString() : "-"}
+          {book.created_at
+            ? new Date(book.created_at).toLocaleString("vi-VN")
+            : "-"}
         </p>
+
         <p>
           <strong>Ngày cập nhật:</strong>{" "}
-          {book.updated_at ? new Date(book.updated_at).toLocaleString() : "-"}
+          {book.updated_at
+            ? new Date(book.updated_at).toLocaleString("vi-VN")
+            : "-"}
         </p>
       </div>
     </div>

@@ -18,14 +18,18 @@ function getUserIdFromToken(req: Request & { user?: any }): string | null {
   return id || null;
 }
 
-async function resolveUserId(req: Request & { user?: any }): Promise<string | null> {
+async function resolveUserId(
+  req: Request & { user?: any }
+): Promise<string | null> {
   const isDev = (process.env.NODE_ENV || "development") !== "production";
   let uid = getUserIdFromToken(req);
   if (!uid && isDev) {
     const qEmailRaw = (req.query as any)?.email;
     if (qEmailRaw && typeof qEmailRaw === "string") {
       const qEmail = qEmailRaw.trim().toLowerCase();
-      const user = await UserModel.findOne({ email: qEmail }).select({ _id: 1 }).lean();
+      const user = await UserModel.findOne({ email: qEmail })
+        .select({ _id: 1 })
+        .lean();
       if (user?._id) uid = String((user as any)._id);
     }
   }
@@ -228,33 +232,7 @@ export const deleteBook = async (req: Request, res: Response) => {
   }
 };
 
-// 📘 Cập nhật stock sách
-export const updateBookStock = async (req: Request, res: Response) => {
-  try {
-    const bookId = toObjectId(req.params.id);
-    if (!bookId) return res.status(400).json({ message: "Invalid book ID" });
-
-    const { stock } = req.body;
-    if (typeof stock !== "number" || stock < 0)
-      return res.status(400).json({ message: "Stock không hợp lệ" });
-
-    const updated = await Book.findByIdAndUpdate(
-      bookId,
-      { stock },
-      { new: true, runValidators: true }
-    ).populate("category_id", "name slug");
-
-    if (!updated) return res.status(404).json({ message: "Book not found" });
-
-    res.json({ message: "Stock updated successfully", data: updated });
-  } catch (err: any) {
-    res
-      .status(500)
-      .json({ message: "Failed to update stock", error: err.message });
-  }
-};
-
-// 📘 Lấy danh sách sách đã mua của user
+// Lấy danh sách sách đã mua của user
 export const getPurchasedBooks = async (req: AuthRequest, res: Response) => {
   try {
     const isDev = (process.env.NODE_ENV || "development") !== "production";
@@ -296,7 +274,11 @@ export const getPurchasedBooks = async (req: AuthRequest, res: Response) => {
     ]);
 
     let books = (viaOrders as any[]).map((row) => row.book);
-    if (!books.length && isDev && String((req.query as any)?.forceAll || "0") === "1") {
+    if (
+      !books.length &&
+      isDev &&
+      String((req.query as any)?.forceAll || "0") === "1"
+    ) {
       books = await Book.find({}).sort({ created_at: -1 }).limit(24).lean();
     }
 
@@ -316,8 +298,10 @@ export const getBookOrderAndOrderitem = async (req: Request, res: Response) => {
 
     const userObjectId = new mongoose.Types.ObjectId(uid);
 
-    const includePending = String((req.query as any)?.includePending || "0") === "1";
-    const statuses = includePending && isDev ? ["completed", "pending"] : ["completed"];
+    const includePending =
+      String((req.query as any)?.includePending || "0") === "1";
+    const statuses =
+      includePending && isDev ? ["completed", "pending"] : ["completed"];
 
     const results = await Order.aggregate([
       { $match: { user_id: userObjectId, status: { $in: statuses } } },
@@ -354,12 +338,17 @@ export const getBookOrderAndOrderitem = async (req: Request, res: Response) => {
 
     // Fallback for environments where order_items are not populated yet
     if (!books.length) {
-      const orders = await Order.find({ user_id: userObjectId, status: { $in: statuses } })
+      const orders = await Order.find({
+        user_id: userObjectId,
+        status: { $in: statuses },
+      })
         .select({ meta: 1 })
         .lean();
       const idSet = new Set<string>();
       for (const o of orders as any[]) {
-        const list = Array.isArray(o?.meta?.books) ? (o.meta.books as any[]) : [];
+        const list = Array.isArray(o?.meta?.books)
+          ? (o.meta.books as any[])
+          : [];
         for (const bid of list) {
           try {
             idSet.add(String(bid));
@@ -367,7 +356,9 @@ export const getBookOrderAndOrderitem = async (req: Request, res: Response) => {
         }
       }
       if (idSet.size) {
-        const ids = Array.from(idSet).map((s) => new mongoose.Types.ObjectId(s));
+        const ids = Array.from(idSet).map(
+          (s) => new mongoose.Types.ObjectId(s)
+        );
         books = await Book.find({ _id: { $in: ids } }).lean();
       }
     }
@@ -385,9 +376,12 @@ export const getBookPdfUrl = async (req: Request, res: Response) => {
     const bookId = toObjectId(req.params.id);
     if (!bookId) return res.status(400).json({ message: "Invalid book ID" });
 
-    const book = await Book.findById(bookId).select({ pdf_url: 1, _id: 1 }).lean();
+    const book = await Book.findById(bookId)
+      .select({ pdf_url: 1, _id: 1 })
+      .lean();
     if (!book) return res.status(404).json({ message: "Book not found" });
-    if (!book.pdf_url) return res.status(404).json({ message: "No PDF available" });
+    if (!book.pdf_url)
+      return res.status(404).json({ message: "No PDF available" });
 
     // Parse public_id and extension from a Cloudinary URL, e.g.:
     // https://res.cloudinary.com/<cloud>/raw/upload/v12345/folder/name/file.pdf
@@ -421,7 +415,12 @@ export const getBookPdfUrl = async (req: Request, res: Response) => {
 
     const disposition = String((req.query as any)?.disposition || "inline");
     const selected = disposition === "attachment" ? downloadUrl : inlineUrl;
-    return res.json({ url: selected, inline: inlineUrl, download: downloadUrl, raw: original });
+    return res.json({
+      url: selected,
+      inline: inlineUrl,
+      download: downloadUrl,
+      raw: original,
+    });
   } catch (error: any) {
     console.error("getBookPdfUrl error:", error?.message || error);
     return res.status(500).json({ message: error?.message || "Server error" });

@@ -154,7 +154,7 @@ const BookDetailPage = () => {
             ))}
           </div>
         )}
-        <br/>
+        <br />
         <h1>{book.title}</h1>
         {book.author && <p className="author">{book.author}</p>}
 
@@ -168,21 +168,12 @@ const BookDetailPage = () => {
 
         <p className="price">{priceVND}</p>
 
-    
-        <p className={`stock ${stock > 0 ? "in-stock" : "out-of-stock"}`}>
-          {stock > 0 ? `Còn ${stock} cuốn` : "Hết hàng"}
-        </p>
-
         <button
           className={`add-to-cart-btn ${added ? "added" : ""}`}
           onClick={handleAddToCartByContext}
           disabled={added || stock <= 0}
         >
-          {stock <= 0
-            ? "❌ hết hàng"
-            : added
-            ? "✅ Đã thêm vào giỏ hàng"
-            : "🛒 Thêm vào giỏ hàng"}
+          {added ? "Đã thêm vào giỏ hàng" : "🛒 Thêm vào giỏ hàng"}
         </button>
       </div>
 

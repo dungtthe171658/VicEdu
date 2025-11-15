@@ -11,8 +11,6 @@ interface BookFormProps {
   onSubmit: (data: Partial<BookDto>) => void;
 }
 
-// Signed uploads are used; no need for env CLOUD_NAME/UPLOAD_PRESET here.
-
 type CloudinarySign = {
   timestamp: number;
   signature: string;
@@ -26,12 +24,9 @@ const getCloudinarySignature = async (
   folder: string,
   uploadPreset = "vicedu_default"
 ): Promise<CloudinarySign> => {
-  const res = await axios.get<CloudinarySign>(
-    "/uploads/cloudinary-signature",
-    {
-      params: { folder, upload_preset: uploadPreset },
-    }
-  );
+  const res = await axios.get<CloudinarySign>("/uploads/cloudinary-signature", {
+    params: { folder, upload_preset: uploadPreset },
+  });
   return res as unknown as CloudinarySign;
 };
 
@@ -51,7 +46,7 @@ const uploadImageToCloudinary = async (
   const res = await fetch(endpoint, { method: "POST", body: form });
   const json = await res.json();
 
-  if (!json?.secure_url || !json?.public_id) {
+  if (!json?.secure_url) {
     throw new Error(json?.error?.message || "Upload Cloudinary thất bại");
   }
 
@@ -74,7 +69,7 @@ const uploadRawToCloudinary = async (
   const res = await fetch(endpoint, { method: "POST", body: form });
   const json = await res.json();
 
-  if (!json?.secure_url || !json?.public_id) {
+  if (!json?.secure_url) {
     throw new Error(json?.error?.message || "Upload Cloudinary thất bại");
   }
 
@@ -99,7 +94,6 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
 
-  // Load danh mục
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -108,12 +102,9 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
           ? res
           : Array.isArray(res?.data)
           ? res.data
-          : Array.isArray(res?.categories)
-          ? res.categories
           : [];
         setCategories(list);
-      } catch (err) {
-        console.error("Lỗi khi tải danh mục:", err);
+      } catch {
         setCategories([]);
       } finally {
         setLoadingCategories(false);
@@ -135,8 +126,7 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
         images: [...(prev.images || []), secure_url],
       }));
     } catch (err: any) {
-      console.error("Lỗi upload ảnh:", err);
-      alert(`Upload ảnh thất bại: ${err?.message || err}`);
+      alert(`Upload ảnh thất bại: ${err.message}`);
     } finally {
       setUploadingImage(false);
     }
@@ -148,8 +138,6 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
 
     setUploadingPdf(true);
     try {
-      // Use folder that matches your actual Cloudinary structure
-      // Tip: keep it consistent everywhere to avoid 404 on private/signed URLs
       const sign = await getCloudinarySignature("pdfs/books");
       const { secure_url } = await uploadRawToCloudinary(file, sign);
       setFormData((prev) => ({
@@ -157,8 +145,7 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
         pdf_url: secure_url,
       }));
     } catch (err: any) {
-      console.error("Lỗi upload PDF:", err);
-      alert(`Upload PDF thất bại: ${err?.message || err}`);
+      alert(`Upload PDF thất bại: ${err.message}`);
     } finally {
       setUploadingPdf(false);
     }
@@ -172,8 +159,7 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]:
-        name === "price_cents" || name === "stock" ? Number(value) : value,
+      [name]: name === "price_cents" ? Number(value) : value,
     }));
   };
 
@@ -184,23 +170,20 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
       ...formData,
       category_id: formData.category_id?.toString() || "",
       price_cents: Number(formData.price_cents) || 0,
-      stock: Number(formData.stock) || 0,
       pdf_url: formData.pdf_url,
       images: formData.images,
     };
 
-    console.log("Submitting payload to backend:", payload); // 🔹 thêm dòng này
     onSubmit(payload);
   };
 
- const handleRemoveImage = (idx: number) => {
+  const handleRemoveImage = (idx: number) => {
     setFormData((prev) => ({
       ...prev,
-      images: (prev.images || []).filter((_, i) => i !== idx),
+      images: prev.images?.filter((_, i) => i !== idx) || [],
     }));
   };
 
-  
   return (
     <form onSubmit={handleSubmit} className="book-form">
       <div className="form-group">
@@ -248,16 +231,7 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
         />
       </div>
 
-      <div className="form-group">
-        <label htmlFor="stock">Số lượng</label>
-        <input
-          id="stock"
-          type="number"
-          name="stock"
-          value={formData.stock ?? ""}
-          onChange={handleChange}
-        />
-      </div>
+      {/* ❌ Stock đã được xoá toàn bộ */}
 
       <div className="form-group">
         <label htmlFor="category_id">Danh mục</label>
@@ -270,8 +244,6 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
         >
           {loadingCategories ? (
             <option value="">Đang tải danh mục...</option>
-          ) : categories.length === 0 ? (
-            <option value="">Không có danh mục</option>
           ) : (
             <>
               <option value="">Chọn danh mục</option>
@@ -291,16 +263,11 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
         {uploadingImage && <p>Đang tải ảnh lên...</p>}
         <div className="preview-container">
           {formData.images?.map((url, idx) => (
-         <div key={idx} className="preview-item">
-              <img
-                className="preview-thumb"
-                src={url}
-                alt={`Preview ${idx + 1}`}
-              />
+            <div key={idx} className="preview-item">
+              <img className="preview-thumb" src={url} alt="Preview" />
               <button
                 type="button"
                 className="remove-img-btn"
-                title="Xóa ảnh"
                 onClick={() => handleRemoveImage(idx)}
               >
                 -
@@ -310,31 +277,8 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
         </div>
       </div>
 
-      {/* <div className="form-group">
-        <label>File PDF</label>
-        <input
-          type="file"
-          accept="application/pdf"
-          onChange={handlePdfUpload}
-        />
-        {uploadingPdf && <p>Đang tải PDF lên...</p>}
-        {formData.pdf_url && (
-          <p>
-            PDF đã upload:{" "}
-            <a
-              href={formData.pdf_url}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Xem PDF
-            </a>
-          </p>
-        )}
-      </div> */}
-
-      
       <div className="form-group">
-        <label htmlFor="pdf_url">nhập URL PDF (Drive)</label>
+        <label htmlFor="pdf_url">Nhập URL PDF (Drive)</label>
         <input
           id="pdf_url"
           type="url"
@@ -343,10 +287,6 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
           value={formData.pdf_url || ""}
           onChange={handleChange}
         />
-        <small>
-          Gợi ý: đặt quyền chia sẻ Drive là "Anyone with the link". Bạn có thể dùng
-          link xem trước hoặc link tải xuống trực tiếp.
-        </small>
       </div>
 
       <button type="submit" className="btn-save">

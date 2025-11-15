@@ -8,22 +8,16 @@ import bookApi from "../../api/bookApi";
 const formatVND = (n: number) => n.toLocaleString("vi-VN");
 
 export default function CartPage() {
-  const { courses, books, removeCourse, removeBook, clear, updateBookQty } =
-    useCart();
-
-  const [payment, setPayment] = useState("vnpay");
-  const [loading, setLoading] = useState(false);
-  const [inStockBooks, setInStockBooks] = useState(books);
-  const [outOfStockBooks, setOutOfStockBooks] = useState<typeof books>([]);
-  // Thông tin liên hệ
-  const [location, setLocation] = useState("");
-  const [phone, setPhone] = useState("");
-  const [fullName, setFullName] = useState("");
+  const { courses, books, removeCourse, removeBook, clear } = useCart();
   const { user } = useAuth();
 
-  // 🔄 Đồng bộ lại stock thật từ DB khi mở trang
+  const [cartBooks, setCartBooks] = useState(books);
+  const [payment, setPayment] = useState("vnpay");
+  const [loading, setLoading] = useState(false);
+
+  // Đồng bộ dữ liệu sách từ DB
   useEffect(() => {
-    const syncBookStock = async () => {
+    const syncBooks = async () => {
       if (!books.length) return;
       try {
         const updatedBooks = await Promise.all(
@@ -31,13 +25,10 @@ export default function CartPage() {
             try {
               const res = await bookApi.getById(b._id);
               const fresh = res.data;
-              if (!fresh) return b;
-
               return {
                 ...b,
                 title: fresh.title,
                 price_cents: fresh.price_cents,
-                stock: fresh.stock,
                 images: fresh.images,
               };
             } catch (err) {
@@ -46,63 +37,24 @@ export default function CartPage() {
             }
           })
         );
-
-        const inStock = updatedBooks.filter(
-          (b) => typeof b.stock === "number" && b.stock > 0
-        );
-        const outStock = updatedBooks.filter(
-          (b) => typeof b.stock === "number" && b.stock <= 0
-        );
-
-        setInStockBooks(inStock);
-        setOutOfStockBooks(outStock);
+        setCartBooks(updatedBooks);
         localStorage.setItem("cart_books", JSON.stringify(updatedBooks));
       } catch (err) {
-        console.error("Lỗi khi đồng bộ tồn kho:", err);
+        console.error("Lỗi khi đồng bộ sách:", err);
       }
     };
-
-    syncBookStock();
+    syncBooks();
   }, [books]);
 
   const handleCheckout = async () => {
-    if (courses.length === 0 && inStockBooks.length === 0) {
+    if (courses.length === 0 && cartBooks.length === 0) {
       alert("Giỏ hàng trống!");
       return;
     }
 
     try {
-      // Validate địa chỉ và số điện thoại trước khi tiến hành
-      const trimmedLocation = location.trim();
-      const trimmedFullName = fullName.trim();
-      const phoneDigits = phone.replace(/\D/g, "");
-      if (!trimmedFullName) {
-        alert("Vui lòng nhập họ và tên.");
-        return;
-      }
-      if (!trimmedLocation) {
-        alert("Vui lòng nhập địa chỉ nhận hàng.");
-        return;
-      }
-      if (!/^\d{9,11}$/.test(phoneDigits)) {
-        alert("Số điện thoại không hợp lệ (9-11 số).");
-        return;
-      }
-
       setLoading(true);
 
-      // 1️⃣ Kiểm tra stock trước khi thanh toán (không trừ stock ở đây)
-      for (const b of inStockBooks) {
-        const currentStock = b.stock ?? 0;
-        const requestedQty = b.quantity ?? 1;
-        if (currentStock < requestedQty) {
-          alert(`Sản phẩm ${b.title} không đủ hàng! (Còn lại: ${currentStock} quyển)`);
-          setLoading(false);
-          return;
-        }
-      }
-
-      // 2️⃣ Chuẩn bị payload thanh toán
       const items = [
         ...courses.map((c) => ({
           productId: c._id!,
@@ -111,12 +63,12 @@ export default function CartPage() {
           productPrice: Number(c.price_cents || 0),
           quantity: 1,
         })),
-        ...inStockBooks.map((b) => ({
+        ...cartBooks.map((b) => ({
           productId: b._id,
           productType: "Book" as const,
           productName: b.title,
           productPrice: Number(b.price_cents ?? 0),
-          quantity: Math.max(1, Number(b.quantity ?? 1)),
+          quantity: 1, // luôn 1
           productImage:
             Array.isArray(b.images) && b.images.length > 0
               ? b.images[0]
@@ -124,19 +76,9 @@ export default function CartPage() {
         })),
       ];
 
-      const payload = {
-        location: "Hà Nội",
-        phone: "0123456789",
-        items,
-        paymentMethod: payment,
-      };
-      (payload as any).location = trimmedLocation;
-      (payload as any).phone = phoneDigits;
-      (payload as any).fullName = trimmedFullName;
-      if (user?.email) (payload as any).email = user.email;
-      delete (payload as any).paymentMethod;
+      const payload: any = { items };
+      if (user?.email) payload.email = user.email;
 
-      // 3️⃣ Gọi API tạo link thanh toán
       const res: { checkoutUrl?: string } = await paymentsApi.createPaymentLink(
         payload
       );
@@ -155,24 +97,15 @@ export default function CartPage() {
     }
   };
 
-  const handleQtyChange = (bookId: string, value: number, stock: number) => {
-    let parsed = Number.isFinite(value)
-      ? Math.floor(value)
-      : Math.floor(Number(value) || 1);
-    if (Number.isNaN(parsed)) parsed = 1;
-    const newQty = Math.max(1, Math.min(parsed, stock));
-    updateBookQty(bookId, newQty);
-  };
-
   const coursesTotal = courses.reduce(
     (s, c) => s + Number(c.price_cents || 0),
     0
   );
-  const booksInStockTotal = inStockBooks.reduce(
-    (sum, b) => sum + Number(b.price_cents || 0) * Number(b.quantity || 1),
+  const booksTotal = cartBooks.reduce(
+    (sum, b) => sum + Number(b.price_cents || 0),
     0
   );
-  const totalPrice = coursesTotal + booksInStockTotal;
+  const totalPrice = coursesTotal + booksTotal;
 
   if (courses.length === 0 && books.length === 0) {
     return (
@@ -190,7 +123,6 @@ export default function CartPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
-      {/* === BÊN TRÁI: Danh sách === */}
       <div className="lg:col-span-2">
         <h1 className="text-2xl font-bold mb-5">🛒 Giỏ hàng của bạn</h1>
 
@@ -208,20 +140,19 @@ export default function CartPage() {
                   className="w-20 h-24 object-cover rounded-md border"
                 />
               </div>
-              <div className="col-span-2">
+              <div className="col-span-3">
                 <p className="font-semibold text-gray-800">{c.title}</p>
                 <p className="text-sm text-gray-500 mt-1">
-                  Giá: {formatVND(c.price_cents || 0)}đ / khóa
+                  Giá: {formatVND(c.price_cents || 0)}đ
                 </p>
               </div>
-              <div className="col-span-1"></div>
-              <div className="col-span-1 flex items-center justify-between text-right">
+              <div className="col-span-1 flex flex-col items-end justify-center">
                 <p className="text-sm text-green-700 font-semibold">
                   {formatVND(c.price_cents || 0)}đ
                 </p>
                 <button
                   onClick={() => removeCourse(c._id!)}
-                  className="text-red-600 hover:underline text-xs ml-3"
+                  className="text-red-600 hover:underline text-xs mt-1"
                 >
                   Xóa
                 </button>
@@ -229,154 +160,43 @@ export default function CartPage() {
             </div>
           ))}
 
-          {/* BOOKS CÒN HÀNG */}
-          {inStockBooks.map((b) => {
-            const totalBookPrice = (b.price_cents || 0) * (b.quantity || 1);
-            return (
-              <div
-                key={b._id}
-                className="grid grid-cols-5 items-center gap-4 p-4 border-b last:border-b-0"
-              >
-                <div className="col-span-1 flex justify-center">
-                  <img
-                    src={
-                      Array.isArray(b.images) && b.images.length > 0
-                        ? b.images[0]
-                        : "/no-image.png"
-                    }
-                    alt={b.title ?? "Book"}
-                    className="w-20 h-24 object-cover rounded-md border"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <p className="font-semibold text-gray-800">{b.title}</p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Giá: {formatVND(b.price_cents || 0)}đ / quyển
-                  </p>
-                  {/* <p className="text-xs text-gray-400 mt-1">
-                    Còn lại: {b.stock ?? 0} quyển
-                  </p> */}
-                </div>
-                <div className="col-span-1 flex items-center justify-center gap-2">
-                  <button
-                    onClick={() =>
-                      handleQtyChange(
-                        b._id,
-                        (b.quantity ?? 1) - 1,
-                        b.stock ?? 1
-                      )
-                    }
-                    className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
-                  >
-                    -
-                  </button>
-                  <input
-                    type="number"
-                    value={b.quantity ?? 1}
-                    min={1}
-                    max={b.stock}
-                    onChange={(e) =>
-                      handleQtyChange(
-                        b._id,
-                        parseInt(e.target.value, 10) || 1,
-                        b.stock ?? 1
-                      )
-                    }
-                    className="w-12 text-center border rounded appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-moz-appearance]:textfield"
-                  />
-                  <button
-                    onClick={() =>
-                      handleQtyChange(
-                        b._id,
-                        (b.quantity ?? 1) + 1,
-                        b.stock ?? 1
-                      )
-                    }
-                    className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
-                  >
-                    +
-                  </button>
-                </div>
-                <div className="col-span-1 flex items-center justify-between text-right">
-                  <p className="text-sm text-green-700 font-semibold">
-                    {formatVND(totalBookPrice)}đ
-                  </p>
-                  <button
-                    onClick={() => removeBook(b._id!)}
-                    className="text-red-600 hover:underline text-xs ml-3"
-                  >
-                    Xóa
-                  </button>
-                </div>
+          {/* BOOKS */}
+          {cartBooks.map((b) => (
+            <div
+              key={b._id}
+              className="grid grid-cols-5 items-center gap-4 p-4 border-b last:border-b-0"
+            >
+              <div className="col-span-1 flex justify-center">
+                <img
+                  src={
+                    Array.isArray(b.images) && b.images.length > 0
+                      ? b.images[0]
+                      : "/no-image.png"
+                  }
+                  alt={b.title ?? "Book"}
+                  className="w-20 h-24 object-cover rounded-md border"
+                />
               </div>
-            );
-          })}
+              <div className="col-span-3">
+                <p className="font-semibold text-gray-800">{b.title}</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Giá: {formatVND(b.price_cents || 0)}đ
+                </p>
+              </div>
+              <div className="col-span-1 flex flex-col items-end justify-center">
+                <p className="text-sm text-green-700 font-semibold">
+                  {formatVND(b.price_cents || 0)}đ
+                </p>
+                <button
+                  onClick={() => removeBook(b._id!)}
+                  className="text-red-600 hover:underline text-xs mt-1"
+                >
+                  Xóa
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
-
-        {/* === SẢN PHẨM HẾT HÀNG === */}
-        {outOfStockBooks.length > 0 && (
-          <div className="mt-6 bg-white border border-gray-100 rounded-2xl shadow-sm divide-y">
-            <h3 className="text-lg font-semibold text-gray-700 px-4 pt-4">
-              📦 Các sản phẩm đang hết
-            </h3>
-            {outOfStockBooks.map((b) => (
-              <div
-                key={b._id}
-                className="grid grid-cols-5 items-center gap-4 p-4 border-b last:border-b-0 opacity-70"
-              >
-                <div className="col-span-1 flex justify-center">
-                  <img
-                    src={
-                      Array.isArray(b.images) && b.images.length > 0
-                        ? b.images[0]
-                        : "/no-image.png"
-                    }
-                    alt={b.title ?? "Book"}
-                    className="w-20 h-24 object-cover rounded-md border"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <p className="font-semibold text-gray-800">{b.title}</p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Giá: {formatVND(b.price_cents || 0)}đ / quyển
-                  </p>
-                  <p className="text-xs text-red-500 mt-1">Hết hàng</p>
-                </div>
-                <div className="col-span-1 flex items-center justify-center gap-2">
-                  <button
-                    disabled
-                    className="px-2 py-1 bg-gray-200 rounded cursor-not-allowed opacity-50"
-                  >
-                    -
-                  </button>
-                  <input
-                    type="number"
-                    value={b.quantity ?? 1}
-                    disabled
-                    className="w-12 text-center border rounded bg-gray-100 text-gray-400"
-                  />
-                  <button
-                    disabled
-                    className="px-2 py-1 bg-gray-200 rounded cursor-not-allowed opacity-50"
-                  >
-                    +
-                  </button>
-                </div>
-                <div className="col-span-1 flex items-center justify-between text-right">
-                  <p className="text-sm text-gray-500 font-semibold">
-                    {formatVND(b.price_cents || 0)}đ
-                  </p>
-                  <button
-                    onClick={() => removeBook(b._id!)}
-                    className="text-red-600 hover:underline text-xs ml-3"
-                  >
-                    Xóa
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
 
         <div className="mt-6 flex justify-between items-center">
           <p className="text-lg font-semibold">
@@ -392,55 +212,14 @@ export default function CartPage() {
         </div>
       </div>
 
-      {/* === BÊN PHẢI: Thanh toán === */}
+      {/* Thanh toán */}
       <aside className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 h-fit sticky top-20">
         <h2 className="text-xl font-semibold mb-4">💳 Hình thức thanh toán</h2>
-
-        {/* Thông tin liên hệ */}
-        <div className="mb-6 space-y-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên</label>
-            <input
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Ví dụ: Nguyễn Văn A"
-              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ nhận hàng</label>
-            <input
-              type="text"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="Ví dụ: 123 Trần Duy Hưng, Cầu Giấy, Hà Nội"
-              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
-            <input
-              type="tel"
-              inputMode="numeric"
-              pattern="[0-9]+"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="Ví dụ: 0912345678"
-              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
 
         <div className="space-y-3 mb-6">
           {[
             { id: "momo", label: "Momo", icon: "📱", disabled: true },
-            {
-              id: "vnpay",
-              label: "VNPay (PayOS)",
-              icon: "🏦",
-              disabled: false,
-            },
+            { id: "vnpay", label: "VNPay (PayOS)", icon: "🏦", disabled: false },
             { id: "bank", label: "Chuyển khoản", icon: "💸", disabled: true },
           ].map((opt) => (
             <label
