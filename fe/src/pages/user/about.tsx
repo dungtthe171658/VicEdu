@@ -207,7 +207,7 @@ const VicEduLanding = () => {
                       )}
                       <div className="flex items-center justify-between">
                         <span className="text-2xl font-bold text-blue-600">
-                          {course.price ? `${course.price.toLocaleString('vi-VN')}đ` : 'Miễn phí'}
+                          {course.price_cents ? `${course.price_cents.toLocaleString('vi-VN')}đ` : 'Miễn phí'}
                         </span>
                         <a
                           href={`/courses/${course.slug}`}
