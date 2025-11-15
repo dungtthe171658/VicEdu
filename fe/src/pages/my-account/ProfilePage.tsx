@@ -255,9 +255,8 @@ export default function ProfilePage() {
             <button
               onClick={handleUploadAvatar}
               disabled={!avatarFile || uploadingAvatar}
-              className={`mt-2 w-full rounded-lg px-3 py-2 text-white ${
-                uploadingAvatar ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
-              }`}
+              className={`mt-2 w-full rounded-lg px-3 py-2 text-white ${uploadingAvatar ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
+                }`}
             >
               {uploadingAvatar ? "Đang tải..." : "Upload Avatar"}
             </button>
@@ -271,25 +270,22 @@ export default function ProfilePage() {
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-gray-500 mb-1">Họ và tên</label>
-                <input
-                  value={displayName}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full border rounded-lg px-3 py-2"
-                  placeholder="Nhập họ tên"
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-500 mb-1">Email</label>
-                <input
-                  value={displayEmail}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full border rounded-lg px-3 py-2"
-                  placeholder="Nhập email"
-                />
-              </div>
-              
+                <div>
+                  <label className="block text-sm text-gray-500 mb-1">Họ và tên</label>
+                  <input
+                    value={displayName}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full border rounded-lg px-3 py-2"
+                    placeholder="Nhập họ tên"
+                  />
+                </div>
+                <div>
+                  Email:
+                  <div className="w-full border rounded-lg px-3 py-2 bg-gray-100 text-gray-600">
+                    {displayEmail}
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-sm text-gray-500 mb-1">Số điện thoại</label>
                   <input
@@ -299,43 +295,42 @@ export default function ProfilePage() {
                     placeholder="Nhập số điện thoại"
                   />
                 </div>
-              
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                {isVerified ? (
-                  <span className="px-2 py-1 rounded bg-green-100 text-green-700">
-                    Đã xác minh
-                  </span>
-                ) : (
-                  <span className="px-2 py-1 rounded bg-yellow-100 text-yellow-700">
-                    Chưa xác minh
-                  </span>
-                )}
+
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  {isVerified ? (
+                    <span className="px-2 py-1 rounded bg-green-100 text-green-700">
+                      Đã xác minh
+                    </span>
+                  ) : (
+                    <span className="px-2 py-1 rounded bg-yellow-100 text-yellow-700">
+                      Chưa xác minh
+                    </span>
+                  )}
+                </div>
+                <div className="pt-2">
+                  <button
+                    onClick={handleSaveProfile}
+                    disabled={saving}
+                    className={`bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 ${saving ? "opacity-70 cursor-not-allowed" : ""
+                      }`}
+                  >
+                    {saving ? "Đang lưu..." : "Lưu thay đổi"}
+                  </button>
+                </div>
+                <div className="pt-2">
+                  <button
+                    onClick={() => {
+                      logout();
+                      navigate("/login");
+                    }}
+                    className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+                  >
+                    Đăng xuất
+                  </button>
+                </div>
               </div>
-              <div className="pt-2">
-                <button
-                  onClick={handleSaveProfile}
-                  disabled={saving}
-                  className={`bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 ${
-                    saving ? "opacity-70 cursor-not-allowed" : ""
-                  }`}
-                >
-                  {saving ? "Đang lưu..." : "Lưu thay đổi"}
-                </button>
-              </div>
-              <div className="pt-2">
-                <button
-                  onClick={() => {
-                    logout();
-                    navigate("/login");
-                  }}
-                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
-                >
-                  Đăng xuất
-                </button>
-              </div>
-            </div>
-            {/* Right: Change password */}
-            <div className="space-y-4">
+              {/* Right: Change password */}
+              <div className="space-y-4">
                 <div className="rounded-xl border p-4">
                   <h2 className="text-lg font-semibold mb-3">Đổi mật khẩu</h2>
                   <div className="grid gap-3">
@@ -373,9 +368,8 @@ export default function ProfilePage() {
                   <button
                     onClick={handleChangePassword}
                     disabled={savingPwd}
-                    className={`mt-3 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 ${
-                      savingPwd ? "opacity-70 cursor-not-allowed" : ""
-                    }`}
+                    className={`mt-3 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 ${savingPwd ? "opacity-70 cursor-not-allowed" : ""
+                      }`}
                   >
                     {savingPwd ? "Đang đổi..." : "Đổi mật khẩu"}
                   </button>
@@ -388,9 +382,8 @@ export default function ProfilePage() {
             <button
               onClick={handleSaveProfile}
               disabled={saving}
-              className={`bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 ${
-                saving ? "opacity-70 cursor-not-allowed" : ""
-              }`}
+              className={`bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 ${saving ? "opacity-70 cursor-not-allowed" : ""
+                }`}
             >
               {saving ? "Đang lưu..." : "Lưu thay đổi"}
             </button>

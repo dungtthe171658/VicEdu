@@ -124,9 +124,9 @@ const BookManagementPage = () => {
   return (
     <div className="book-management-container">
       <div className="header">
-        <h2>Book Management</h2>
+        <h2>Quản lý sách</h2>
         <button className="add-btn" onClick={handleAdd}>
-          Add Book
+          Thêm sách
         </button>
       </div>
 
@@ -136,13 +136,13 @@ const BookManagementPage = () => {
             <span>{book.title}</span>
             <div className="actions">
               <button className="edit-btn" onClick={() => handleEdit(book)}>
-                Edit
+                Sửa
               </button>
               <button
                 className="delete-btn"
                 onClick={() => handleDelete(book._id)}
               >
-                Delete
+                Xóa
               </button>
             </div>
           </li>
@@ -159,7 +159,7 @@ const BookManagementPage = () => {
               onUploadImage={handleUploadImage}
             />
             <button className="close-btn" onClick={() => setShowModal(false)}>
-              Close
+              Đóng
             </button>
           </div>
         </div>

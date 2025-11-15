@@ -27,7 +27,7 @@ const BooksPage: React.FC = () => {
         {/* 🧾 Form thêm/sửa */}
         <div className="md:col-span-1">
           <div className="sticky top-20">
-            <h5 className="mb-3 font-semibold">Add / Edit Book</h5>
+            <h5 className="mb-3 font-semibold">Thêm / Sửa sách</h5>
             <div className="p-4 bg-white rounded shadow-sm">
               <BookForm initialData={selectedBook || {}} onSubmit={handleSave} />
             </div>

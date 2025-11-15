@@ -68,9 +68,9 @@ const ManageCategoriesPage = () => {
   return (
     <div className="category-management-container">
       <div className="header">
-        <h2>Category Management</h2>
+        <h2>Quản lý thể loại</h2>
         <button className="add-btn" onClick={handleAdd}>
-          Add Category
+          Thêm thể loại
         </button>
       </div>
 
@@ -80,13 +80,13 @@ const ManageCategoriesPage = () => {
             <span>{category.name}</span>
             <div className="actions">
               <button className="edit-btn" onClick={() => handleEdit(category)}>
-                Edit
+                Sửa
               </button>
               <button
                 className="delete-btn"
                 onClick={() => handleDelete(category._id)}
               >
-                Delete
+                Xóa
               </button>
             </div>
           </li>

@@ -121,13 +121,13 @@ const ManageReviewsPage = () => {
   }, [filterCategoryId, filteredCoursesForSelect]);
 
   const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this review?")) {
+    if (confirm("Bạn có muốn xóa đánh giá này không?")) {
       try {
         await reviewApi.delete(id);
         loadReviews();
       } catch (error) {
-        console.error("Error deleting review:", error);
-        alert("Failed to delete review.");
+        console.error("Lỗi khi xóa đánh giá:", error);
+        alert("Lỗi khi xóa đánh giá.");
       }
     }
   };
@@ -155,14 +155,14 @@ const ManageReviewsPage = () => {
   return (
     <div className="review-management-container">
       <div className="header">
-        <h2>Manage Reviews</h2>
-        <button className="add-btn" onClick={handleAdd}>+ Add Review</button>
+        <h2>Quản lý đánh giá</h2>
+        <button className="add-btn" onClick={handleAdd}>+ Thêm đánh giá</button>
       </div>
 
       {/* Filters */}
       <div className="filters" style={{ display: "flex", gap: 12, margin: "12px 0" }}>
         <select value={filterCategoryId} onChange={(e) => { setFilterCategoryId(e.target.value); setFilterCourseId("all"); setPage(1); }}>
-          <option value="all">All categories</option>
+          <option value="all">Tất cả thể loại</option>
           {categoriesList.map((cat) => (
             <option key={toId((cat as any)._id)} value={toId((cat as any)._id)}>
               {(cat as any).name}
@@ -170,7 +170,7 @@ const ManageReviewsPage = () => {
           ))}
         </select>
         <select value={filterCourseId} onChange={(e) => { setFilterCourseId(e.target.value); setPage(1); }}>
-          <option value="all">All courses</option>
+          <option value="all">Tất cả khóa học</option>
           {filteredCoursesForSelect.map((c) => (
             <option key={toId((c as any)._id)} value={toId((c as any)._id)}>
               {(c as any).title}
@@ -178,9 +178,9 @@ const ManageReviewsPage = () => {
           ))}
         </select>
         <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
-          <option value="all">All statuses</option>
-          <option value="pending">Pending</option>
-          <option value="approved">Approved</option>
+          <option value="all">Tất cả trạng thái</option>
+          <option value="pending">Đang chờ</option>
+          <option value="approved">Đã duyệt</option>
         </select>
         {(filterCourseId !== "all" || filterCategoryId !== "all") && (
           <button onClick={() => { setFilterCourseId("all"); setFilterCategoryId("all"); setStatusFilter("all"); setPage(1); }}>Clear</button>
@@ -204,19 +204,19 @@ const ManageReviewsPage = () => {
             <li key={String(id)}>
               <div className="review-info">
                 <span>ID: {String(id)}</span>
-                <span>User: {userLabel || "(anonymous)"}</span>
-                <span>Product: {productLabel || "(unknown)"}</span>
-                <span>Rating: {r.rating}/5</span>
+                <span>Người dùng: {userLabel || "(anonymous)"}</span>
+                <span>Sản phẩm: {productLabel || "(unknown)"}</span>
+                <span>Xếp hạng: {r.rating}/5</span>
                 <span>{(r as any).comment || (r as any).content || "(No comment)"}</span>
-                <span>Status: {r.status}</span>
-                {createdAt && <span>Created: {createdAt.toLocaleDateString()}</span>}
+                <span>Trạng thái: {r.status}</span>
+                {createdAt && <span>Tạo: {createdAt.toLocaleDateString()}</span>}
               </div>
               <div className="actions">
                 {r.status !== "approved" && (
-                  <button className="approve-btn" onClick={() => handleApprove(String(id))}>Approve</button>
+                  <button className="approve-btn" onClick={() => handleApprove(String(id))}>Đã duyệt</button>
                 )}
-                <button className="edit-btn" onClick={() => handleEdit(r)}>Edit</button>
-                <button className="delete-btn" onClick={() => handleDelete(String(id))}>Delete</button>
+                <button className="edit-btn" onClick={() => handleEdit(r)}>Sửa</button>
+                <button className="delete-btn" onClick={() => handleDelete(String(id))}>Xóa</button>
               </div>
             </li>
           );
@@ -225,9 +225,9 @@ const ManageReviewsPage = () => {
 
       {/* Pagination */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12 }}>
-        <button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</button>
-        <span>Page {page}/{totalPages} • {total} items</span>
-        <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</button>
+        <button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Trước</button>
+        <span>Trang {page}/{totalPages} • {total} items</span>
+        <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Sau</button>
         <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}>
           {[10,20,50,100].map((n) => (
             <option key={n} value={n}>{n}/page</option>
@@ -246,7 +246,7 @@ const ManageReviewsPage = () => {
                 loadReviews();
               }}
             />
-            <button className="close-btn" onClick={() => setShowModal(false)}>Close</button>
+            <button className="close-btn" onClick={() => setShowModal(false)}>Đóng</button>
           </div>
         </div>
       )}

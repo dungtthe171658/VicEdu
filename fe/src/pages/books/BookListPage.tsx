@@ -1,19 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import bookApi from "../../api/bookApi";
-import categoryApi from "../../api/categoryApi"; 
+import categoryApi from "../../api/categoryApi";
 import type { BookDto } from "../../types/book.d";
 import type { Category } from "../../types/category.d";
 import BookCard from "../../components/books/BookCard";
-import "./BookListPage.css";
 
 const BookListPage = () => {
   const [books, setBooks] = useState<BookDto[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const [minPrice, setMinPrice] = useState<string>("");
-  const [maxPrice, setMaxPrice] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(true);
-  const [loadingCategories, setLoadingCategories] = useState<boolean>(true);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000000]);
+  const [inStockOnly, setInStockOnly] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [loadingBooks, setLoadingBooks] = useState(false);
 
   // --- Lấy danh sách thể loại ---
   useEffect(() => {
@@ -32,107 +32,130 @@ const BookListPage = () => {
     fetchCategories();
   }, []);
 
-  // --- Lấy danh sách sách ---
-  const fetchBooks = async () => {
-    try {
-      setLoading(true);
-      const params: Record<string, string | number> = {};
-      if (selectedCategory) params.categoryId = selectedCategory;
-      if (minPrice) params.minPrice = Number(minPrice) * 100;
-      if (maxPrice) params.maxPrice = Number(maxPrice) * 100;
-
-      const res = await bookApi.getAll(params);
-      const data: BookDto[] = Array.isArray(res.data) ? res.data : res;
-      setBooks(data);
-    } catch (err) {
-      console.error("Lỗi khi tải sách:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // --- Fetch sách khi category thay đổi ---
   useEffect(() => {
+    const fetchBooks = async () => {
+      setLoadingBooks(true);
+      try {
+        const params: Record<string, any> = {};
+        if (selectedCategory) params.categoryId = selectedCategory;
+        const res = await bookApi.getAll(params);
+        const data: BookDto[] = Array.isArray(res.data) ? res.data : res;
+        setBooks(data);
+      } catch (err) {
+        console.error("Lỗi khi tải sách:", err);
+        setBooks([]);
+      } finally {
+        setLoadingBooks(false);
+      }
+    };
     fetchBooks();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [selectedCategory]);
 
-  const handleFilterSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    fetchBooks();
-  };
-
-  if (loading)
-    return (
-      <div className="book-list-loader">
-        <div className="spinner"></div>
-      </div>
-    );
-
-  if (!books.length)
-    return (
-      <div className="book-list-empty">Không có sách nào để hiển thị 📚</div>
-    );
+  // --- Lọc trực tiếp trên frontend ---
+  const filteredBooks = useMemo(() => {
+    return books
+      .filter((b) => b.price_cents! >= priceRange[0] && b.price_cents! <= priceRange[1])
+      .filter((b) => (inStockOnly ? (b.stock ?? 0) > 0 : true))
+      .filter(
+        (b) =>
+          b.title.toLowerCase().includes(searchText.toLowerCase()) ||
+          (b.author?.toLowerCase().includes(searchText.toLowerCase()) ?? false)
+      );
+  }, [books, priceRange, inStockOnly, searchText]);
 
   return (
-    <div className="book-list-container">
-      {/* --- Bộ lọc --- */}
-      <aside className="book-list-filter">
-        <h3>Bộ lọc</h3>
-        <form onSubmit={handleFilterSubmit} className="filter-form">
-          {/* Thể loại */}
-          <div className="filter-group">
-            <label htmlFor="category">Thể loại</label>
-            <select
-              id="category"
-              value={selectedCategory || ""}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-            >
-              <option value="">Chọn danh mục</option>
-              {loadingCategories ? (
-                <option value="">Đang tải danh mục...</option>
-              ) : categories.length === 0 ? (
-                <option value="">Không có danh mục</option>
-              ) : (
-                categories.map((cat) => (
-                  <option key={cat._id} value={cat._id}>
-                    {cat.name}
-                  </option>
+    <div className="flex mt-6 gap-6">
+      {/* ---------- Sidebar lọc ---------- */}
+      <div className="w-64 p-4 bg-white rounded-lg shadow space-y-6">
+        <h2 className="text-lg font-semibold">Bộ lọc</h2>
+
+        {/* Search */}
+        <div>
+          <label className="block mb-1 font-medium">Tìm kiếm</label>
+          <input
+            type="text"
+            placeholder="Tên sách hoặc tác giả..."
+            className="w-full border rounded px-3 py-2"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+          />
+        </div>
+
+        {/* Thể loại */}
+        <div>
+          <label className="block mb-1 font-medium">Thể loại</label>
+          <select
+            className="w-full border rounded px-3 py-2"
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+          >
+            <option value="">Tất cả</option>
+            {loadingCategories
+              ? <option disabled>Đang tải...</option>
+              : categories.length === 0
+              ? <option disabled>Không có thể loại</option>
+              : categories.map((cat) => (
+                  <option key={cat._id} value={cat._id}>{cat.name}</option>
                 ))
-              )}
-            </select>
+            }
+          </select>
+        </div>
+
+        {/* Giá */}
+        <div>
+          <label className="block mb-1 font-medium">Giá (VND)</label>
+          <div className="flex items-center gap-2">
+            <span>{priceRange[0].toLocaleString()}₫</span>
+            <input
+              type="range"
+              min={0}
+              max={1000000}
+              step={10000}
+              value={priceRange[0]}
+              onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
+              className="flex-1"
+            />
           </div>
-
-          {/* Giá */}
-          <div className="filter-group">
-            <label>Giá (VND)</label>
-            <div className="price-inputs">
-              <input
-                type="number"
-                placeholder="Từ"
-                value={minPrice}
-                onChange={(e) => setMinPrice(e.target.value)}
-              />
-              <span>-</span>
-              <input
-                type="number"
-                placeholder="Đến"
-                value={maxPrice}
-                onChange={(e) => setMaxPrice(e.target.value)}
-              />
-            </div>
+          <div className="flex items-center gap-2 mt-1">
+            <span>{priceRange[1].toLocaleString()}₫</span>
+            <input
+              type="range"
+              min={0}
+              max={1000000}
+              step={10000}
+              value={priceRange[1]}
+              onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
+              className="flex-1"
+            />
           </div>
+        </div>
 
-          <button type="submit" className="filter-btn">
-            Áp dụng
-          </button>
-        </form>
-      </aside>
+        {/* Còn hàng */}
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="inStock"
+            checked={inStockOnly}
+            onChange={(e) => setInStockOnly(e.target.checked)}
+          />
+          <label htmlFor="inStock" className="font-medium">Chỉ còn hàng</label>
+        </div>
+      </div>
 
-      {/* --- Danh sách sách --- */}
-      <div className="book-list-books">
-        {books.map((book) => (
-          <BookCard key={book._id} book={book} />
-        ))}
+      {/* ---------- Danh sách sách ---------- */}
+      <div className="flex-1 grid grid-cols-5 gap-6">
+        {loadingBooks ? (
+          <div className="col-span-4 flex justify-center items-center h-64">
+            <div className="animate-spin border-4 border-blue-500 border-t-transparent rounded-full w-12 h-12"></div>
+          </div>
+        ) : filteredBooks.length === 0 ? (
+          <div className="col-span-4 text-center text-gray-500">
+            Không có sách nào để hiển thị 📚
+          </div>
+        ) : (
+          filteredBooks.map((book) => <BookCard key={book._id} book={book} />)
+        )}
       </div>
     </div>
   );
