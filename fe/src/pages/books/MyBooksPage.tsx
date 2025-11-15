@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import bookApi from "../../api/bookApi";
 import type { BookDto } from "../../types/book.d";
@@ -36,8 +36,6 @@ export default function MyBooksPage() {
     })();
   }, []);
 
-  const hasBooks = useMemo(() => books.length > 0, [books]);
-
   const handleReadPdf = async (id: string) => {
     try {
       const res = await bookApi.getPdfUrl(id);
@@ -46,13 +44,13 @@ export default function MyBooksPage() {
         window.open(url, "_blank", "noopener,noreferrer");
       }
     } catch (e) {
-      // Silently ignore for now
+      console.error("Không thể mở PDF", e);
     }
   };
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-10">
+      <div className="max-w-7xl mx-auto px-4 py-10">
         <h1 className="text-2xl font-semibold mb-6">Sách của tôi</h1>
         <p className="text-gray-600">Đang tải...</p>
       </div>
@@ -60,12 +58,12 @@ export default function MyBooksPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10">
+    <div className="max-w-7xl mx-auto px-4 py-10">
       <h1 className="text-2xl font-semibold mb-6">Sách của tôi</h1>
 
       {error && <p className="text-red-600 mb-4">{error}</p>}
 
-      {!hasBooks ? (
+      {books.length === 0 ? (
         <div className="bg-white rounded-2xl shadow p-8 text-center">
           <p className="text-gray-600 mb-4">Bạn chưa mua sách nào.</p>
           <Link
@@ -76,40 +74,55 @@ export default function MyBooksPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {books.map((b) => (
-            <div key={b._id} className="bg-white rounded-xl shadow hover:shadow-md transition p-4">
-              <img
-                src={b.images?.[0] || "https://placehold.co/600x360"}
-                alt={b.title}
-                className="w-full h-40 object-cover rounded-lg"
-              />
-              <div className="mt-3">
-                <h3 className="font-semibold text-gray-800 line-clamp-2">{b.title}</h3>
-                {b.description && (
-                  <p className="text-sm text-gray-500 line-clamp-2 mt-1">{b.description}</p>
-                )}
-                <div className="mt-3 flex items-center justify-between">
-                  <div className="text-sm text-gray-600">
+            <div
+              key={b._id}
+              className="book-card cursor-pointer bg-white rounded-xl shadow hover:shadow-lg transition flex flex-col"
+            >
+              {/* Ảnh full-size */}
+              <div className="image-wrapper">
+                <img
+                  src={b.images?.[0] || "/no-image.png"}
+                  alt={b.title}
+                  className="w-full h-64 object-cover rounded-t-xl"
+                />
+              </div>
+
+              <div className="p-4 flex-1 flex flex-col justify-between">
+                <div>
+                  <h3 className="book-title font-semibold text-gray-800 line-clamp-2">
+                    {b.title}
+                  </h3>
+                  {b.author && (
+                    <p className="book-author text-sm text-gray-500 mt-1">
+                      {b.author}
+                    </p>
+                  )}
+                  <p className="book-price text-green-700 font-semibold mt-2">
                     {typeof b.price_cents === "number"
-                      ? `${(b.price_cents || 0).toLocaleString("vi-VN")}đ`
+                      ? `${b.price_cents.toLocaleString("vi-VN")}đ`
                       : "Miễn phí"}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Link to={`/books/${b._id}`} className="text-blue-600 hover:underline text-sm">
-                      Xem sách
-                    </Link>
-                    {b.pdf_url ? (
-                      <button
-                        onClick={() => handleReadPdf(b._id)}
-                        className="text-green-600 hover:underline text-sm"
-                      >
-                        Đọc PDF
-                      </button>
-                    ) : (
-                      <span className="text-gray-400 text-sm">Chưa có PDF</span>
-                    )}
-                  </div>
+                  </p>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between">
+                  <Link
+                    to={`/books/${b._id}`}
+                    className="text-blue-600 hover:underline text-sm"
+                  >
+                    Xem sách
+                  </Link>
+                  {b.pdf_url ? (
+                    <button
+                      onClick={() => handleReadPdf(b._id)}
+                      className="text-green-600 hover:underline text-sm"
+                    >
+                      📖 Đọc PDF
+                    </button>
+                  ) : (
+                    <span className="text-gray-400 text-sm">Chưa có PDF</span>
+                  )}
                 </div>
               </div>
             </div>

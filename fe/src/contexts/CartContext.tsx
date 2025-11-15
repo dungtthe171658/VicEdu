@@ -6,9 +6,7 @@ export interface BookCartItem {
   _id: string;
   title: string;
   price_cents?: number;
-  quantity: number;
   images?: string[];
-  stock: number;
 }
 
 type CartContextType = {
@@ -18,10 +16,7 @@ type CartContextType = {
   addCourse: (c: Course) => void;
   removeCourse: (courseId: string) => void;
   // Books
-  addBookItem: (
-    b: Omit<BookCartItem, "quantity"> & { quantity?: number }
-  ) => void;
-  updateBookQty: (bookId: string, quantity: number) => void;
+  addBookItem: (b: BookCartItem) => void;
   removeBook: (bookId: string) => void;
   // Common
   clear: () => void;
@@ -38,11 +33,11 @@ type CartContextType = {
 
 const CartContext = createContext<CartContextType | null>(null);
 
-// ====== Helpers ======
+// ====== LocalStorage keys ======
 const LS_COURSES = "cart_courses";
 const LS_BOOKS = "cart_books";
 
-// Migrate string[] -> BookCartItem[]
+// ====== Helpers ======
 function migrateBooks(value: any): BookCartItem[] {
   try {
     if (!value) return [];
@@ -50,9 +45,7 @@ function migrateBooks(value: any): BookCartItem[] {
       return (value as string[]).map((id) => ({
         _id: id,
         title: "",
-        quantity: 1,
         images: [],
-        stock: 0,
       }));
     }
     if (Array.isArray(value) && value.every((x) => typeof x === "object")) {
@@ -62,8 +55,6 @@ function migrateBooks(value: any): BookCartItem[] {
         price_cents:
           typeof b.price_cents === "number" ? b.price_cents : undefined,
         images: Array.isArray(b.images) ? b.images : [],
-        quantity: Math.max(1, Number(b.quantity) || 1),
-        stock: b.stock ?? 0,
       }));
     }
     return [];
@@ -84,7 +75,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return migrateBooks(saved ? JSON.parse(saved) : null);
   });
 
-  // Persist
+  // Persist to localStorage
   useEffect(() => {
     localStorage.setItem(LS_COURSES, JSON.stringify(courses));
   }, [courses]);
@@ -104,63 +95,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setCourses((prev) => prev.filter((x) => x._id !== courseId));
   };
 
-  // ====== Book logic ======
-  const addBookItem = (
-    b: Omit<BookCartItem, "quantity"> & { quantity?: number }
-  ) => {
+  // ====== Book logic (ebook only) ======
+  const addBookItem = (b: BookCartItem) => {
     setBooks((prev) => {
-      const qty = Math.max(1, Math.floor(Number(b.quantity ?? 1)));
-      const found = prev.find((x) => x._id === b._id);
-
-      if (found) {
-        return prev.map((x) =>
-          x._id === b._id
-            ? {
-                ...x,
-                title: b.title ?? x.title,
-                price_cents: b.price_cents ?? x.price_cents,
-                images: Array.isArray(b.images) ? b.images : x.images,
-                stock: b.stock ?? x.stock ?? 0,
-                quantity: Math.min(
-                  x.quantity + qty,
-                  b.stock ?? x.stock ?? Infinity
-                ), // ✅ giới hạn theo stock
-              }
-            : x
-        );
-      }
-
-      return [
-        ...prev,
-        {
-          _id: b._id,
-          title: b.title,
-          price_cents: b.price_cents,
-          images: Array.isArray(b.images) ? b.images : [],
-          stock: b.stock ?? 0,
-          quantity: qty,
-        },
-      ];
+      if (prev.some((x) => x._id === b._id)) return prev; // chỉ thêm 1 lần
+      return [...prev, b];
     });
-  };
-
-  const updateBookQty = (bookId: string, quantity: number) => {
-    const q = Math.max(1, Number(quantity) || 1);
-    setBooks((prev) =>
-      prev.map((b) => ({
-        ...b,
-        quantity:
-          b._id === bookId
-            ? Math.min(q, b.stock || Infinity) // ✅ không vượt quá stock
-            : b.quantity,
-      }))
-    );
   };
 
   const removeBook = (bookId: string) => {
     setBooks((prev) => prev.filter((x) => x._id !== bookId));
   };
 
+  // ====== Clear cart ======
   const clear = () => {
     setCourses([]);
     setBooks([]);
@@ -173,19 +120,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       0
     );
     const bookTotal = books.reduce(
-      (sum, b) => sum + Number(b.price_cents || 0) * Number(b.quantity || 1),
+      (sum, b) => sum + Number(b.price_cents || 0),
       0
-    );
+    ); // quantity luôn 1
     return courseTotal + bookTotal;
   }, [courses, books]);
 
-  const count = useMemo(() => {
-    const courseCount = courses.length;
-    const bookCount = books.reduce((s, b) => s + (b.quantity || 1), 0);
-    return courseCount + bookCount;
-  }, [courses, books]);
+  const count = useMemo(() => courses.length + books.length, [courses, books]);
 
-  // ====== Build payload for PayOS ======
+  // ====== Build checkout items ======
   const buildCheckoutItems = () => {
     const courseItems = courses.map((c) => ({
       productId: c._id,
@@ -199,15 +142,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       productId: b._id,
       productType: "Book" as const,
       productName: b.title,
-      productPrice:
-        typeof b.price_cents === "number" ? b.price_cents : undefined,
-      quantity: Math.max(1, Number(b.quantity) || 1),
+      productPrice: Number(b.price_cents || 0),
+      quantity: 1, // luôn 1 cho ebook
     }));
 
     return [...courseItems, ...bookItems];
   };
 
-  // ====== Return Provider ======
   return (
     <CartContext.Provider
       value={{
@@ -216,7 +157,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         addCourse,
         removeCourse,
         addBookItem,
-        updateBookQty,
         removeBook,
         clear,
         total,

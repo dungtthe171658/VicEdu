@@ -2,57 +2,41 @@ import type { BookDto } from "../../types/book.d";
 import { useNavigate } from "react-router-dom";
 import "./BookCard.css";
 import { useCart } from "../../contexts/CartContext";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface BookCardProps {
   book: BookDto;
+  purchasedBookIds?: Set<string>; // nhận từ page
 }
 
-const BookCard = ({ book }: BookCardProps) => {
+const BookCard = ({ book, purchasedBookIds }: BookCardProps) => {
   const navigate = useNavigate();
-  const { addBookItem } = useCart();
+  const { books: cartBooks, addBookItem } = useCart();
   const [isAdding, setIsAdding] = useState(false);
-  const [hasPurchased, setHasPurchased] = useState(false);
 
   const handleCardClick = () => {
     navigate(`/books/${book._id}`);
   };
 
+  const isInCart = cartBooks.some((b) => String(b._id) === String(book._id));
+  const hasPurchased = purchasedBookIds?.has(book._id) ?? false;
+
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isAdding || hasPurchased) return;
+    if (isInCart || hasPurchased || isAdding) return;
 
     setIsAdding(true);
-
     setTimeout(() => {
       addBookItem({
         _id: book._id,
         title: book.title,
         price_cents: book.price_cents,
-        image: book.images ?? [],
-        quantity: 1,
+        images: book.images ?? [],
       });
-
       setIsAdding(false);
       alert(`Đã thêm "${book.title}" vào giỏ hàng!`);
     }, 400);
   };
-
-  // Kiểm tra sách đã mua hay chưa
-  useEffect(() => {
-    const fetchPurchasedBooks = async () => {
-      try {
-        const res = await fetch("/orders/user-books", {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        });
-        const data: string[] = await res.json();
-        setHasPurchased(data.includes(book._id));
-      } catch (err) {
-        console.error("Không thể kiểm tra sách đã mua:", err);
-      }
-    };
-    fetchPurchasedBooks();
-  }, [book._id]);
 
   const priceVND = (book.price_cents || 0).toLocaleString("vi-VN", {
     style: "currency",
@@ -76,17 +60,30 @@ const BookCard = ({ book }: BookCardProps) => {
 
         <button
           className={`add-to-cart-btn ${
-            hasPurchased ? "disabled" : isAdding ? "loading" : ""
+            isInCart || hasPurchased ? "disabled" : isAdding ? "loading" : ""
           }`}
           onClick={handleAddToCart}
-          disabled={isAdding || hasPurchased}
+          disabled={isInCart || hasPurchased || isAdding}
         >
           {hasPurchased
             ? "Bạn đã mua sách này"
+            : isInCart
+            ? "Đã có trong giỏ hàng"
             : isAdding
             ? "Đang thêm..."
             : "🛒 Thêm vào giỏ hàng"}
         </button>
+
+        {hasPurchased && book.pdf_url && (
+          <a
+            href={book.pdf_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="download-pdf-link"
+          >
+            📖 Read book
+          </a>
+        )}
       </div>
     </div>
   );

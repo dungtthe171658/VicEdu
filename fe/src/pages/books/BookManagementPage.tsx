@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
+import axios from "axios";
 import bookApi from "../../api/bookApi";
 import type { BookDto } from "../../types/book";
 import BookForm from "../../components/books/BookForm";
-import axios from "../../api/axios";
+import BookModal from "../../components/books/BookModal";
 import "./BookManagementPage.css";
 
 type CloudinarySign = {
@@ -19,12 +20,15 @@ const BookManagementPage = () => {
   const [selectedBook, setSelectedBook] = useState<Partial<BookDto> | null>(
     null
   );
-  const [showModal, setShowModal] = useState(false);
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [detailBook, setDetailBook] = useState<BookDto | null>(null);
 
   // Load tất cả sách
   const loadBooks = async () => {
     try {
       const res = await bookApi.getAll();
+      console.log("Books loaded:", res.data);
       setBooks(res.data);
     } catch (error) {
       console.error("Error loading books:", error);
@@ -35,18 +39,21 @@ const BookManagementPage = () => {
     loadBooks();
   }, []);
 
-  // Cloudinary signature (reuse approach from ProfilePage)
+  // Cloudinary signature
   const getCloudinarySignature = async (
     folder: string,
     uploadPreset = "vicedu_default"
   ): Promise<CloudinarySign> => {
-    const res = await axios.get<CloudinarySign>("/uploads/cloudinary-signature", {
-      params: { folder, upload_preset: uploadPreset },
-    });
-    return res as unknown as CloudinarySign;
+    const res = await axios.get<CloudinarySign>(
+      "/uploads/cloudinary-signature",
+      {
+        params: { folder, upload_preset: uploadPreset },
+      }
+    );
+    return res.data;
   };
 
-  // Upload trực tiếp lên Cloudinary bằng chữ ký từ BE
+  // Upload image trực tiếp lên Cloudinary
   const uploadImageToCloudinary = async (
     file: File,
     sign: CloudinarySign
@@ -70,7 +77,7 @@ const BookManagementPage = () => {
     return { secure_url: json.secure_url, public_id: json.public_id };
   };
 
-  // Expose an upload helper for BookForm to use
+  // Helper cho BookForm
   const handleUploadImage = async (file: File): Promise<string> => {
     const sign = await getCloudinarySignature("vicedu/images/books");
     const { secure_url } = await uploadImageToCloudinary(file, sign);
@@ -80,14 +87,15 @@ const BookManagementPage = () => {
   // Thêm hoặc sửa sách
   const handleSave = async (data: Partial<BookDto>) => {
     try {
+      console.log("Submitting payload to backend:", data);
       if (selectedBook?._id) {
-        // Edit
-        await bookApi.update(selectedBook._id, data);
+        const res = await bookApi.update(selectedBook._id, data);
+        console.log("Book updated:", res.data);
       } else {
-        // Add
-        await bookApi.create(data);
+        const res = await bookApi.create(data);
+        console.log("Book created:", res.data);
       }
-      setShowModal(false);
+      setShowFormModal(false);
       setSelectedBook(null);
       loadBooks();
     } catch (error) {
@@ -96,16 +104,23 @@ const BookManagementPage = () => {
     }
   };
 
-  // Mở modal để edit
-  const handleEdit = (book: BookDto) => {
-    setSelectedBook(book);
-    setShowModal(true);
+  // Mở modal để edit (prefill)
+  const handleEdit = async (book: BookDto) => {
+    try {
+      const res = await bookApi.getById(book._id);
+      console.log("Fetched for edit:", res.data);
+      setSelectedBook(res.data);
+      setShowFormModal(true);
+    } catch (err) {
+      console.error("Error fetching book details for edit:", err);
+      alert("Cannot fetch book details.");
+    }
   };
 
-  // Mở modal để add
+  // Mở modal thêm sách
   const handleAdd = () => {
     setSelectedBook(null);
-    setShowModal(true);
+    setShowFormModal(true);
   };
 
   // Xóa sách
@@ -121,12 +136,25 @@ const BookManagementPage = () => {
     }
   };
 
+  // Mở modal chi tiết
+  const handleDetail = async (book: BookDto) => {
+    try {
+      const res = await bookApi.getById(book._id);
+      console.log("Detail book fetched:", res.data);
+      setDetailBook(res.data);
+      setShowDetailModal(true);
+    } catch (err) {
+      console.error("Error fetching book details:", err);
+      alert("Cannot fetch book details.");
+    }
+  };
+
   return (
     <div className="book-management-container">
       <div className="header">
-        <h2>Quản lý sách</h2>
+        <h2>Quản Lý Sách</h2>
         <button className="add-btn" onClick={handleAdd}>
-          Thêm sách
+          Thêm Sách
         </button>
       </div>
 
@@ -144,12 +172,19 @@ const BookManagementPage = () => {
               >
                 Xóa
               </button>
+              <button
+                className="details-btn"
+                onClick={() => handleDetail(book)}
+              >
+                Chi tiết
+              </button>
             </div>
           </li>
         ))}
       </ul>
 
-      {showModal && (
+      {/* Modal thêm/sửa sách */}
+      {showFormModal && (
         <div className="modal">
           <div className="modal-content">
             <h3>{selectedBook ? "Edit Book" : "Add Book"}</h3>
@@ -158,11 +193,23 @@ const BookManagementPage = () => {
               onSubmit={handleSave}
               onUploadImage={handleUploadImage}
             />
-            <button className="close-btn" onClick={() => setShowModal(false)}>
-              Đóng
+            <button
+              className="close-btn"
+              onClick={() => setShowFormModal(false)}
+            >
+              Hủy
             </button>
           </div>
         </div>
+      )}
+
+      {/* Modal hiển thị chi tiết sách */}
+      {detailBook && (
+        <BookModal
+          book={detailBook}
+          isOpen={showDetailModal}
+          onClose={() => setShowDetailModal(false)}
+        />
       )}
     </div>
   );

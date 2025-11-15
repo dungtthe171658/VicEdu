@@ -6,6 +6,7 @@ import type { Category } from "../../types/category.d";
 import "./BookDetailPage.css";
 import { useCart } from "../../contexts/CartContext";
 
+// Kiểm tra category có dữ liệu đầy đủ
 const isCategoryPopulated = (
   category: string | Category
 ): category is Category => {
@@ -14,6 +15,7 @@ const isCategoryPopulated = (
   );
 };
 
+// Lấy src hiển thị cho ảnh, fallback nếu không có
 const getImageSrc = (img?: string) => {
   if (!img) return "/no-image.png";
   if (
@@ -32,20 +34,34 @@ const BookDetailPage = () => {
   const [sameCategoryBooks, setSameCategoryBooks] = useState<BookDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [added, setAdded] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const { addBookItem } = useCart();
+  const { addBookItem, books: cartBooks } = useCart();
 
+  const [purchasedBookIds, setPurchasedBookIds] = useState<Set<string>>(
+    new Set()
+  );
+
+  const isInCart = book
+    ? cartBooks.some((item) => item._id === book._id)
+    : false;
+  const hasPurchased = book ? purchasedBookIds.has(book._id) : false;
+  const pdfUrl = hasPurchased ? book?.pdf_url : null;
+
+  // --- Fetch chi tiết sách và sách cùng thể loại ---
   useEffect(() => {
     if (!id) return;
-    const fetchBook = async () => {
+
+    const fetchBookAndRelated = async () => {
       try {
         setLoading(true);
         setError(null);
+
+        // 1️⃣ Chi tiết sách
         const res = await bookApi.getById(id);
         const bookData: BookDto = res.data;
         setBook(bookData);
 
+        // 2️⃣ Sách cùng thể loại
         const categoryId =
           typeof bookData.category_id === "object"
             ? bookData.category_id._id
@@ -53,7 +69,7 @@ const BookDetailPage = () => {
 
         if (categoryId) {
           const catRes = await bookApi.getAll({ categoryId });
-          const books: BookDto[] = catRes.data;
+          const books: BookDto[] = catRes.data || [];
           setSameCategoryBooks(books.filter((b) => b._id !== id));
         } else {
           setSameCategoryBooks([]);
@@ -65,38 +81,39 @@ const BookDetailPage = () => {
         setLoading(false);
       }
     };
-    fetchBook();
+
+    fetchBookAndRelated();
   }, [id]);
 
-  const _handleAddToCartLegacy = () => {
-    if (!book || (book.stock ?? 0) <= 0) return;
-    const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-    const exists = cart.find((item: BookDto) => item._id === book._id);
-    if (!exists) {
-      cart.push(book);
-      localStorage.setItem("cart", JSON.stringify(cart));
-      setAdded(true);
-    } else {
-      alert("Sách này đã có trong giỏ hàng 🛒");
-    }
-  };
+  // --- Fetch sách đã mua của user (1 lần) ---
+  useEffect(() => {
+    const fetchPurchasedBooks = async () => {
+      try {
+        const res = await bookApi.getBookOrderAndOrderitem();
+        const books = res.data?.data || [];
+        const purchasedIds: string[] = books.map((b: any) => b._id);
+        setPurchasedBookIds(new Set(purchasedIds));
+      } catch (err) {
+        console.error("Cannot fetch purchased books:", err);
+        setPurchasedBookIds(new Set());
+      }
+    };
+    fetchPurchasedBooks();
+  }, []);
 
+  // --- Thêm sách vào giỏ ---
   const handleAddToCartByContext = () => {
-    if (!book || (book.stock ?? 0) <= 0) return;
+    if (!book || hasPurchased || isInCart) return;
     addBookItem({
       _id: book._id,
       title: book.title,
       price_cents: book.price_cents,
       images: Array.isArray(book.images) ? book.images : [],
-      stock: book.stock ?? 0,
-      quantity: 1,
     });
-    setAdded(true);
-    try {
-      alert(`Added "${book.title}" to cart!`);
-    } catch {}
+    alert(`Đã thêm "${book.title}" vào giỏ hàng!`);
   };
 
+  // --- Chuyển ảnh ---
   const handlePrevImage = () => {
     if (!book?.images || book.images.length === 0) return;
     setCurrentImageIndex((prev) =>
@@ -120,13 +137,9 @@ const BookDetailPage = () => {
     currency: "VND",
   });
 
-  // --- Fix TypeScript warning stock undefined ---
-  const stock = book.stock ?? 0;
-
   return (
     <div className="book-detail-page">
       <div className="book-detail-container">
-        {/* --- Ảnh chính + Carousel --- */}
         <div className="book-images">
           <button className="prev-btn" onClick={handlePrevImage}>
             ◀
@@ -154,7 +167,7 @@ const BookDetailPage = () => {
             ))}
           </div>
         )}
-        <br />
+
         <h1>{book.title}</h1>
         {book.author && <p className="author">{book.author}</p>}
 
@@ -165,35 +178,48 @@ const BookDetailPage = () => {
         )}
 
         {book.description && <p className="description">{book.description}</p>}
-
         <p className="price">{priceVND}</p>
 
         <button
-          className={`add-to-cart-btn ${added ? "added" : ""}`}
+          className={`add-to-cart-btn`}
           onClick={handleAddToCartByContext}
-          disabled={added || stock <= 0}
+          disabled={hasPurchased || isInCart}
         >
-          {added ? "Đã thêm vào giỏ hàng" : "🛒 Thêm vào giỏ hàng"}
+          {hasPurchased
+            ? "Bạn đã mua sách này"
+            : isInCart
+            ? "Đã có trong giỏ hàng"
+            : "Thêm vào giỏ hàng"}
         </button>
+
+        {hasPurchased && pdfUrl && (
+          <a
+            href={pdfUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="read-pdf-btn bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 mt-2 inline-block"
+          >
+            📖 Đọc sách
+          </a>
+        )}
       </div>
 
-      {/* --- Sidebar sách cùng thể loại --- */}
       <div className="book-same-category">
         <h3>Sách cùng thể loại</h3>
         {sameCategoryBooks.length > 0 ? (
           <ul>
-            {sameCategoryBooks.map((b) => (
-              <li
-                key={b._id}
-                className={(b.stock ?? 0) <= 0 ? "out-of-stock-item" : ""}
-              >
-                <img src={getImageSrc(b.images?.[0])} alt={b.title} />
-                <Link to={`/books/${b._id}`}>{b.title}</Link>
-                {(b.stock ?? 0) <= 0 && (
-                  <span className="out-of-stock-label">Hết hàng</span>
-                )}
-              </li>
-            ))}
+            {sameCategoryBooks.map((b) => {
+              const purchased = purchasedBookIds.has(b._id);
+              return (
+                <li key={b._id}>
+                  <img src={getImageSrc(b.images?.[0])} alt={b.title} />
+                  <Link to={`/books/${b._id}`}>{b.title}</Link>
+                  {purchased && (
+                    <span className="out-of-stock-label">Đã mua</span>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         ) : (
           <p>Không có sách nào cùng thể loại.</p>

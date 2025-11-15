@@ -219,7 +219,12 @@ export default function CartPage() {
         <div className="space-y-3 mb-6">
           {[
             { id: "momo", label: "Momo", icon: "📱", disabled: true },
-            { id: "vnpay", label: "VNPay (PayOS)", icon: "🏦", disabled: false },
+            {
+              id: "vnpay",
+              label: "VNPay (PayOS)",
+              icon: "🏦",
+              disabled: false,
+            },
             { id: "bank", label: "Chuyển khoản", icon: "💸", disabled: true },
           ].map((opt) => (
             <label
