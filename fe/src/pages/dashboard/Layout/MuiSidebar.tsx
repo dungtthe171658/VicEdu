@@ -51,14 +51,14 @@ const MuiSidebar: React.FC<SidebarProps> = ({
   const theme = useTheme();
 
   const items = [
-    { label: 'Dashboard', path: '/dashboard', icon: HomeIcon },
+    { label: 'Bảng điều khiển', path: '/dashboard', icon: HomeIcon },
     { label: 'Tài khoản', path: 'manage-users', icon: PeopleIcon },
     { label: 'Sách ', path: 'manage-books', icon: ArticleIcon },
     { label: 'Đơn hàng', path: 'manage-orders', icon: ShoppingCartIcon },
     { label: 'Khóa học', path: 'manage-courses', icon: ArticleIcon },
     { label: 'Danh mục', path: 'manage-categories', icon: CategoryIcon },
     { label: 'Đánh giá', path: 'manage-reviews', icon: ReviewsIcon },
-    { label: 'Pending edits', path: 'pending-edits', icon: ArticleIcon },
+    { label: 'Yêu cầu chỉnh sửa', path: 'pending-edits', icon: ArticleIcon },
 
   ] as const;
 

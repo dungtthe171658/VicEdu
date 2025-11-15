@@ -154,7 +154,7 @@ const AdminNavbar: React.FC<AdminNavbarProps> = ({
   const computedTitle = useMemo(() => {
     if (title) return title;
     const parts = location.pathname.split('/').filter(Boolean);
-    if (parts.length <= 1) return 'Admin Panel';
+    if (parts.length <= 1) return 'Bảng quản trị';
     const last = parts[parts.length - 1];
     return last.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
   }, [location.pathname, title]);
