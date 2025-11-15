@@ -1,0 +1,197 @@
+@startuml
+actor User
+participant "React UI" as Frontend
+participant "Express API" as Backend
+participant "GeminiService" as Gemini
+database "MongoDB" as DB
+
+== User Nhập Prompt Để Gợi Ý Khóa Học và Sách ==
+
+User -> Frontend: Nhập prompt vào chat widget\n(ví dụ: "Tôi muốn học lập trình Python")
+User -> Frontend: Click "Gửi"
+Frontend -> Backend: POST /chat/send\n(JWT + { message: "Tôi muốn học lập trình Python" })
+
+Backend -> Backend: authenticateToken
+Backend -> DB: Find user by ID
+DB --> Backend: Return user data (role, userId)
+
+Backend -> Gemini: getSystemData(userRole)
+Gemini -> DB: Find courses (is_published: true, limit: 20)
+Gemini -> DB: Find books (is_published: true, limit: 20)
+DB --> Gemini: Return public courses & books
+
+Gemini --> Backend: Return systemData
+
+Backend -> DB: Find or create ChatSession\n(userId, isActive: true)
+DB --> Backend: Return session
+
+Backend -> DB: Add user message to session
+DB --> Backend: Message saved
+
+Backend -> Gemini: generateResponse(message, context)\n(context includes systemData)
+Gemini -> Gemini: buildSystemPrompt(context)\n(includes courses, books data)
+Gemini -> Gemini: Call Gemini API\n(model: "gemini-2.0-flash")
+Gemini --> Backend: Return AI response with course/book suggestions\n(includes markdown links with slugs)
+
+Backend -> DB: Add AI response to session
+DB --> Backend: Session updated
+
+Backend --> Frontend: 200 OK + { userMessage, aiResponse }
+Frontend -> Frontend: normalizeInternalLinks(aiResponse.content)\n(convert ID links to slug links)
+Frontend --> User: Hiển thị AI response với gợi ý khóa học/sách\n(có thể click vào link để xem chi tiết)
+@enduml
+
+@startuml
+actor User
+participant "React UI" as Frontend
+participant "Express API" as Backend
+participant "SubtitleService" as Subtitle
+participant "GeminiService" as Gemini
+participant "Supabase" as Storage
+database "MongoDB" as DB
+
+== User Tạo Phụ Đề Tự Động ==
+
+User -> Frontend: Mở trang quản lý lesson
+User -> Frontend: Click nút "Tạo phụ đề tự động"
+Frontend -> Backend: POST /subtitles/:lessonId/auto-generate\n(JWT)
+
+Backend -> Backend: authenticateToken
+Backend -> DB: Find lesson by ID
+DB --> Backend: Return lesson data\n(playback_url, storage_provider, storage_path)
+
+alt lesson.storage_provider === 'supabase'
+    Backend -> Storage: Create signed URL\n(bucket, storage_path, expires: 10min)
+    Storage --> Backend: Return signedUrl
+    Backend -> Backend: Set mediaUrl = signedUrl
+else lesson has playback_url
+    Backend -> Backend: Set mediaUrl = playback_url
+end
+
+Backend -> Backend: Fetch media bytes from mediaUrl\n(using node-fetch or global fetch)
+Backend --> Backend: Return Buffer (video/audio bytes)
+
+Backend -> Gemini: transcribeAudioToText(buffer, mimeType, 'en')
+Gemini -> Gemini: Call Gemini API\n(model: "gemini-2.0-flash", audio input)
+Gemini --> Backend: Return transcribed text (English)
+
+Backend -> Gemini: translateText(sourceText, 'en', 'vi')
+Gemini -> Gemini: Call Gemini API for translation\n(English to Vietnamese)
+Gemini --> Backend: Return translated text (Vietnamese)
+
+Backend --> Frontend: 200 OK + {\n  sourceText, targetText,\n  sourceLang: 'en', targetLang: 'vi',\n  enText, viText\n}
+
+Frontend -> Frontend: Display subtitle generation result\n(Show Vietnamese subtitles)
+Frontend --> User: Hiển thị phụ đề tiếng Việt đã tạo\n(có thể chỉnh sửa và lưu)
+
+== User Lưu Phụ Đề ==
+
+User -> Frontend: Click "Lưu phụ đề"
+Frontend -> Backend: POST /subtitles/:lessonId/save\n(JWT + { enVtt, viVtt, cues })
+
+Backend -> Backend: authenticateToken
+Backend -> DB: Find or update Subtitle document\n(lesson_id: lessonId, upsert: true)
+DB --> Backend: Return saved subtitle
+
+Backend --> Frontend: 200 OK + saved subtitle
+Frontend --> User: Hiển thị thông báo "Lưu thành công"
+@enduml
+
+@startuml
+actor User
+participant "React UI" as Frontend
+participant "Express API" as Backend
+participant "VnPay/PayOS" as PaymentGateway
+database "MongoDB" as DB
+
+== User Tạo Đơn Hàng Thành Công Bằng Chuyển Khoản VnPay ==
+
+User -> Frontend: Thêm sản phẩm vào giỏ hàng\n(Course hoặc Book)
+User -> Frontend: Click "Thanh toán"
+Frontend -> Frontend: Hiển thị form thanh toán\n(Chọn phương thức: VnPay)
+User -> Frontend: Nhập thông tin\n(location, phone, fullName, email)
+User -> Frontend: Click "Xác nhận thanh toán"
+
+Frontend -> Backend: POST /payments/create-payment-link\n(JWT + {\n  location, phone, fullName, email,\n  items: [{ productId, productType, productPrice, quantity }]\n})
+
+Backend -> Backend: authenticateToken
+Backend -> Backend: Validate items array
+Backend -> Backend: Calculate totalAmount\n(sum of productPrice * quantity)
+
+Backend -> Backend: Generate order_code\n(timestamp)
+Backend -> DB: Create Order\n(status: "failed", payment_method: "payos")
+DB --> Backend: Return order
+
+Backend -> DB: Insert OrderItems\n(order_id, product_id, product_type, price_at_purchase, quantity)
+DB --> Backend: OrderItems saved
+
+Backend -> DB: Upsert Enrollments (pending)\n(for Course items, status: "pending")
+DB --> Backend: Enrollments created/updated
+
+Backend -> Backend: Sign return/cancel URLs\n(using HMAC-SHA256 with order_code + timestamp)
+Backend -> PaymentGateway: Create payment request\n(orderCode, amount, description, returnUrl, cancelUrl)
+PaymentGateway --> Backend: Return checkoutUrl
+
+Backend --> Frontend: 200 OK + { checkoutUrl }
+Frontend -> PaymentGateway: Redirect to checkoutUrl\n(User điền thông tin thanh toán VnPay)
+
+== Thanh Toán Thành Công ==
+
+User -> PaymentGateway: Hoàn tất thanh toán\n(Nhập thông tin chuyển khoản)
+PaymentGateway -> Backend: GET /payments/payos/return\n(orderId, orderCode, ts, sig)
+
+Backend -> Backend: Verify signature\n(verifySig(orderCode, ts, sig))
+Backend -> Backend: Redirect to FE immediately\n(/payment-success?orderId&orderCode)
+
+Backend -> Backend: [ASYNC] Update Order status\n(status: "pending", from: "returnUrl")
+Backend -> DB: Update Order\n(set status: "pending", meta.pending_set_at)
+DB --> Backend: Order updated
+
+Backend -> DB: Find OrderItems (product_type: "Book")
+DB --> Backend: Return book items
+
+alt Book items exist AND stock not deducted
+    Backend -> DB: Deduct book stock\n(BookModel.updateOne: $inc { stock: -quantity })
+    DB --> Backend: Stock deducted
+    Backend -> DB: Mark stock_deducted in Order meta
+    DB --> Backend: Meta updated
+end
+
+Backend -> DB: Find OrderItems (product_type: "Course")
+DB --> Backend: Return course items
+
+alt Course items exist
+    Backend -> DB: Activate Enrollments\n(EnrollmentModel.updateOne:\n  status: "active",\n  activated_at: now(),\n  order_id: orderId)
+    DB --> Backend: Enrollments activated
+    Backend -> DB: Mark activation in Order meta
+    DB --> Backend: Meta updated
+end
+
+Frontend --> User: Hiển thị trang "Thanh toán thành công"\n(Hiển thị thông tin đơn hàng)
+
+== Webhook Xác Nhận (Nguồn Chân Lý) ==
+
+PaymentGateway -> Backend: POST /payments/payos/webhook\n(Webhook payload with orderCode)
+
+Backend -> Backend: Verify webhook signature\n(payos.webhooks.verify(payload))
+Backend -> DB: Find Order by order_code
+DB --> Backend: Return order
+
+alt Order status !== "completed"
+    Backend -> DB: Update Order\n(status: "completed",\n paid_at: now(),\n gateway_txn_id: transactionId)
+    DB --> Backend: Order updated
+    
+    alt Book items exist AND stock not deducted
+        Backend -> DB: Deduct book stock\n(BookModel.updateOne: $inc { stock: -quantity })
+        DB --> Backend: Stock deducted
+        Backend -> DB: Mark stock_deducted in Order meta
+        DB --> Backend: Meta updated
+    end
+    
+    Backend -> DB: Re-assert Enrollments active\n(EnrollmentModel.updateOne:\n  status: "active",\n  activated_at: paid_at)
+    DB --> Backend: Enrollments confirmed active
+end
+
+Backend --> PaymentGateway: 200 OK + { ok: true }
+@enduml
+

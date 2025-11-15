@@ -41,6 +41,8 @@ const quizApi = {
     },
     get: (id: string): Promise<Quiz> =>
         axios.get(`/quizzes/${id}`),
+    getByLesson: (lessonId: string): Promise<Quiz> =>
+        axios.get(`/quizzes/by-lesson/${lessonId}`),
     start(quizId: string): Promise<QuizStartResponse> {
         return axios.post(`/quizzes/${quizId}/start`);
     },

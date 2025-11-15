@@ -219,6 +219,32 @@ export const startQuiz = async (req: Request, res: Response) => {
 
 export const getQuizz = async (req: Request, res: Response) => {
   try {
+    // Check if this is called from /by-lesson/:lessonId route
+    const lessonId = (req.params as any).lessonId;
+    if (lessonId) {
+      // Get first quiz for this lesson (or all quizzes)
+      const quizzes = await Quiz.find({ lesson_id: lessonId }).sort({ createdAt: -1 });
+      if (quizzes.length === 0) {
+        return res.status(404).json({ message: "No quiz found for this lesson" });
+      }
+      // Return first quiz (most recent)
+      const quiz = quizzes[0];
+      const quizForClient = {
+        _id: quiz._id,
+        title: quiz.title,
+        lesson_id: quiz.lesson_id,
+        duration_seconds: quiz.duration_seconds ?? 300,
+        questions: quiz.questions.map((q) => ({
+          question_text: q.question_text,
+          question_image: (q as any).question_image,
+          images: (q as any).images,
+          options: q.options,
+        })),
+      };
+      return res.json(quizForClient);
+    }
+
+    // Otherwise, treat as quizId
     const { quizId } = req.params;
     const quiz = await Quiz.findById(quizId);
 
