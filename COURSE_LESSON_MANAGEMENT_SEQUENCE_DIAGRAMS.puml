@@ -1,0 +1,492 @@
+@startuml
+actor Admin
+actor Teacher
+participant "React UI" as Frontend
+participant "Express API" as Backend
+database "MongoDB" as DB
+participant "Supabase Storage" as Supabase
+
+== Admin/Teacher Creates Course ==
+
+Admin -> Frontend: Fill course form (title, description, price, category, thumbnail)
+Teacher -> Frontend: Fill course form (title, description, category, thumbnail)
+Admin -> Frontend: Select teacher_ids (optional)
+Admin -> Frontend: Click "Submit" / "Save"
+Teacher -> Frontend: Click "Submit" / "Save"
+Frontend -> Backend: POST /courses (JWT + course data)
+Backend -> Backend: authenticateToken
+Backend -> Backend: checkRole (admin/teacher)
+Backend -> Backend: Validate input (title required)
+Backend -> Backend: Generate slug from title
+Backend -> DB: Insert course document\n(status='approved', is_published=false)
+DB --> Backend: Return course document
+Backend -> DB: Create EditHistory entry\n(status='applied')
+DB --> Backend: Return history saved
+Backend --> Frontend: 201 Created + course info
+Frontend --> Admin: Show success message\nRefresh course list
+Frontend --> Teacher: Show success message\nRefresh course list
+
+@enduml
+
+@startuml
+actor Admin
+actor Teacher
+participant "React UI" as Frontend
+participant "Express API" as Backend
+database "MongoDB" as DB
+
+== Admin/Teacher Edits Course ==
+
+Admin -> Frontend: Open course edit form
+Teacher -> Frontend: Open course edit form
+Frontend -> Backend: GET /courses/id/:id (JWT)
+Backend -> Backend: authenticateToken
+Backend -> DB: Find course by ID
+DB --> Backend: Return course data
+Backend --> Frontend: 200 OK + course data
+Frontend --> Admin: Display form with course data
+Frontend --> Teacher: Display form with course data
+
+Admin -> Frontend: Modify course fields\n(title, description, price, category, thumbnail)
+Teacher -> Frontend: Modify course fields\n(title, description, category, thumbnail)
+Admin -> Frontend: Click "Save"
+Teacher -> Frontend: Click "Save"
+Frontend -> Backend: PUT /courses/:id (JWT + updated data)
+Backend -> Backend: authenticateToken
+Backend -> Backend: checkRole (admin/teacher)
+Backend -> DB: Find course by ID
+DB --> Backend: Return course data
+Backend -> Backend: Check ownership (if teacher)
+Backend -> Backend: Check is_published status
+Backend -> Backend: Apply updates\n(Admin: all fields)\n(Teacher: non-pricing if published)
+Backend -> DB: Update course document
+DB --> Backend: Return updated course
+Backend -> DB: Create EditHistory entry\n(status='applied')
+DB --> Backend: Return history saved
+Backend --> Frontend: 200 OK + updated course
+Frontend --> Admin: Show success\nRefresh course data
+Frontend --> Teacher: Show success\nRefresh course data
+
+@enduml
+
+@startuml
+actor Admin
+actor Teacher
+participant "React UI" as Frontend
+participant "Express API" as Backend
+database "MongoDB" as DB
+participant "Supabase Storage" as Supabase
+
+== Admin/Teacher Adds Lesson ==
+
+Admin -> Frontend: Navigate to course detail page
+Teacher -> Frontend: Navigate to course detail page
+Frontend -> Backend: GET /courses/id/:courseId (JWT)
+Backend -> Backend: authenticateToken
+Backend -> DB: Find course by ID
+DB --> Backend: Return course data
+Backend --> Frontend: 200 OK + course data
+Frontend --> Admin: Display LessonManager component
+Frontend --> Teacher: Display LessonManager component
+
+Admin -> Frontend: Enter lesson title
+Teacher -> Frontend: Enter lesson title
+Admin -> Frontend: Enter description (optional)
+Teacher -> Frontend: Enter description (optional)
+Admin -> Frontend: Select video file
+Teacher -> Frontend: Select video file
+Admin -> Frontend: Click "Tạo bài học"
+Teacher -> Frontend: Click "Tạo bài học"
+Frontend -> Backend: POST /upload/supabase-signed-upload\n(courseId, filename, contentType)
+Backend -> Backend: authenticateToken
+Backend -> Backend: Generate signed upload URL
+Backend --> Frontend: 200 OK + signed URL (path, token, bucket)
+Frontend -> Supabase: Upload video using signed URL
+Supabase --> Frontend: Upload success
+Frontend -> Supabase: Get public URL for video
+Supabase --> Frontend: Return public URL
+Frontend -> Backend: POST /lesson/courses/:courseId/lessons\n(JWT + lesson data + video_url)
+Backend -> Backend: authenticateToken
+Backend -> Backend: checkRole (admin/teacher)
+Backend -> DB: Find course by ID
+DB --> Backend: Return course data
+Backend -> Backend: Calculate position\n(lessons.length + 1)
+Backend -> DB: Insert lesson document\n(title, video_url, description, position, course_id)
+DB --> Backend: Return lesson document
+Backend -> DB: Update course.lessons array\n(push new lesson_id)
+DB --> Backend: Return course updated
+Backend -> DB: Create EditHistory entry\n(status='applied')
+DB --> Backend: Return history saved
+Backend --> Frontend: 201 Created + lesson info
+Frontend --> Admin: Show lesson in list\nClear form
+Frontend --> Teacher: Show lesson in list\nClear form
+
+@enduml
+
+@startuml
+actor Admin
+actor Teacher
+participant "React UI" as Frontend
+participant "Express API" as Backend
+database "MongoDB" as DB
+participant "Supabase Storage" as Supabase
+
+== Admin/Teacher Edits Lesson ==
+
+Admin -> Frontend: Navigate to lesson detail page
+Teacher -> Frontend: Navigate to lesson detail page
+Frontend -> Backend: GET /lesson/:lessonId (JWT)
+Backend -> Backend: authenticateToken
+Backend -> DB: Find lesson by ID
+DB --> Backend: Return lesson data
+Backend --> Frontend: 200 OK + lesson data
+Frontend --> Admin: Display lesson edit form
+Frontend --> Teacher: Display lesson edit form
+
+Admin -> Frontend: Modify title
+Teacher -> Frontend: Modify title
+Admin -> Frontend: Modify description (optional)
+Teacher -> Frontend: Modify description (optional)
+Admin -> Frontend: Select new video file (optional)
+Teacher -> Frontend: Select new video file (optional)
+Admin -> Frontend: Click "Lưu"
+Teacher -> Frontend: Click "Lưu"
+
+alt New video file selected
+    Frontend -> Backend: POST /upload/supabase-signed-upload\n(courseId, filename, contentType)
+    Backend -> Backend: authenticateToken
+    Backend -> Backend: Generate signed upload URL
+    Backend --> Frontend: 200 OK + signed URL
+    Frontend -> Supabase: Upload video using signed URL
+    Supabase --> Frontend: Upload success
+    Frontend -> Supabase: Get public URL for video
+    Supabase --> Frontend: Return public URL
+end
+
+Frontend -> Backend: PUT /lesson/:lessonId\n(JWT + updated data + video_url if changed)
+Backend -> Backend: authenticateToken
+Backend -> Backend: checkRole (admin/teacher)
+Backend -> DB: Find lesson by ID
+DB --> Backend: Return lesson data
+Backend -> Backend: Build update payload\n(title, description, video_url if provided)
+Backend -> DB: Update lesson document
+DB --> Backend: Return updated lesson
+Backend -> DB: Create EditHistory entry\n(status='applied')
+DB --> Backend: Return history saved
+Backend --> Frontend: 200 OK + updated lesson
+Frontend --> Admin: Show success\nRefresh lesson data
+Frontend --> Teacher: Show success\nRefresh lesson data
+
+@enduml
+
+@startuml
+actor User
+participant "React UI" as Frontend
+participant "Express API" as Backend
+database "MongoDB" as DB
+
+== User Views Course by Slug ==
+
+User -> Frontend: Navigate to /courses/:slug
+Frontend -> Backend: GET /courses/:slug\n(no JWT required - public endpoint)
+Backend -> DB: Find course by slug\nwhere is_published=true
+DB --> Backend: Return course document
+Backend -> DB: Populate teacher\n(full_name, avatar)
+Backend -> DB: Populate category\n(name, slug)
+DB --> Backend: Return populated course data
+Backend -> Backend: Build teacherNames array
+Backend --> Frontend: 200 OK + course data\n(title, description, price, thumbnail,\nteacher, category, etc.)
+Frontend --> User: Display course detail page\n(title, description, price, thumbnail,\nteacher info, category)
+
+alt User is logged in
+    Frontend -> Backend: GET /enrollments/my/course-ids\n(JWT token)
+    Backend -> Backend: authenticateToken
+    Backend -> DB: Find enrollments by user_id
+    DB --> Backend: Return enrolled course IDs
+    Backend --> Frontend: 200 OK + Set of course IDs
+    Frontend -> Frontend: Check if course._id in enrolled IDs
+    Frontend --> User: Show "Enrolled" badge\nor "Enroll Now" button
+end
+
+Frontend -> Backend: GET /lesson/courses/:courseId/lessons\n(optional JWT)
+Backend -> DB: Find lessons by course_id
+DB --> Backend: Return lessons array
+Backend --> Frontend: 200 OK + lessons list
+Frontend --> User: Display lessons list\n(lesson titles, descriptions)
+
+Frontend -> Backend: GET /reviews/courses/:courseId\n(no JWT required)
+Backend -> DB: Find reviews by course_id
+DB --> Backend: Return reviews array
+Backend --> Frontend: 200 OK + reviews data
+Frontend -> Backend: GET /reviews/courses/:courseId/summary\n(no JWT required)
+Backend -> DB: Calculate review summary\n(count, average, breakdown)
+DB --> Backend: Return summary data
+Backend --> Frontend: 200 OK + review summary
+Frontend --> User: Display reviews section\n(ratings, comments, summary)
+
+alt User is enrolled and selects lesson
+    User -> Frontend: Click on lesson
+    Frontend -> Backend: GET /lesson/:lessonId/playback\n(JWT token)
+    Backend -> Backend: authenticateToken
+    Backend -> Backend: Verify enrollment
+    Backend -> DB: Find lesson by ID
+    DB --> Backend: Return lesson data
+    Backend -> Backend: Generate playback URL\n(if video stored in cloud)
+    Backend --> Frontend: 200 OK + playbackUrl
+    Frontend --> User: Display video player\nwith playback URL
+    
+    Frontend -> Backend: GET /subtitle/:lessonId\n(optional JWT)
+    Backend -> DB: Find subtitle by lesson_id
+    DB --> Backend: Return subtitle cues
+    Backend --> Frontend: 200 OK + subtitle data
+    Frontend --> User: Display bilingual subtitles\n(if available)
+    
+    Frontend -> Backend: GET /comments/lesson/:lessonId\n(optional JWT)
+    Backend -> DB: Find comments by lesson_id
+    DB --> Backend: Return discussion threads
+    Backend --> Frontend: 200 OK + threads data
+    Frontend --> User: Display Q&A section\n(discussion threads)
+end
+
+@enduml
+
+@startuml
+actor Admin
+participant "React UI" as Frontend
+participant "Express API" as Backend
+database "MongoDB" as DB
+
+== Admin Publishes Course ==
+
+Admin -> Frontend: Navigate to course management page
+Frontend -> Backend: GET /courses/admin/all (JWT)
+Backend -> Backend: authenticateToken
+Backend -> Backend: checkRole (admin)
+Backend -> DB: Find all courses
+DB --> Backend: Return courses list
+Backend --> Frontend: 200 OK + courses data
+Frontend --> Admin: Display courses list
+
+Admin -> Frontend: Click "Publish" button on course
+Frontend -> Backend: POST /courses/:id/approve-publish (JWT)
+Backend -> Backend: authenticateToken
+Backend -> Backend: checkRole (admin)
+Backend -> DB: Find course by ID
+DB --> Backend: Return course document
+Backend -> DB: Update course\n(is_published=true,\npublished_at=now,\nstatus='approved')\nClear publish_requested_at,\npublish_requested_by
+DB --> Backend: Return updated course
+Backend --> Frontend: 200 OK + updated course
+Frontend --> Admin: Show success message\nRefresh course list\nCourse is now published
+
+@enduml
+
+@startuml
+actor Teacher
+participant "React UI" as Frontend
+participant "Express API" as Backend
+database "MongoDB" as DB
+participant "Email Service" as Email
+
+== Teacher Requests to Publish Course ==
+
+Teacher -> Frontend: Navigate to course management page
+Frontend -> Backend: GET /courses/teacher/all (JWT)
+Backend -> Backend: authenticateToken
+Backend -> Backend: checkRole (teacher)
+Backend -> DB: Find courses by teacher_id
+DB --> Backend: Return teacher's courses
+Backend --> Frontend: 200 OK + courses data
+Frontend --> Teacher: Display courses list
+
+Teacher -> Frontend: Click "Request Publish" button
+Frontend -> Backend: POST /courses/:id/request-publish (JWT)
+Backend -> Backend: authenticateToken
+Backend -> Backend: checkRole (teacher/admin)
+Backend -> DB: Find course by ID
+DB --> Backend: Return course document
+Backend -> Backend: Check ownership\n(teacher owns course?)
+Backend -> Backend: Check is_published\n(must be false)
+Backend -> DB: Update course\n(publish_requested_at=now,\npublish_requested_by=user_id,\nstatus='pending')
+DB --> Backend: Return updated course
+Backend -> DB: Find all admin users
+DB --> Backend: Return admin users list
+Backend -> Email: Send email notification\nto all admins\n(subject: Publish request,\nlink to review course)
+Email --> Backend: Email sent
+Backend --> Frontend: 200 OK + success message
+Frontend --> Teacher: Show "Request submitted"\nmessage\nCourse status: Pending
+
+note right of Backend
+  Admin will receive email
+  notification to review
+  the publish request
+end note
+
+@enduml
+
+@startuml
+actor Admin
+participant "React UI" as Frontend
+participant "Express API" as Backend
+database "MongoDB" as DB
+
+== Admin Deletes Course ==
+
+Admin -> Frontend: Navigate to course management page
+Frontend -> Backend: GET /courses/admin/all (JWT)
+Backend -> Backend: authenticateToken
+Backend -> Backend: checkRole (admin)
+Backend -> DB: Find all courses
+DB --> Backend: Return courses list
+Backend --> Frontend: 200 OK + courses data
+Frontend --> Admin: Display courses list
+
+Admin -> Frontend: Click "Delete" button on course
+Frontend -> Frontend: Show confirmation dialog
+Admin -> Frontend: Confirm deletion
+Frontend -> Backend: DELETE /courses/:id (JWT)
+Backend -> Backend: authenticateToken
+Backend -> Backend: checkRole (admin)
+Backend -> DB: Find course by ID
+DB --> Backend: Return course document
+Backend -> DB: Delete all lessons\nwhere course_id = course._id
+DB --> Backend: Return delete result
+Backend -> DB: Delete course document
+DB --> Backend: Return delete result
+Backend --> Frontend: 200 OK + success message
+Frontend --> Admin: Show "Course deleted"\nmessage\nRefresh course list
+
+note right of Backend
+  All lessons associated
+  with the course are
+  also deleted
+end note
+
+@enduml
+
+@startuml
+actor Teacher
+participant "React UI" as Frontend
+participant "Express API" as Backend
+database "MongoDB" as DB
+actor Admin
+
+== Teacher Requests to Delete Course ==
+
+Teacher -> Frontend: Navigate to course management page
+Frontend -> Backend: GET /courses/teacher/all (JWT)
+Backend -> Backend: authenticateToken
+Backend -> Backend: checkRole (teacher)
+Backend -> DB: Find courses by teacher_id
+DB --> Backend: Return teacher's courses
+Backend --> Frontend: 200 OK + courses data
+Frontend --> Teacher: Display courses list
+
+Teacher -> Frontend: Click "Delete" button on course
+Frontend -> Frontend: Show confirmation dialog\n"Yêu cầu sẽ được gửi đến admin để phê duyệt"
+Teacher -> Frontend: Confirm deletion request
+Frontend -> Backend: POST /courses/:id/request-delete (JWT)
+Backend -> Backend: authenticateToken
+Backend -> Backend: checkRole (teacher/admin)
+Backend -> DB: Find course by ID
+DB --> Backend: Return course document
+Backend -> Backend: Check ownership\n(teacher owns course?)
+Backend -> DB: Check existing pending\ndelete request
+DB --> Backend: Return pending status
+alt Pending delete request already exists
+    Backend --> Frontend: 400 Bad Request\n"Đã có yêu cầu xóa đang chờ phê duyệt"
+    Frontend --> Teacher: Show error message
+else No pending request
+    Backend -> DB: Update course\n(draft.__action='delete',\nhas_pending_changes=true,\npending_by=user_id,\npending_at=now)
+    DB --> Backend: Return updated course
+    Backend -> DB: Create EditHistory entry\n(target_type='course',\nstatus='pending',\nchanges.deleted: false->true)
+    DB --> Backend: Return history saved
+    Backend --> Frontend: 200 OK + success message
+    Frontend --> Teacher: Show "Yêu cầu xóa đã được gửi.\nVui lòng chờ admin phê duyệt"
+    Frontend --> Teacher: Course status: Pending deletion
+end
+
+note right of Backend
+  Admin needs to approve
+  via POST /courses/:id/approve-changes
+  which will delete course
+  and all its lessons
+end note
+
+== Admin Approves Delete Request ==
+
+Admin -> Frontend: Navigate to pending edits page
+Frontend -> Backend: GET /courses/admin/pending (JWT)
+Backend -> Backend: authenticateToken
+Backend -> Backend: checkRole (admin)
+Backend -> DB: Find courses with\nhas_pending_changes=true
+DB --> Backend: Return pending courses
+Backend --> Frontend: 200 OK + pending courses
+Frontend --> Admin: Display pending delete requests
+
+Admin -> Frontend: Click "Approve" on delete request
+Frontend -> Backend: POST /courses/:id/approve-changes (JWT)
+Backend -> Backend: authenticateToken
+Backend -> Backend: checkRole (admin)
+Backend -> DB: Find course by ID
+DB --> Backend: Return course document
+Backend -> Backend: Check draft.__action === 'delete'
+Backend -> DB: Delete all lessons\nwhere course_id = course._id
+DB --> Backend: Return delete result
+Backend -> DB: Delete course document
+DB --> Backend: Return delete result
+Backend -> DB: Update EditHistory\n(status='approved',\napproved_by=admin_id,\napproved_at=now)
+DB --> Backend: Return history updated
+Backend --> Frontend: 200 OK + success message
+Frontend --> Admin: Show "Delete approved"\nmessage\nRefresh pending list
+
+@enduml
+
+@startuml
+actor Teacher
+participant "React UI" as Frontend
+participant "Express API" as Backend
+database "MongoDB" as DB
+
+== Teacher Edits Course ==
+
+Teacher -> Frontend: Open course edit form
+Frontend -> Backend: GET /courses/id/:id (JWT)
+Backend -> Backend: authenticateToken
+Backend -> DB: Find course by ID
+DB --> Backend: Return course data
+Backend --> Frontend: 200 OK + course data
+Frontend --> Teacher: Display form with course data
+
+Teacher -> Frontend: Modify course fields\n(title, description, category, thumbnail, price*)
+Teacher -> Frontend: Click "Save"
+Frontend -> Backend: PUT /courses/:id (JWT + updated data)
+
+Backend -> Backend: authenticateToken
+Backend -> Backend: checkRole (teacher)
+Backend -> DB: Find course by ID
+DB --> Backend: Return course data
+
+Backend -> Backend: Check ownership\n(teacher owns this course?)
+Backend -> Backend: Check is_published status
+
+alt Course is NOT published
+    Backend -> Backend: Apply updates directly\n(all fields allowed:\ntitle, description, thumbnail,\ncategory, price, is_published)
+else Course IS published
+    Backend -> Backend: Apply updates directly\n(all fields allowed:\ntitle, description, thumbnail,\ncategory, price, is_published)
+    note right of Backend
+      Price can be edited
+      even when course is published
+    end note
+end
+
+Backend -> DB: Update course document
+DB --> Backend: Return updated course
+
+Backend -> DB: Create EditHistory entry\n(status='applied')
+DB --> Backend: Return history saved
+
+Backend --> Frontend: 200 OK + updated course
+Frontend --> Teacher: Show success\nRefresh course data
+
+@enduml
+

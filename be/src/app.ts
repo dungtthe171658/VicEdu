@@ -6,7 +6,7 @@ import bodyParser from "body-parser";
 
 import courseRoutes from "./routes/course.route";
 import bookRoutes from "./routes/book.route";
-import categoryRoutes from "./routes/category.routes";
+import categoryRoutes from "./routes/category.route";
 import authRoutes from "./routes/auth.route";
 import userRoutes from "./routes/user.route";
 import orderRoutes from "./routes/order.route";
