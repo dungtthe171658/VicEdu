@@ -58,7 +58,6 @@ const QuizPage: React.FC = () => {
                 initialDurationRef.current = data.duration_seconds || 300;
                 setTimeLeft(initialDurationRef.current);
 
-                // Nếu BE trả về attempt (đang làm dở)
                 if (data.completed) {
                     setResult({
                         correct: data.progress?.correct || 0,
@@ -256,7 +255,6 @@ const QuizPage: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* progress */}
                     {quiz && hasStarted && (
                         <div className="mt-1">
                             {(() => {
@@ -337,7 +335,6 @@ const QuizPage: React.FC = () => {
                                 </div>
                             )}
 
-                            {/* options */}
                             <div className="space-y-2">
                                 {quiz.questions[currentIndex].options.map(
                                     (opt: string, idx: number) => {
@@ -368,7 +365,6 @@ const QuizPage: React.FC = () => {
                                 )}
                             </div>
 
-                            {/* navigation */}
                             <div className="flex justify-between mt-6">
                                 <button
                                     onClick={() => setCurrentIndex((p) => Math.max(0, p - 1))}
