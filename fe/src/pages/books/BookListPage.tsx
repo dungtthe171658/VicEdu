@@ -65,99 +65,95 @@ const BookListPage = () => {
   }, [books, priceRange, inStockOnly, searchText]);
 
   return (
-    <div className="flex mt-6 gap-6">
-      {/* ---------- Sidebar lọc ---------- */}
-      <div className="w-64 p-4 bg-white rounded-lg shadow space-y-6">
-        <h2 className="text-lg font-semibold">Bộ lọc</h2>
+    <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-4 gap-6">
+  {/* ---------- Sidebar lọc ---------- */}
+  <aside className="lg:col-span-1 border border-gray-200 rounded-xl p-5 bg-white h-fit space-y-6">
+    <h2 className="text-lg font-semibold">Bộ lọc</h2>
 
-        {/* Search */}
-        <div>
-          <label className="block mb-1 font-medium">Tìm kiếm</label>
-          <input
-            type="text"
-            placeholder="Tên sách hoặc tác giả..."
-            className="w-full border rounded px-3 py-2"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-          />
-        </div>
+    {/* Search */}
+    <div>
+      <label className="block text-sm font-medium mb-2 text-gray-700">Tìm kiếm</label>
+      <input
+        type="text"
+        placeholder="Tên sách hoặc tác giả..."
+        className="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring focus:ring-blue-100"
+        value={searchText}
+        onChange={(e) => setSearchText(e.target.value)}
+      />
+    </div>
 
-        {/* Thể loại */}
-        <div>
-          <label className="block mb-1 font-medium">Thể loại</label>
-          <select
-            className="w-full border rounded px-3 py-2"
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-          >
-            <option value="">Tất cả</option>
-            {loadingCategories
-              ? <option disabled>Đang tải...</option>
-              : categories.length === 0
-              ? <option disabled>Không có thể loại</option>
-              : categories.map((cat) => (
-                  <option key={cat._id} value={cat._id}>{cat.name}</option>
-                ))
-            }
-          </select>
-        </div>
+    {/* Thể loại */}
+    <div>
+      <label className="block text-sm font-medium mb-2 text-gray-700">Thể loại</label>
+      <select
+        className="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring focus:ring-blue-100"
+        value={selectedCategory}
+        onChange={(e) => setSelectedCategory(e.target.value)}
+      >
+        <option value="">Tất cả</option>
+        {loadingCategories
+          ? <option disabled>Đang tải...</option>
+          : categories.length === 0
+          ? <option disabled>Không có thể loại</option>
+          : categories.map((cat) => (
+              <option key={cat._id} value={cat._id}>{cat.name}</option>
+            ))
+        }
+      </select>
+    </div>
 
-        {/* Giá */}
-        <div>
-          <label className="block mb-1 font-medium">Giá (VND)</label>
-          <div className="flex items-center gap-2">
-            <span>{priceRange[0].toLocaleString()}₫</span>
-            <input
-              type="range"
-              min={0}
-              max={1000000}
-              step={10000}
-              value={priceRange[0]}
-              onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
-              className="flex-1"
-            />
-          </div>
-          <div className="flex items-center gap-2 mt-1">
-            <span>{priceRange[1].toLocaleString()}₫</span>
-            <input
-              type="range"
-              min={0}
-              max={1000000}
-              step={10000}
-              value={priceRange[1]}
-              onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
-              className="flex-1"
-            />
-          </div>
-        </div>
-
-        {/* Còn hàng */}
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="inStock"
-            checked={inStockOnly}
-            onChange={(e) => setInStockOnly(e.target.checked)}
-          />
-          <label htmlFor="inStock" className="font-medium">Chỉ còn hàng</label>
-        </div>
-      </div>
-
-      {/* ---------- Danh sách sách ---------- */}
-      <div className="flex-1 grid grid-cols-5 gap-6">
-        {loadingBooks ? (
-          <div className="col-span-4 flex justify-center items-center h-64">
-            <div className="animate-spin border-4 border-blue-500 border-t-transparent rounded-full w-12 h-12"></div>
-          </div>
-        ) : filteredBooks.length === 0 ? (
-          <div className="col-span-4 text-center text-gray-500">
-            Không có sách nào để hiển thị 📚
-          </div>
-        ) : (
-          filteredBooks.map((book) => <BookCard key={book._id} book={book} />)
-        )}
+    {/* Giá */}
+    <div>
+      <label className="block text-sm font-medium mb-2 text-gray-700">
+        Giá tối đa: <span className="text-blue-600 font-semibold">{priceRange[1].toLocaleString()}₫</span>
+      </label>
+      <input
+        type="range"
+        min={0}
+        max={1000000}
+        step={10000}
+        value={priceRange[1]}
+        onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
+        className="w-full accent-blue-600 cursor-pointer"
+      />
+      <div className="flex justify-between text-xs text-gray-500 mt-1">
+        <span>0₫</span>
+        <span>1.000.000₫</span>
       </div>
     </div>
+
+    {/* Còn hàng */}
+    <div className="flex items-center gap-2">
+      <input
+        type="checkbox"
+        id="inStock"
+        checked={inStockOnly}
+        onChange={(e) => setInStockOnly(e.target.checked)}
+        className="accent-blue-600"
+      />
+      <label htmlFor="inStock" className="font-medium text-gray-700">Chỉ còn hàng</label>
+    </div>
+  </aside>
+
+  {/* ---------- Danh sách sách ---------- */}
+  <main className="lg:col-span-3">
+    {loadingBooks ? (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="animate-pulse h-48 bg-gray-200 rounded-lg"></div>
+        ))}
+      </div>
+    ) : filteredBooks.length === 0 ? (
+      <p className="text-gray-500 mt-4">Không có sách nào để hiển thị 📚</p>
+    ) : (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {filteredBooks.map((book) => (
+          <BookCard key={book._id} book={book} />
+        ))}
+      </div>
+    )}
+  </main>
+</div>
   );
 };
 
