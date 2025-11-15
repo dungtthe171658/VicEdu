@@ -208,9 +208,11 @@ const AppRoutes: React.FC = () => {
                 <Route path="manage-courses" element={<ManageCoursesTeacherPage/>}/>
                 <Route path="manage-courses/:courseId" element={<CourseManageDetailTeacher/>}/>
                 <Route path="manage-courses/:courseId/lessons/:lessonId" element={<LessonManageDetailTeacher/>}/>
+                <Route path="manage-courses/:courseId/lessons/:lessonId/quizzes" element={<QuizzManage />}/>
                 <Route path="manage-students" element={<ManageStudentsPage/>}/>
                 <Route path="manage-comments" element={<ManageCommentTeacherPages/>}/>
                 <Route path="pending-edits" element={<PendingEditsTeacher/>}/>
+          
             </Route>
 
 
