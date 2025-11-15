@@ -337,6 +337,13 @@ export const updateCourse = async (req: AuthRequest, res: Response) => {
         if (body.is_published !== undefined) {
           direct.is_published = Boolean(body.is_published);
         }
+        // Allow teacher to edit price (both published and not published)
+        if (body.price !== undefined) {
+          direct.price = Number(body.price);
+        } else if (body.price_cents !== undefined) {
+          // Convert cents-like to basic unit
+          direct.price = Number(body.price_cents) / 100;
+        }
         const prev = await CourseModel.findById(id).lean();
         const updated = await CourseModel.findByIdAndUpdate(id, { $set: direct }, { new: true, runValidators: true });
         if (!updated) return res.status(404).json({ message: 'Course not found' });
@@ -364,6 +371,13 @@ export const updateCourse = async (req: AuthRequest, res: Response) => {
       // Allow teacher to toggle is_published (hide/show course)
       if (body.is_published !== undefined) {
         setDirect.is_published = Boolean(body.is_published);
+      }
+      // Allow teacher to edit price (both published and not published)
+      if (body.price !== undefined) {
+        setDirect.price = Number(body.price);
+      } else if (body.price_cents !== undefined) {
+        // Convert cents-like to basic unit
+        setDirect.price = Number(body.price_cents) / 100;
       }
 
       const prevDoc = await CourseModel.findById(id).lean();

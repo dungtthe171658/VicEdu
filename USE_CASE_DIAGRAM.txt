@@ -1,0 +1,656 @@
+================================================================================
+                    USE CASE DIAGRAM - HỆ THỐNG VICEDU
+================================================================================
+
+I. TỔNG QUAN
+--------------------------------------------------------------------------------
+Use Case Diagram mô tả các chức năng mà hệ thống VicEdu cung cấp cho từng 
+loại người dùng (Actor) và mối quan hệ giữa các use case.
+
+================================================================================
+
+II. CÁC ACTORS (NGƯỜI DÙNG)
+================================================================================
+
+1. CUSTOMER (Học viên)
+   - Mô tả: Người dùng đăng ký tài khoản để học các khóa học
+   - Vai trò: Mặc định khi đăng ký tài khoản mới
+   - Quyền hạn: Xem khóa học, đăng ký khóa học, học bài, làm quiz, đánh giá
+
+2. TEACHER (Giáo viên)
+   - Mô tả: Người tạo và quản lý khóa học, bài học
+   - Vai trò: Được admin phân quyền hoặc đăng ký với vai trò teacher
+   - Quyền hạn: Tạo/sửa khóa học, quản lý bài học, xem học viên, duyệt chỉnh sửa
+
+3. ADMIN (Quản trị viên)
+   - Mô tả: Người quản lý toàn bộ hệ thống
+   - Vai trò: Quyền cao nhất trong hệ thống
+   - Quyền hạn: Quản lý tất cả tài nguyên, duyệt chỉnh sửa, quản lý người dùng
+
+4. GUEST (Khách)
+   - Mô tả: Người dùng chưa đăng nhập
+   - Quyền hạn: Chỉ xem thông tin công khai (danh sách khóa học, chi tiết khóa học)
+
+================================================================================
+
+III. USE CASES THEO ACTOR
+================================================================================
+
+A. USE CASES CHO GUEST (Khách)
+--------------------------------------------------------------------------------
+
+UC-G01: Xem danh sách khóa học công khai
+   - Mô tả: Xem danh sách các khóa học đã được publish
+   - Actor: Guest
+   - Precondition: Không cần đăng nhập
+   - Main Flow:
+     1. Guest truy cập trang chủ hoặc trang khóa học
+     2. Hệ thống hiển thị danh sách khóa học công khai
+     3. Guest có thể lọc, tìm kiếm khóa học
+   - Postcondition: Guest xem được danh sách khóa học
+
+UC-G02: Xem chi tiết khóa học
+   - Mô tả: Xem thông tin chi tiết của một khóa học
+   - Actor: Guest
+   - Precondition: Không cần đăng nhập
+   - Main Flow:
+     1. Guest chọn một khóa học
+     2. Hệ thống hiển thị thông tin: mô tả, giá, giáo viên, danh sách bài học
+     3. Guest xem được đánh giá và bình luận công khai
+   - Postcondition: Guest xem được thông tin khóa học
+
+UC-G03: Đăng ký tài khoản
+   - Mô tả: Tạo tài khoản mới trong hệ thống
+   - Actor: Guest
+   - Precondition: Chưa có tài khoản
+   - Main Flow:
+     1. Guest điền form đăng ký (tên, email, mật khẩu)
+     2. Hệ thống kiểm tra email chưa tồn tại
+     3. Hệ thống tạo tài khoản và gửi email xác thực
+     4. Guest xác thực email
+   - Postcondition: Guest trở thành Customer
+
+UC-G04: Đăng nhập
+   - Mô tả: Xác thực và đăng nhập vào hệ thống
+   - Actor: Guest
+   - Precondition: Đã có tài khoản
+   - Main Flow:
+     1. Guest nhập email và mật khẩu
+     2. Hệ thống xác thực thông tin
+     3. Hệ thống cấp JWT token
+     4. Guest được chuyển vào hệ thống
+   - Postcondition: Guest trở thành Customer/Teacher/Admin
+
+UC-G05: Đăng nhập bằng Google
+   - Mô tả: Đăng nhập sử dụng tài khoản Google
+   - Actor: Guest
+   - Precondition: Có tài khoản Google
+   - Main Flow:
+     1. Guest chọn "Đăng nhập bằng Google"
+     2. Hệ thống chuyển hướng đến Google OAuth
+     3. Guest xác nhận quyền truy cập
+     4. Google trả về thông tin người dùng
+     5. Hệ thống tạo/cập nhật tài khoản và cấp JWT token
+   - Postcondition: Guest trở thành Customer/Teacher/Admin
+
+UC-G06: Quên mật khẩu
+   - Mô tả: Yêu cầu reset mật khẩu
+   - Actor: Guest
+   - Main Flow:
+     1. Guest chọn "Quên mật khẩu"
+     2. Guest nhập email
+     3. Hệ thống gửi email chứa link reset mật khẩu
+     4. Guest click link và đặt mật khẩu mới
+   - Postcondition: Guest có thể đăng nhập với mật khẩu mới
+
+
+B. USE CASES CHO CUSTOMER (Học viên)
+--------------------------------------------------------------------------------
+
+UC-C01: Quản lý profile
+   - Mô tả: Xem và cập nhật thông tin cá nhân
+   - Actor: Customer
+   - Main Flow:
+     1. Customer truy cập trang profile
+     2. Customer xem thông tin hiện tại
+     3. Customer cập nhật thông tin (tên, số điện thoại, avatar)
+     4. Hệ thống lưu thông tin mới
+   - Postcondition: Thông tin profile được cập nhật
+
+UC-C02: Xem danh sách khóa học của tôi
+   - Mô tả: Xem các khóa học đã đăng ký
+   - Actor: Customer
+   - Main Flow:
+     1. Customer truy cập "Khóa học của tôi"
+     2. Hệ thống hiển thị danh sách khóa học đã enroll
+     3. Customer xem tiến độ học tập
+   - Postcondition: Customer xem được khóa học của mình
+
+UC-C03: Xem chi tiết khóa học (đã đăng ký)
+   - Mô tả: Xem thông tin chi tiết khóa học đã mua
+   - Actor: Customer
+   - Precondition: Đã đăng ký khóa học
+   - Main Flow:
+     1. Customer chọn khóa học từ danh sách
+     2. Hệ thống hiển thị đầy đủ thông tin: bài học, video, tài liệu
+     3. Customer có thể xem tiến độ học tập
+   - Postcondition: Customer xem được chi tiết khóa học
+
+UC-C04: Thêm khóa học vào giỏ hàng
+   - Mô tả: Thêm khóa học vào giỏ hàng để thanh toán
+   - Actor: Customer
+   - Main Flow:
+     1. Customer xem chi tiết khóa học
+     2. Customer chọn "Thêm vào giỏ hàng"
+     3. Hệ thống thêm khóa học vào giỏ hàng
+   - Postcondition: Khóa học được thêm vào giỏ hàng
+
+UC-C05: Xem giỏ hàng
+   - Mô tả: Xem danh sách khóa học trong giỏ hàng
+   - Actor: Customer
+   - Main Flow:
+     1. Customer truy cập trang giỏ hàng
+     2. Hệ thống hiển thị danh sách khóa học và tổng tiền
+     3. Customer có thể xóa khóa học khỏi giỏ hàng
+   - Postcondition: Customer xem được giỏ hàng
+
+UC-C06: Tạo đơn hàng
+   - Mô tả: Tạo đơn hàng từ giỏ hàng
+   - Actor: Customer
+   - Precondition: Có ít nhất 1 khóa học trong giỏ hàng
+   - Main Flow:
+     1. Customer chọn "Thanh toán"
+     2. Hệ thống tạo đơn hàng
+     3. Hệ thống tính tổng tiền
+     4. Hệ thống tạo payment link từ PayOS
+     5. Customer được chuyển đến trang thanh toán
+   - Postcondition: Đơn hàng được tạo, chờ thanh toán
+
+UC-C07: Thanh toán đơn hàng
+   - Mô tả: Thanh toán đơn hàng qua PayOS
+   - Actor: Customer
+   - Precondition: Đã tạo đơn hàng
+   - Main Flow:
+     1. Customer chọn phương thức thanh toán
+     2. Customer được chuyển đến PayOS
+     3. Customer hoàn tất thanh toán
+     4. PayOS gửi webhook về hệ thống
+     5. Hệ thống cập nhật trạng thái đơn hàng và tạo enrollment
+     6. Hệ thống gửi email xác nhận
+   - Postcondition: Đơn hàng được thanh toán, enrollment được tạo
+
+UC-C08: Xem lịch sử đơn hàng
+   - Mô tả: Xem các đơn hàng đã thực hiện
+   - Actor: Customer
+   - Main Flow:
+     1. Customer truy cập "Lịch sử đơn hàng"
+     2. Hệ thống hiển thị danh sách đơn hàng
+     3. Customer xem chi tiết từng đơn hàng
+   - Postcondition: Customer xem được lịch sử đơn hàng
+
+UC-C09: Xem bài học
+   - Mô tả: Xem video và nội dung bài học
+   - Actor: Customer
+   - Precondition: Đã đăng ký khóa học chứa bài học đó
+   - Main Flow:
+     1. Customer chọn bài học từ khóa học
+     2. Hệ thống kiểm tra enrollment
+     3. Hệ thống hiển thị video bài học
+     4. Customer xem video và nội dung
+     5. Hệ thống cập nhật tiến độ học tập
+   - Postcondition: Customer xem được bài học, tiến độ được cập nhật
+
+UC-C10: Xem phụ đề video
+   - Mô tả: Xem phụ đề của video bài học
+   - Actor: Customer
+   - Precondition: Đang xem bài học có phụ đề
+   - Main Flow:
+     1. Customer bật phụ đề trong video player
+     2. Hệ thống hiển thị phụ đề theo thời gian
+     3. Customer có thể chọn ngôn ngữ phụ đề
+   - Postcondition: Customer xem được phụ đề
+
+UC-C11: Dịch phụ đề
+   - Mô tả: Dịch phụ đề sang ngôn ngữ khác bằng AI
+   - Actor: Customer
+   - Precondition: Bài học có phụ đề
+   - Main Flow:
+     1. Customer chọn ngôn ngữ đích
+     2. Hệ thống gửi phụ đề gốc đến Google Gemini AI
+     3. AI dịch phụ đề
+     4. Hệ thống hiển thị phụ đề đã dịch
+     5. Hệ thống lưu phụ đề dịch vào database
+   - Postcondition: Phụ đề được dịch và hiển thị
+
+UC-C12: Làm quiz
+   - Mô tả: Làm bài quiz của bài học
+   - Actor: Customer
+   - Precondition: Bài học có quiz, đã đăng ký khóa học
+   - Main Flow:
+     1. Customer chọn "Làm quiz"
+     2. Hệ thống hiển thị câu hỏi và đáp án
+     3. Customer trả lời các câu hỏi
+     4. Customer nộp bài
+     5. Hệ thống chấm điểm và hiển thị kết quả
+     6. Hệ thống lưu kết quả quiz
+   - Postcondition: Quiz được hoàn thành, kết quả được lưu
+
+UC-C13: Xem kết quả quiz
+   - Mô tả: Xem kết quả các quiz đã làm
+   - Actor: Customer
+   - Main Flow:
+     1. Customer truy cập "Kết quả quiz"
+     2. Hệ thống hiển thị danh sách quiz đã làm
+     3. Customer xem điểm số và đáp án đúng/sai
+   - Postcondition: Customer xem được kết quả quiz
+
+UC-C14: Bình luận bài học
+   - Mô tả: Viết bình luận cho bài học
+   - Actor: Customer
+   - Precondition: Đã đăng ký khóa học
+   - Main Flow:
+     1. Customer xem bài học
+     2. Customer viết bình luận
+     3. Customer gửi bình luận
+     4. Hệ thống lưu bình luận
+     5. Bình luận hiển thị cho tất cả người xem
+   - Postcondition: Bình luận được lưu và hiển thị
+
+UC-C15: Đánh giá khóa học
+   - Mô tả: Viết đánh giá và cho điểm khóa học
+   - Actor: Customer
+   - Precondition: Đã đăng ký và học khóa học
+   - Main Flow:
+     1. Customer truy cập trang đánh giá
+     2. Customer chọn số sao (1-5)
+     3. Customer viết nhận xét
+     4. Customer gửi đánh giá
+     5. Hệ thống lưu đánh giá
+   - Postcondition: Đánh giá được lưu và hiển thị công khai
+
+UC-C16: Chat với AI trợ lý
+   - Mô tả: Trò chuyện với AI để được hỗ trợ học tập
+   - Actor: Customer
+   - Main Flow:
+     1. Customer mở chat AI
+     2. Customer gửi câu hỏi
+     3. Hệ thống lấy context từ khóa học đã đăng ký
+     4. Hệ thống gửi câu hỏi và context đến Google Gemini AI
+     5. AI trả lời dựa trên context
+     6. Hệ thống hiển thị phản hồi và lưu lịch sử chat
+   - Postcondition: Customer nhận được phản hồi từ AI
+
+UC-C17: Xem lịch sử học tập
+   - Mô tả: Xem lịch sử các bài học đã xem
+   - Actor: Customer
+   - Main Flow:
+     1. Customer truy cập "Lịch sử học tập"
+     2. Hệ thống hiển thị danh sách bài học đã xem
+     3. Customer xem thời gian xem, tiến độ
+   - Postcondition: Customer xem được lịch sử học tập
+
+UC-C18: Xem danh sách sách
+   - Mô tả: Xem danh sách sách có trong hệ thống
+   - Actor: Customer
+   - Main Flow:
+     1. Customer truy cập trang sách
+     2. Hệ thống hiển thị danh sách sách
+     3. Customer có thể tìm kiếm, lọc sách
+   - Postcondition: Customer xem được danh sách sách
+
+UC-C19: Xem chi tiết sách
+   - Mô tả: Xem thông tin chi tiết và đọc sách
+   - Actor: Customer
+   - Main Flow:
+     1. Customer chọn một cuốn sách
+     2. Hệ thống hiển thị thông tin sách
+     3. Customer có thể xem PDF sách (nếu đã mua)
+   - Postcondition: Customer xem được chi tiết sách
+
+UC-C20: Mua sách
+   - Mô tả: Mua sách để đọc
+   - Actor: Customer
+   - Main Flow:
+     1. Customer chọn "Mua sách"
+     2. Hệ thống tạo đơn hàng
+     3. Customer thanh toán qua PayOS
+     4. Hệ thống cập nhật quyền truy cập sách
+   - Postcondition: Customer có quyền đọc sách
+
+
+C. USE CASES CHO TEACHER (Giáo viên)
+--------------------------------------------------------------------------------
+
+UC-T01: Tạo khóa học
+   - Mô tả: Tạo khóa học mới
+   - Actor: Teacher
+   - Main Flow:
+     1. Teacher truy cập "Tạo khóa học"
+     2. Teacher điền thông tin: tiêu đề, mô tả, giá, danh mục
+     3. Teacher upload ảnh thumbnail
+     4. Teacher chọn trạng thái (draft/published)
+     5. Hệ thống tạo khóa học
+   - Postcondition: Khóa học được tạo (có thể ở trạng thái draft)
+
+UC-T02: Chỉnh sửa khóa học
+   - Mô tả: Cập nhật thông tin khóa học
+   - Actor: Teacher
+   - Precondition: Là chủ sở hữu khóa học
+   - Main Flow:
+     1. Teacher chọn khóa học cần sửa
+     2. Teacher cập nhật thông tin
+     3. Teacher lưu thay đổi
+     4. Hệ thống tạo edit history (pending edit)
+     5. Hệ thống chờ admin duyệt (nếu đã publish)
+   - Postcondition: Thay đổi được lưu, chờ duyệt nếu cần
+
+UC-T03: Xóa khóa học
+   - Mô tả: Xóa khóa học khỏi hệ thống
+   - Actor: Teacher
+   - Precondition: Là chủ sở hữu, khóa học chưa có học viên
+   - Main Flow:
+     1. Teacher chọn khóa học cần xóa
+     2. Teacher xác nhận xóa
+     3. Hệ thống xóa khóa học
+   - Postcondition: Khóa học bị xóa
+
+UC-T04: Quản lý bài học
+   - Mô tả: Thêm, sửa, xóa bài học trong khóa học
+   - Actor: Teacher
+   - Precondition: Là chủ sở hữu khóa học
+   - Main Flow:
+     1. Teacher chọn khóa học
+     2. Teacher thêm/sửa/xóa bài học
+     3. Teacher upload video bài học
+     4. Hệ thống lưu bài học
+   - Postcondition: Bài học được cập nhật
+
+UC-T05: Upload video bài học
+   - Mô tả: Upload video cho bài học
+   - Actor: Teacher
+   - Main Flow:
+     1. Teacher chọn bài học
+     2. Teacher chọn file video
+     3. Hệ thống upload video lên Supabase
+     4. Hệ thống lưu URL video
+   - Postcondition: Video được upload và lưu
+
+UC-T06: Quản lý phụ đề
+   - Mô tả: Thêm, sửa phụ đề cho video
+   - Actor: Teacher
+   - Main Flow:
+     1. Teacher chọn bài học
+     2. Teacher upload file phụ đề hoặc nhập phụ đề
+     3. Hệ thống lưu phụ đề
+   - Postcondition: Phụ đề được lưu
+
+UC-T07: Tạo quiz cho bài học
+   - Mô tả: Tạo câu hỏi quiz cho bài học
+   - Actor: Teacher
+   - Main Flow:
+     1. Teacher chọn bài học
+     2. Teacher tạo quiz với các câu hỏi
+     3. Teacher thêm đáp án đúng/sai
+     4. Teacher đặt thời gian làm bài
+     5. Hệ thống lưu quiz
+   - Postcondition: Quiz được tạo
+
+UC-T08: Xem danh sách học viên
+   - Mô tả: Xem danh sách học viên đã đăng ký khóa học
+   - Actor: Teacher
+   - Main Flow:
+     1. Teacher chọn khóa học
+     2. Hệ thống hiển thị danh sách học viên
+     3. Teacher xem thông tin và tiến độ học tập
+   - Postcondition: Teacher xem được danh sách học viên
+
+UC-T09: Xem tiến độ học tập của học viên
+   - Mô tả: Xem chi tiết tiến độ học tập từng học viên
+   - Actor: Teacher
+   - Main Flow:
+     1. Teacher chọn học viên
+     2. Hệ thống hiển thị: bài học đã xem, điểm quiz, thời gian học
+   - Postcondition: Teacher xem được tiến độ học viên
+
+UC-T10: Quản lý bình luận
+   - Mô tả: Xem và phản hồi bình luận của học viên
+   - Actor: Teacher
+   - Main Flow:
+     1. Teacher xem bình luận trong bài học
+     2. Teacher có thể phản hồi bình luận
+     3. Teacher có thể xóa bình luận không phù hợp
+   - Postcondition: Bình luận được quản lý
+
+UC-T11: Duyệt chỉnh sửa nội dung (Pending Edits)
+   - Mô tả: Duyệt các chỉnh sửa do chính teacher tạo (nếu có quyền)
+   - Actor: Teacher
+   - Main Flow:
+     1. Teacher xem danh sách pending edits
+     2. Teacher xem chi tiết thay đổi
+     3. Teacher duyệt hoặc từ chối
+     4. Hệ thống áp dụng thay đổi nếu được duyệt
+   - Postcondition: Chỉnh sửa được duyệt hoặc từ chối
+
+UC-T12: Xem dashboard giáo viên
+   - Mô tả: Xem thống kê về khóa học của mình
+   - Actor: Teacher
+   - Main Flow:
+     1. Teacher truy cập dashboard
+     2. Hệ thống hiển thị: số khóa học, số học viên, doanh thu
+   - Postcondition: Teacher xem được thống kê
+
+UC-T13: Quản lý sách (nếu có quyền)
+   - Mô tả: Tạo và quản lý sách
+   - Actor: Teacher
+   - Main Flow:
+     1. Teacher tạo sách mới
+     2. Teacher upload PDF
+     3. Teacher điền thông tin sách
+     4. Hệ thống lưu sách
+   - Postcondition: Sách được tạo
+
+
+D. USE CASES CHO ADMIN (Quản trị viên)
+--------------------------------------------------------------------------------
+
+UC-A01: Quản lý người dùng
+   - Mô tả: Xem, sửa, xóa, phân quyền người dùng
+   - Actor: Admin
+   - Main Flow:
+     1. Admin truy cập "Quản lý người dùng"
+     2. Admin xem danh sách tất cả người dùng
+     3. Admin có thể thay đổi role, khóa/mở khóa tài khoản
+   - Postcondition: Người dùng được quản lý
+
+UC-A02: Quản lý khóa học
+   - Mô tả: Xem, duyệt, xóa tất cả khóa học
+   - Actor: Admin
+   - Main Flow:
+     1. Admin truy cập "Quản lý khóa học"
+     2. Admin xem tất cả khóa học
+     3. Admin có thể publish/unpublish, xóa khóa học
+   - Postcondition: Khóa học được quản lý
+
+UC-A03: Duyệt chỉnh sửa nội dung (Pending Edits)
+   - Mô tả: Duyệt các chỉnh sửa từ teacher
+   - Actor: Admin
+   - Main Flow:
+     1. Admin xem danh sách pending edits
+     2. Admin xem chi tiết thay đổi (before/after)
+     3. Admin duyệt hoặc từ chối
+     4. Hệ thống áp dụng thay đổi nếu được duyệt
+   - Postcondition: Chỉnh sửa được duyệt hoặc từ chối
+
+UC-A04: Quản lý danh mục (Categories)
+   - Mô tả: Tạo, sửa, xóa danh mục khóa học
+   - Actor: Admin
+   - Main Flow:
+     1. Admin truy cập "Quản lý danh mục"
+     2. Admin tạo/sửa/xóa danh mục
+     3. Hệ thống lưu thay đổi
+   - Postcondition: Danh mục được quản lý
+
+UC-A05: Quản lý sách
+   - Mô tả: Xem, tạo, sửa, xóa sách
+   - Actor: Admin
+   - Main Flow:
+     1. Admin truy cập "Quản lý sách"
+     2. Admin thực hiện CRUD sách
+     3. Admin upload PDF sách
+   - Postcondition: Sách được quản lý
+
+UC-A06: Quản lý đơn hàng
+   - Mô tả: Xem và quản lý tất cả đơn hàng
+   - Actor: Admin
+   - Main Flow:
+     1. Admin truy cập "Quản lý đơn hàng"
+     2. Admin xem danh sách đơn hàng
+     3. Admin xem chi tiết, cập nhật trạng thái
+   - Postcondition: Đơn hàng được quản lý
+
+UC-A07: Quản lý đánh giá
+   - Mô tả: Xem và quản lý đánh giá khóa học
+   - Actor: Admin
+   - Main Flow:
+     1. Admin truy cập "Quản lý đánh giá"
+     2. Admin xem tất cả đánh giá
+     3. Admin có thể xóa đánh giá không phù hợp
+   - Postcondition: Đánh giá được quản lý
+
+UC-A08: Xem dashboard admin
+   - Mô tả: Xem thống kê tổng quan hệ thống
+   - Actor: Admin
+   - Main Flow:
+     1. Admin truy cập dashboard
+     2. Hệ thống hiển thị: số người dùng, số khóa học, doanh thu, đơn hàng
+   - Postcondition: Admin xem được thống kê
+
+UC-A09: Phân quyền giáo viên
+   - Mô tả: Chuyển customer thành teacher
+   - Actor: Admin
+   - Main Flow:
+     1. Admin chọn người dùng
+     2. Admin thay đổi role thành "teacher"
+     3. Hệ thống cập nhật quyền
+   - Postcondition: Người dùng trở thành teacher
+
+UC-A10: Quản lý bài học (toàn hệ thống)
+   - Mô tả: Xem và quản lý tất cả bài học
+   - Actor: Admin
+   - Main Flow:
+     1. Admin truy cập "Quản lý bài học"
+     2. Admin xem tất cả bài học
+     3. Admin có thể xóa bài học không phù hợp
+   - Postcondition: Bài học được quản lý
+
+
+================================================================================
+
+IV. MỐI QUAN HỆ GIỮA CÁC USE CASE
+================================================================================
+
+A. INCLUDE RELATIONSHIPS (Quan hệ bao gồm)
+   - UC-C09 (Xem bài học) includes UC-C10 (Xem phụ đề video)
+   - UC-C06 (Tạo đơn hàng) includes UC-C05 (Xem giỏ hàng)
+   - UC-T04 (Quản lý bài học) includes UC-T05 (Upload video bài học)
+
+B. EXTEND RELATIONSHIPS (Quan hệ mở rộng)
+   - UC-C11 (Dịch phụ đề) extends UC-C10 (Xem phụ đề video)
+   - UC-C12 (Làm quiz) extends UC-C09 (Xem bài học)
+   - UC-C15 (Đánh giá khóa học) extends UC-C03 (Xem chi tiết khóa học)
+
+C. GENERALIZATION (Quan hệ kế thừa)
+   - Customer, Teacher, Admin đều kế thừa từ User
+   - Tất cả actors đều có thể thực hiện UC-G03 (Đăng ký) và UC-G04 (Đăng nhập)
+
+D. DEPENDENCIES (Quan hệ phụ thuộc)
+   - UC-C09 (Xem bài học) depends on UC-C02 (Xem danh sách khóa học của tôi)
+   - UC-C07 (Thanh toán) depends on UC-C06 (Tạo đơn hàng)
+   - UC-T02 (Chỉnh sửa khóa học) depends on UC-T01 (Tạo khóa học)
+   - UC-A03 (Duyệt chỉnh sửa) depends on UC-T02 (Chỉnh sửa khóa học)
+
+================================================================================
+
+V. SƠ ĐỒ USE CASE (TEXTUAL REPRESENTATION)
+================================================================================
+
+                    ┌─────────────────────────────────────┐
+                    │         VICEDU SYSTEM              │
+                    │                                     │
+    ┌───────────────┤  Authentication & Registration    ├───────────────┐
+    │               │  - Đăng ký (UC-G03)               │               │
+    │               │  - Đăng nhập (UC-G04)              │               │
+    │               │  - Đăng nhập Google (UC-G05)       │               │
+    │               │  - Quên mật khẩu (UC-G06)          │               │
+    │               │                                     │               │
+    │               │  Course Management                │               │
+    │               │  - Xem khóa học (UC-G01, UC-G02)  │               │
+    │               │  - Tạo khóa học (UC-T01)          │               │
+    │               │  - Sửa khóa học (UC-T02)           │               │
+    │               │  - Xóa khóa học (UC-T03)           │               │
+    │               │                                     │               │
+    │               │  Learning                         │               │
+    │               │  - Xem bài học (UC-C09)           │               │
+    │               │  - Làm quiz (UC-C12)               │               │
+    │               │  - Chat AI (UC-C16)               │               │
+    │               │                                     │               │
+    │               │  Payment                          │               │
+    │               │  - Tạo đơn hàng (UC-C06)          │               │
+    │               │  - Thanh toán (UC-C07)            │               │
+    │               │                                     │               │
+    │               │  Content Management               │               │
+    │               │  - Quản lý bài học (UC-T04)        │               │
+    │               │  - Quản lý quiz (UC-T07)           │               │
+    │               │  - Quản lý phụ đề (UC-T06)         │               │
+    │               │                                     │               │
+    │               │  Administration                   │               │
+    │               │  - Quản lý người dùng (UC-A01)    │               │
+    │               │  - Duyệt chỉnh sửa (UC-A03)        │               │
+    │               │  - Dashboard (UC-A08)              │               │
+    └───────────────┴─────────────────────────────────────┴───────────────┘
+         │                    │                    │                    │
+         │                    │                    │                    │
+    ┌────▼────┐          ┌────▼────┐          ┌────▼────┐          ┌────▼────┐
+    │ GUEST   │          │CUSTOMER │          │TEACHER  │          │ ADMIN   │
+    └─────────┘          └─────────┘          └─────────┘          └─────────┘
+
+================================================================================
+
+VI. BẢNG TÓM TẮT USE CASES THEO ACTOR
+================================================================================
+
+ACTOR          | SỐ LƯỢNG USE CASE | MÔ TẢ
+---------------|-------------------|------------------------------------------
+Guest          | 6                 | Xem công khai, đăng ký, đăng nhập
+Customer       | 20                | Học tập, thanh toán, đánh giá, chat AI
+Teacher        | 13                | Tạo/sửa khóa học, quản lý bài học, xem học viên
+Admin          | 10                | Quản lý toàn hệ thống, duyệt chỉnh sửa
+
+TỔNG CỘNG      | 49                | (Một số use case có thể được thực hiện bởi nhiều actor)
+
+================================================================================
+
+VII. GHI CHÚ QUAN TRỌNG
+================================================================================
+
+1. Phân quyền:
+   - Customer chỉ có thể xem và học các khóa học đã đăng ký
+   - Teacher chỉ có thể quản lý khóa học của chính mình
+   - Admin có quyền quản lý toàn bộ hệ thống
+
+2. Workflow chỉnh sửa:
+   - Khi Teacher chỉnh sửa khóa học đã publish, cần Admin duyệt
+   - Edit history được lưu để theo dõi thay đổi
+
+3. Thanh toán:
+   - Tất cả thanh toán đều qua PayOS
+   - Enrollment tự động được tạo sau khi thanh toán thành công
+
+4. AI Integration:
+   - Chat AI sử dụng context từ khóa học đã đăng ký
+   - Dịch phụ đề sử dụng Google Gemini AI
+
+================================================================================
+                        KẾT THÚC TÀI LIỆU
+================================================================================
+
