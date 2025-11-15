@@ -11,7 +11,7 @@ import OrderItemModel from "../models/order_item.model";
 
 export interface ChatContext {
   userRole: string;
-  userId: string;
+  userId: string; 
   systemData?: {
     courses?: any[];
     books?: any[];
