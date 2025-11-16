@@ -11,6 +11,8 @@ interface BookModalProps {
 const BookModal = ({ book, isOpen, onClose }: BookModalProps) => {
   if (!isOpen) return null;
 
+  console.log("Rendering BookModal with pdf_url:", book.pdf_url);
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -29,11 +31,10 @@ const BookModal = ({ book, isOpen, onClose }: BookModalProps) => {
             : book.category_id || "Chưa có"}
         </p>
         <p>
-          <strong>Giá:</strong>{" "}
-          {(book.price_cents || 0).toLocaleString("vi-VN", {
-            style: "currency",
-            currency: "VND",
-          })}
+          <strong>Giá:</strong> {book.price?.toLocaleString()} VND
+        </p>
+        <p>
+          <strong>Stock:</strong> {book.stock ?? 0}
         </p>
         <p>
           <strong>Mô tả:</strong> {book.description || "Không có mô tả"}
@@ -48,7 +49,7 @@ const BookModal = ({ book, isOpen, onClose }: BookModalProps) => {
         )}
 
         {/* PDF link */}
-        {book.pdf_url ? (
+        {book.pdf_url && book.pdf_url !== "" ? (
           <p>
             <strong>PDF:</strong>{" "}
             <a href={book.pdf_url} target="_blank" rel="noopener noreferrer">

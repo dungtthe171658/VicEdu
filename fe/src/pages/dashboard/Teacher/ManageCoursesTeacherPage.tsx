@@ -105,12 +105,12 @@ const ManageCoursesTeacherPage = () => {
 
   const formatVND = (n: number) => n.toLocaleString("vi-VN") + " ₫";
 
-  // Helper function to get price in VND from either price_cents or price
-  // LƯU Ý: price_cents = price (giữ nguyên giá trị, không nhân/chia)
+  // Helper function to get price in VND from either price or price
+  // LƯU Ý: price = price (giữ nguyên giá trị, không nhân/chia)
   const getPriceInVND = (course: any): number => {
-    if (course.price_cents !== undefined && course.price_cents !== null) {
-      // price_cents = price, giữ nguyên giá trị
-      return course.price_cents;
+    if (course.price !== undefined && course.price !== null) {
+      // price = price, giữ nguyên giá trị
+      return course.price;
     }
     if (course.price !== undefined && course.price !== null) {
       // price đã là giá trị VND
@@ -133,12 +133,12 @@ const ManageCoursesTeacherPage = () => {
               <strong>{course.title}</strong>
               <span>{getCategoryName(course as any)}</span>
               <span>{formatVND(getPriceInVND(course as any))}</span>
-              {/* Debug info - hiển thị cả price và price_cents nếu có */}
-              {/* {((course as any).price !== undefined || (course as any).price_cents !== undefined) && (
+              {/* Debug info - hiển thị cả price và price nếu có */}
+              {/* {((course as any).price !== undefined || (course as any).price !== undefined) && (
                 <span style={{ fontSize: "11px", color: "#6b7280", marginLeft: "8px" }}>
                   {((course as any).price !== undefined && `price: ${(course as any).price}`)}
-                  {((course as any).price !== undefined && (course as any).price_cents !== undefined) && " | "}
-                  {((course as any).price_cents !== undefined && `price_cents: ${(course as any).price_cents}`)}
+                  {((course as any).price !== undefined && (course as any).price !== undefined) && " | "}
+                  {((course as any).price !== undefined && `price: ${(course as any).price}`)}
                 </span>
               )} */}
 

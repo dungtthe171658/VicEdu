@@ -70,7 +70,7 @@ export default function CourseManageDetail() {
               initialData={{
                 ...course,
                 price: (course as any)?.price,
-                price_cents: (course as any)?.price_cents,
+                price: (course as any)?.price,
                 // Preselect current category
                 category_id: (() => {
                   const cat = (course as any)?.category;

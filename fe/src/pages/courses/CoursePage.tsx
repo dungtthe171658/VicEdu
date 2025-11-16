@@ -84,13 +84,13 @@ export const CoursePage = () => {
     }
 
     // Filter by price range
-    list = list.filter((c) => (c.price_cents || 0) <= priceLimit);
+    list = list.filter((c) => (c.price || 0) <= priceLimit);
 
     // Sort by price
     if (sortBy === "asc")
-      list.sort((a, b) => (a.price_cents || 0) - (b.price_cents || 0));
+      list.sort((a, b) => (a.price || 0) - (b.price || 0));
     if (sortBy === "desc")
-      list.sort((a, b) => (b.price_cents || 0) - (a.price_cents || 0));
+      list.sort((a, b) => (b.price || 0) - (a.price || 0));
 
     return list;
   }, [courses, selectedCategory, priceLimit, sortBy]);

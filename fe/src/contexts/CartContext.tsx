@@ -5,8 +5,10 @@ import type { Course } from "../types/course";
 export interface BookCartItem {
   _id: string;
   title: string;
-  price_cents?: number;
+  price?: number;
+  quantity: number;
   images?: string[];
+  stock: number;
 }
 
 type CartContextType = {
@@ -16,7 +18,10 @@ type CartContextType = {
   addCourse: (c: Course) => void;
   removeCourse: (courseId: string) => void;
   // Books
-  addBookItem: (b: BookCartItem) => void;
+  addBookItem: (
+    b: Omit<BookCartItem, "quantity"> & { quantity?: number }
+  ) => void;
+  updateBookQty: (bookId: string, quantity: number) => void;
   removeBook: (bookId: string) => void;
   // Common
   clear: () => void;
@@ -33,11 +38,11 @@ type CartContextType = {
 
 const CartContext = createContext<CartContextType | null>(null);
 
-// ====== LocalStorage keys ======
+// ====== Helpers ======
 const LS_COURSES = "cart_courses";
 const LS_BOOKS = "cart_books";
 
-// ====== Helpers ======
+// Migrate string[] -> BookCartItem[]
 function migrateBooks(value: any): BookCartItem[] {
   try {
     if (!value) return [];
@@ -45,16 +50,20 @@ function migrateBooks(value: any): BookCartItem[] {
       return (value as string[]).map((id) => ({
         _id: id,
         title: "",
+        quantity: 1,
         images: [],
+        stock: 0,
       }));
     }
     if (Array.isArray(value) && value.every((x) => typeof x === "object")) {
       return (value as any[]).map((b) => ({
         _id: String(b._id),
         title: b.title ?? "",
-        price_cents:
-          typeof b.price_cents === "number" ? b.price_cents : undefined,
+        price:
+          typeof b.price === "number" ? b.price : undefined,
         images: Array.isArray(b.images) ? b.images : [],
+        quantity: Math.max(1, Number(b.quantity) || 1),
+        stock: b.stock ?? 0,
       }));
     }
     return [];
@@ -75,7 +84,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return migrateBooks(saved ? JSON.parse(saved) : null);
   });
 
-  // Persist to localStorage
+  // Persist
   useEffect(() => {
     localStorage.setItem(LS_COURSES, JSON.stringify(courses));
   }, [courses]);
@@ -95,19 +104,63 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setCourses((prev) => prev.filter((x) => x._id !== courseId));
   };
 
-  // ====== Book logic (ebook only) ======
-  const addBookItem = (b: BookCartItem) => {
+  // ====== Book logic ======
+  const addBookItem = (
+    b: Omit<BookCartItem, "quantity"> & { quantity?: number }
+  ) => {
     setBooks((prev) => {
-      if (prev.some((x) => x._id === b._id)) return prev; // chỉ thêm 1 lần
-      return [...prev, b];
+      const qty = Math.max(1, Math.floor(Number(b.quantity ?? 1)));
+      const found = prev.find((x) => x._id === b._id);
+
+      if (found) {
+        return prev.map((x) =>
+          x._id === b._id
+            ? {
+                ...x,
+                title: b.title ?? x.title,
+                price: b.price ?? x.price,
+                images: Array.isArray(b.images) ? b.images : x.images,
+                stock: b.stock ?? x.stock ?? 0,
+                quantity: Math.min(
+                  x.quantity + qty,
+                  b.stock ?? x.stock ?? Infinity
+                ), // ✅ giới hạn theo stock
+              }
+            : x
+        );
+      }
+
+      return [
+        ...prev,
+        {
+          _id: b._id,
+          title: b.title,
+          price: b.price,
+          images: Array.isArray(b.images) ? b.images : [],
+          stock: b.stock ?? 0,
+          quantity: qty,
+        },
+      ];
     });
+  };
+
+  const updateBookQty = (bookId: string, quantity: number) => {
+    const q = Math.max(1, Number(quantity) || 1);
+    setBooks((prev) =>
+      prev.map((b) => ({
+        ...b,
+        quantity:
+          b._id === bookId
+            ? Math.min(q, b.stock || Infinity) // ✅ không vượt quá stock
+            : b.quantity,
+      }))
+    );
   };
 
   const removeBook = (bookId: string) => {
     setBooks((prev) => prev.filter((x) => x._id !== bookId));
   };
 
-  // ====== Clear cart ======
   const clear = () => {
     setCourses([]);
     setBooks([]);
@@ -116,25 +169,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // ====== Calculations ======
   const total = useMemo(() => {
     const courseTotal = courses.reduce(
-      (sum, c) => sum + (c.price_cents || 0),
+      (sum, c) => sum + (c.price || 0),
       0
     );
     const bookTotal = books.reduce(
-      (sum, b) => sum + Number(b.price_cents || 0),
+      (sum, b) => sum + Number(b.price || 0) * Number(b.quantity || 1),
       0
-    ); // quantity luôn 1
+    );
     return courseTotal + bookTotal;
   }, [courses, books]);
 
-  const count = useMemo(() => courses.length + books.length, [courses, books]);
+  const count = useMemo(() => {
+    const courseCount = courses.length;
+    const bookCount = books.reduce((s, b) => s + (b.quantity || 1), 0);
+    return courseCount + bookCount;
+  }, [courses, books]);
 
-  // ====== Build checkout items ======
+  // ====== Build payload for PayOS ======
   const buildCheckoutItems = () => {
     const courseItems = courses.map((c) => ({
       productId: c._id,
       productType: "Course" as const,
       productName: c.title,
-      productPrice: Number(c.price_cents || 0),
+      productPrice: Number(c.price || 0),
       quantity: 1,
     }));
 
@@ -142,13 +199,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       productId: b._id,
       productType: "Book" as const,
       productName: b.title,
-      productPrice: Number(b.price_cents || 0),
-      quantity: 1, // luôn 1 cho ebook
+      productPrice:
+        typeof b.price === "number" ? b.price : undefined,
+      quantity: Math.max(1, Number(b.quantity) || 1),
     }));
 
     return [...courseItems, ...bookItems];
   };
 
+  // ====== Return Provider ======
   return (
     <CartContext.Provider
       value={{
@@ -157,6 +216,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         addCourse,
         removeCourse,
         addBookItem,
+        updateBookQty,
         removeBook,
         clear,
         total,

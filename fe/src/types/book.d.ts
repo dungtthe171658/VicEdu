@@ -7,11 +7,13 @@ export interface BookDto {
   slug?: string;
   author?: string;
   description?: string;
-  price_cents: number;
+  price: number;
+  stock?: number;
   category_id: string | Category;
   is_published?: boolean;
-  pdf_url?: string;
   images?: string[];
+   pdf_url?: string;
   created_at?: string;
   updated_at?: string;
+
 }

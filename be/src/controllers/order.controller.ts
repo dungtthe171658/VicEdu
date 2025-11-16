@@ -164,7 +164,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
                 .lean();
             } else if (item.product_type === "Book") {
               product = await BookModel.findById(item.product_id)
-                .select("title slug price_cents images")
+                .select("title slug price images")
                 .lean();
             }
 
@@ -226,7 +226,7 @@ export const getOrderItems = async (req: Request, res: Response) => {
             .lean();
         } else if (item.product_type === "Book") {
           product = await BookModel.findById(item.product_id)
-            .select("title slug price_cents images")
+            .select("title slug price images")
             .lean();
         }
 

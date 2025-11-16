@@ -79,7 +79,7 @@ export default function CourseCreationRequestDetail() {
   const draftFormData = {
     title: draft.title || course.title,
     description: draft.description || course.description,
-    price_cents: draft.price ? Math.round(draft.price * 100) : course.price ? Math.round((course as any).price * 100) : 0,
+    price: draft.price || course.price || 0,
     thumbnail_url: draft.thumbnail_url || course.thumbnail_url,
     category_id: draft.category_id || (() => {
       const cat = (course as any)?.category;

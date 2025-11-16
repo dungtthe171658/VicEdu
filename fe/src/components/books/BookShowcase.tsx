@@ -14,11 +14,8 @@ const BookShowcase = () => {
         const res = await bookApi.getAll();
         const data: BookDto[] = Array.isArray(res.data) ? res.data : res;
 
-        // Lấy ngẫu nhiên 4 sách
-        const randomBooks = [...data]
-          .sort(() => 0.5 - Math.random())
-          .slice(0, 4);
-
+        // Lấy 4 sách ngẫu nhiên
+        const randomBooks = data.sort(() => 0.5 - Math.random()).slice(0, 4);
         setBooks(randomBooks);
       } catch (err) {
         console.error("Lỗi khi tải sách:", err);
@@ -26,7 +23,6 @@ const BookShowcase = () => {
         setLoading(false);
       }
     };
-
     fetchBooks();
   }, []);
 
@@ -45,16 +41,13 @@ const BookShowcase = () => {
                 alt={book.title}
                 className="book-image"
               />
-
               <div className="book-info">
                 <h3 className="book-title">{book.title}</h3>
-
                 <p className="book-price">
-                  {book.price_cents
-                    ? book.price_cents.toLocaleString("vi-VN") + " ₫"
-                    : "Chưa có giá"}
+                  {book.price
+                    ? book.price.toLocaleString("vi-VN") + " ₫"
+                    : "Đang cập nhật"}
                 </p>
-
                 <Link to={`/books/${book._id}`} className="book-btn">
                   Xem chi tiết
                 </Link>
