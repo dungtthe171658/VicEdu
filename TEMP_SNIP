@@ -8,7 +8,7 @@ type Course = {
   slug?: string;
   description?: string;
   price?: number;
-  price_cents?: number;
+  price?: number;
   thumbnail_url?: string;
 };
 
@@ -129,8 +129,8 @@ export default function MyCoursesPage() {
                 )}
                 <div className="mt-3 flex items-center justify-between">
                   <div className="text-sm text-gray-600">
-                    {typeof c.price_cents === "number"
-                      ? `${(c.price_cents || 0).toLocaleString("vi-VN")}đ`
+                    {typeof c.price === "number"
+                      ? `${(c.price || 0).toLocaleString("vi-VN")}đ`
                       : c.price
                       ? `${c.price.toLocaleString("vi-VN")}đ`
                       : "Miễn phí"}

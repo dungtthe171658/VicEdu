@@ -7,7 +7,7 @@ export interface BookDto {
   slug?: string;
   author?: string;
   description?: string;
-  price_cents: number;
+  price: number;
   stock?: number;
   category_id: string | Category;
   is_published?: boolean;

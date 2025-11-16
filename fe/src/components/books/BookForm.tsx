@@ -173,7 +173,7 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
     setFormData((prev) => ({
       ...prev,
       [name]:
-        name === "price_cents" || name === "stock" ? Number(value) : value,
+        name === "price" || name === "stock" ? Number(value) : value,
     }));
   };
 
@@ -183,7 +183,7 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
     const payload: Partial<BookDto> = {
       ...formData,
       category_id: formData.category_id?.toString() || "",
-      price_cents: Number(formData.price_cents) || 0,
+      price: Number(formData.price) || 0,
       stock: Number(formData.stock) || 0,
       pdf_url: formData.pdf_url,
       images: formData.images,
@@ -237,12 +237,12 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
       </div>
 
       <div className="form-group">
-        <label htmlFor="price_cents">Giá (VND)</label>
+        <label htmlFor="price">Giá (VND)</label>
         <input
-          id="price_cents"
+          id="price"
           type="number"
-          name="price_cents"
-          value={formData.price_cents ?? ""}
+          name="price"
+          value={formData.price ?? ""}
           onChange={handleChange}
           required
         />

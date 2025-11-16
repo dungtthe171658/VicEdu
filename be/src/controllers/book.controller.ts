@@ -44,15 +44,15 @@ export const getBooks = async (req: Request, res: Response) => {
       if (catId) filter.category_id = catId;
     }
     if (minPrice || maxPrice) {
-      filter.price_cents = {};
-      if (minPrice) filter.price_cents.$gte = Number(minPrice);
-      if (maxPrice) filter.price_cents.$lte = Number(maxPrice);
+      filter.price = {};
+      if (minPrice) filter.price.$gte = Number(minPrice);
+      if (maxPrice) filter.price.$lte = Number(maxPrice);
     }
 
     const dir = order === "asc" ? 1 : -1;
     const sort: Record<string, 1 | -1> =
       sortBy === "price"
-        ? { price_cents: dir }
+        ? { price: dir }
         : sortBy === "title"
         ? { title: dir }
         : { created_at: -1 };
@@ -141,16 +141,16 @@ export const getBookById = async (req: Request, res: Response) => {
 // 📘 Tạo sách mới
 export const createBook = async (req: Request, res: Response) => {
   try {
-    const { title, price_cents, category_id, pdf_url } = req.body;
+    const { title, price, category_id, pdf_url } = req.body;
 
     // DEBUG: in payload nhận được
     console.log("CreateBook payload:", req.body);
     console.log("pdf_url:", pdf_url);
 
-    if (!title || !price_cents || !category_id)
+    if (!title || price === undefined || !category_id)
       return res
         .status(400)
-        .json({ message: "title, price_cents, category_id are required" });
+        .json({ message: "title, price, category_id are required" });
 
     const catId = toObjectId(category_id);
     if (!catId) return res.status(400).json({ message: "Invalid category_id" });

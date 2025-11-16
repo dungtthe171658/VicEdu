@@ -190,7 +190,7 @@ Không cung cấp thông tin nhạy cảm về hệ thống hoặc người dùn
 
 Khóa học có sẵn:
 ${systemData.courses
-  .map((c: any) => `- ${c.title} (Slug: ${c.slug}): ${c.short_desc} - Giá: ${c.price_cents}₫`)
+  .map((c: any) => `- ${c.title} (Slug: ${c.slug}): ${c.short_desc || c.description || ""} - Giá: ${c.price || 0}₫`)
   .join("\n")}`;
       }
       if (systemData?.books?.length) {
@@ -198,7 +198,7 @@ ${systemData.courses
 
 Sách có sẵn:
 ${systemData.books
-  .map((b: any) => `- ${b.title} (Slug: ${b.slug}) (${b.author}): ${b.description} - Giá: ${b.price_cents}₫`)
+  .map((b: any) => `- ${b.title} (Slug: ${b.slug}) (${b.author || ""}): ${b.description || ""} - Giá: ${b.price || 0}₫`)
   .join("\n")}`;
       }
     }

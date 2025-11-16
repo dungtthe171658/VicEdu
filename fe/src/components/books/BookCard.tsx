@@ -28,7 +28,7 @@ const BookCard = ({ book }: BookCardProps) => {
       addBookItem({
         _id: book._id,
         title: book.title,
-        price_cents: book.price_cents,
+        price: book.price,
         stock: book.stock ?? 0,
         image: book.images ?? [],
         quantity: 1,
@@ -55,7 +55,7 @@ const BookCard = ({ book }: BookCardProps) => {
     fetchPurchasedBooks();
   }, [book._id]);
 
-  const priceVND = (book.price_cents || 0).toLocaleString("vi-VN", {
+  const priceVND = (book.price || 0).toLocaleString("vi-VN", {
     style: "currency",
     currency: "VND",
   });

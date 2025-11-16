@@ -44,8 +44,8 @@ const BookShowcase = () => {
               <div className="book-info">
                 <h3 className="book-title">{book.title}</h3>
                 <p className="book-price">
-                  {book.price_cents
-                    ? book.price_cents.toLocaleString("vi-VN") + " ₫"
+                  {book.price
+                    ? book.price.toLocaleString("vi-VN") + " ₫"
                     : "Đang cập nhật"}
                 </p>
                 <Link to={`/books/${book._id}`} className="book-btn">

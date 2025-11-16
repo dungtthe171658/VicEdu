@@ -88,7 +88,7 @@ export const getCourseById = async (req: Request, res: Response) => {
 export const createCourse = async (req: AuthRequest, res: Response) => {
   try {
     console.log('🔵 [createCourse] Request body:', JSON.stringify(req.body, null, 2));
-    const { title, description, price, price_cents, category, category_id, thumbnail_url, teacher_ids } = req.body as any;
+    const { title, description, price, category, category_id, thumbnail_url, teacher_ids } = req.body as any;
     const user: any = req.user || {};
     const role = String(user?.role || "");
     console.log('🔵 [createCourse] User role:', role, 'User ID:', user?._id || user?.id);
@@ -138,7 +138,7 @@ export const createCourse = async (req: AuthRequest, res: Response) => {
         title,
         slug,
         description: description || '',
-        price: price !== undefined ? Number(price) : (price_cents !== undefined ? Number(price_cents) / 100 : 0),
+        price: price !== undefined ? Number(price) : 0,
         thumbnail_url: thumbnail_url || '',
         category: [new mongoose.Types.ObjectId(String(category_id))],
         teacher: teachers,
@@ -212,7 +212,7 @@ export const createCourse = async (req: AuthRequest, res: Response) => {
       title,
       slug,
       description: description || '',
-      price: price !== undefined ? Number(price) : (price_cents !== undefined ? Number(price_cents) / 100 : 0),
+      price: price !== undefined ? Number(price) : 0,
       thumbnail_url: thumbnail_url || '',
       category: categoryArray,
       teacher: teachers,
@@ -340,9 +340,6 @@ export const updateCourse = async (req: AuthRequest, res: Response) => {
         // Allow teacher to edit price (both published and not published)
         if (body.price !== undefined) {
           direct.price = Number(body.price);
-        } else if (body.price_cents !== undefined) {
-          // Convert cents-like to basic unit
-          direct.price = Number(body.price_cents) / 100;
         }
         const prev = await CourseModel.findById(id).lean();
         const updated = await CourseModel.findByIdAndUpdate(id, { $set: direct }, { new: true, runValidators: true });
@@ -375,9 +372,6 @@ export const updateCourse = async (req: AuthRequest, res: Response) => {
       // Allow teacher to edit price (both published and not published)
       if (body.price !== undefined) {
         setDirect.price = Number(body.price);
-      } else if (body.price_cents !== undefined) {
-        // Convert cents-like to basic unit
-        setDirect.price = Number(body.price_cents) / 100;
       }
 
       const prevDoc = await CourseModel.findById(id).lean();
@@ -417,10 +411,6 @@ export const updateCourse = async (req: AuthRequest, res: Response) => {
     // price handling (admin only)
     if (role === 'admin') {
       if (body.price !== undefined) updates.price = Number(body.price);
-      if (body.price_cents !== undefined && (body.price === undefined)) {
-        // Convert cents-like to basic unit
-        updates.price = Number(body.price_cents) / 100;
-      }
     }
 
     if (body.category_id) {

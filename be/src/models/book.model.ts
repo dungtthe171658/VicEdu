@@ -5,7 +5,7 @@ export interface IBook extends Document {
   slug: string;
   author?: string;
   description?: string;
-  price_cents: number;
+  price: number;
   stock?: number;
   category_id: mongoose.Types.ObjectId;
   is_published?: boolean;
@@ -21,7 +21,7 @@ const bookSchema = new Schema<IBook>(
     slug: { type: String, unique: true },
     author: { type: String },
     description: { type: String },
-    price_cents: { type: Number, required: true },
+    price: { type: Number, required: true, min: 0, default: 0 },
     stock: { type: Number, default: 0 },
     category_id: {
       type: Schema.Types.ObjectId,

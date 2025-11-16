@@ -36,7 +36,7 @@ export default function CartPage() {
               return {
                 ...b,
                 title: fresh.title,
-                price_cents: fresh.price_cents,
+                price: fresh.price,
                 stock: fresh.stock,
                 images: fresh.images,
               };
@@ -108,14 +108,14 @@ export default function CartPage() {
           productId: c._id!,
           productType: "Course" as const,
           productName: c.title,
-          productPrice: Number(c.price_cents || 0),
+          productPrice: Number(c.price || 0),
           quantity: 1,
         })),
         ...inStockBooks.map((b) => ({
           productId: b._id,
           productType: "Book" as const,
           productName: b.title,
-          productPrice: Number(b.price_cents ?? 0),
+          productPrice: Number(b.price ?? 0),
           quantity: Math.max(1, Number(b.quantity ?? 1)),
           productImage:
             Array.isArray(b.images) && b.images.length > 0
@@ -165,11 +165,11 @@ export default function CartPage() {
   };
 
   const coursesTotal = courses.reduce(
-    (s, c) => s + Number(c.price_cents || 0),
+    (s, c) => s + Number(c.price || 0),
     0
   );
   const booksInStockTotal = inStockBooks.reduce(
-    (sum, b) => sum + Number(b.price_cents || 0) * Number(b.quantity || 1),
+    (sum, b) => sum + Number(b.price || 0) * Number(b.quantity || 1),
     0
   );
   const totalPrice = coursesTotal + booksInStockTotal;
@@ -211,13 +211,13 @@ export default function CartPage() {
               <div className="col-span-2">
                 <p className="font-semibold text-gray-800">{c.title}</p>
                 <p className="text-sm text-gray-500 mt-1">
-                  Giá: {formatVND(c.price_cents || 0)}đ / khóa
+                  Giá: {formatVND(c.price || 0)}đ / khóa
                 </p>
               </div>
               <div className="col-span-1"></div>
               <div className="col-span-1 flex items-center justify-between text-right">
                 <p className="text-sm text-green-700 font-semibold">
-                  {formatVND(c.price_cents || 0)}đ
+                  {formatVND(c.price || 0)}đ
                 </p>
                 <button
                   onClick={() => removeCourse(c._id!)}
@@ -231,7 +231,7 @@ export default function CartPage() {
 
           {/* BOOKS CÒN HÀNG */}
           {inStockBooks.map((b) => {
-            const totalBookPrice = (b.price_cents || 0) * (b.quantity || 1);
+            const totalBookPrice = (b.price || 0) * (b.quantity || 1);
             return (
               <div
                 key={b._id}
@@ -251,7 +251,7 @@ export default function CartPage() {
                 <div className="col-span-2">
                   <p className="font-semibold text-gray-800">{b.title}</p>
                   <p className="text-sm text-gray-500 mt-1">
-                    Giá: {formatVND(b.price_cents || 0)}đ / quyển
+                    Giá: {formatVND(b.price || 0)}đ / quyển
                   </p>
                   {/* <p className="text-xs text-gray-400 mt-1">
                     Còn lại: {b.stock ?? 0} quyển
@@ -338,7 +338,7 @@ export default function CartPage() {
                 <div className="col-span-2">
                   <p className="font-semibold text-gray-800">{b.title}</p>
                   <p className="text-sm text-gray-500 mt-1">
-                    Giá: {formatVND(b.price_cents || 0)}đ / quyển
+                    Giá: {formatVND(b.price || 0)}đ / quyển
                   </p>
                   <p className="text-xs text-red-500 mt-1">Hết hàng</p>
                 </div>
@@ -364,7 +364,7 @@ export default function CartPage() {
                 </div>
                 <div className="col-span-1 flex items-center justify-between text-right">
                   <p className="text-sm text-gray-500 font-semibold">
-                    {formatVND(b.price_cents || 0)}đ
+                    {formatVND(b.price || 0)}đ
                   </p>
                   <button
                     onClick={() => removeBook(b._id!)}

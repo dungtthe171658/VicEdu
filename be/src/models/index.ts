@@ -13,6 +13,7 @@ export * from "./order_item.model";
 export * from "./review.model";
 export * from "./enrollment.model";
 export * from "./chat.model";
+export * from "./cart.model";
 
 // Export riêng các 'default' export và đặt tên cho chúng
 export { default as UserModel } from "./user.model";
@@ -27,3 +28,4 @@ export { default as OrderItemModel } from "./order_item.model";
 export { default as ReviewModel } from "./review.model";
 export { default as EnrollmentModel } from "./enrollment.model";
 export { default as ChatModel } from "./chat.model";
+export { default as CartModel } from "./cart.model";

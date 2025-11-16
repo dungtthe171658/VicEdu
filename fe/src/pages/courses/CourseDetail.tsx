@@ -731,7 +731,7 @@ export default function CourseDetail() {
           {/* Price hidden if enrolled */}
           {!isEnrolled && (
             <p className="text-2xl font-semibold text-green-700 mb-6">
-              {formatVND((course as any).price_cents || 0)}
+              {formatVND((course as any).price || 0)}
             </p>
           )}
 

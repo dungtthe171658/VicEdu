@@ -7,7 +7,7 @@ export interface Course {
   title: string;
   slug: string;
   description: string;
-  price_cents: number;
+  price: number;
   thumbnail_url?: string;
   teacher_id: string;
   teacher_ids?: string[];

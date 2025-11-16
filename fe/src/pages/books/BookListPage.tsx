@@ -55,7 +55,7 @@ const BookListPage = () => {
   // --- Lọc trực tiếp trên frontend ---
   const filteredBooks = useMemo(() => {
     return books
-      .filter((b) => b.price_cents! >= priceRange[0] && b.price_cents! <= priceRange[1])
+      .filter((b) => b.price! >= priceRange[0] && b.price! <= priceRange[1])
       .filter((b) => (inStockOnly ? (b.stock ?? 0) > 0 : true))
       .filter(
         (b) =>

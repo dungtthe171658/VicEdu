@@ -86,7 +86,7 @@ const BookDetailPage = () => {
     addBookItem({
       _id: book._id,
       title: book.title,
-      price_cents: book.price_cents,
+      price: book.price,
       images: Array.isArray(book.images) ? book.images : [],
       stock: book.stock ?? 0,
       quantity: 1,
@@ -115,7 +115,7 @@ const BookDetailPage = () => {
   if (error) return <p className="error-text">{error}</p>;
   if (!book) return <p className="error-text">Không tìm thấy sách.</p>;
 
-  const priceVND = book.price_cents.toLocaleString("vi-VN", {
+  const priceVND = book.price.toLocaleString("vi-VN", {
     style: "currency",
     currency: "VND",
   });

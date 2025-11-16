@@ -15,17 +15,14 @@ interface CourseFormProps {
 }
 
 const CourseForm = ({ initialData = {}, onSubmit, showTeacherAssign = false, hideStatus = false }: CourseFormProps) => {
-  // Backend returns price in VND, form displays VND, so use price directly if price_cents not available
-  // price_cents in form state represents VND (what user enters), will be converted to cents when submitting
-  const price_cents = initialData.price_cents !== undefined 
-    ? initialData.price_cents 
-    : (initialData as any).price !== undefined 
-      ? (initialData as any).price 
-      : undefined;
+  // Backend returns price in VND, form displays VND, so use price directly
+  const price = initialData.price !== undefined 
+    ? initialData.price 
+    : undefined;
   
   const [formData, setFormData] = useState<Partial<Course>>({
     ...initialData,
-    price_cents: price_cents,
+    price: price,
     category_id:
       typeof initialData.category_id === "object"
         ? initialData.category_id?._id
@@ -100,7 +97,7 @@ const CourseForm = ({ initialData = {}, onSubmit, showTeacherAssign = false, hid
       [name]:
         type === "checkbox"
           ? checked
-          : name === "price_cents"
+          : name === "price"
             ? Number(value)
             : value,
     }));
@@ -109,14 +106,11 @@ const CourseForm = ({ initialData = {}, onSubmit, showTeacherAssign = false, hid
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
 
-    // Convert VND to cents (multiply by 100) since backend divides by 100
-    const priceInVND = Number(formData.price_cents) || 0;
-    const priceInCents = priceInVND * 100;
-
+    // Backend uses price directly in VND, no conversion needed
     const payload: Partial<Course> = {
       ...formData,
       category_id: formData.category_id?.toString() || "",
-      price_cents: priceInCents,
+      price: Number(formData.price) || 0,
       is_published: !!formData.is_published,
     };
 
@@ -279,12 +273,12 @@ const CourseForm = ({ initialData = {}, onSubmit, showTeacherAssign = false, hid
       </div>
 
       <div className="form-group">
-        <label htmlFor="price_cents">Giá (VND)</label>
+        <label htmlFor="price">Giá (VND)</label>
         <input
-          id="price_cents"
+          id="price"
           type="number"
-          name="price_cents"
-          value={formData.price_cents ?? ""}
+          name="price"
+          value={formData.price ?? ""}
           onChange={handleChange}
           required
         />

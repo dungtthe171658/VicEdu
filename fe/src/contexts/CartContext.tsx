@@ -5,7 +5,7 @@ import type { Course } from "../types/course";
 export interface BookCartItem {
   _id: string;
   title: string;
-  price_cents?: number;
+  price?: number;
   quantity: number;
   images?: string[];
   stock: number;
@@ -59,8 +59,8 @@ function migrateBooks(value: any): BookCartItem[] {
       return (value as any[]).map((b) => ({
         _id: String(b._id),
         title: b.title ?? "",
-        price_cents:
-          typeof b.price_cents === "number" ? b.price_cents : undefined,
+        price:
+          typeof b.price === "number" ? b.price : undefined,
         images: Array.isArray(b.images) ? b.images : [],
         quantity: Math.max(1, Number(b.quantity) || 1),
         stock: b.stock ?? 0,
@@ -118,7 +118,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             ? {
                 ...x,
                 title: b.title ?? x.title,
-                price_cents: b.price_cents ?? x.price_cents,
+                price: b.price ?? x.price,
                 images: Array.isArray(b.images) ? b.images : x.images,
                 stock: b.stock ?? x.stock ?? 0,
                 quantity: Math.min(
@@ -135,7 +135,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         {
           _id: b._id,
           title: b.title,
-          price_cents: b.price_cents,
+          price: b.price,
           images: Array.isArray(b.images) ? b.images : [],
           stock: b.stock ?? 0,
           quantity: qty,
@@ -169,11 +169,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // ====== Calculations ======
   const total = useMemo(() => {
     const courseTotal = courses.reduce(
-      (sum, c) => sum + (c.price_cents || 0),
+      (sum, c) => sum + (c.price || 0),
       0
     );
     const bookTotal = books.reduce(
-      (sum, b) => sum + Number(b.price_cents || 0) * Number(b.quantity || 1),
+      (sum, b) => sum + Number(b.price || 0) * Number(b.quantity || 1),
       0
     );
     return courseTotal + bookTotal;
@@ -191,7 +191,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       productId: c._id,
       productType: "Course" as const,
       productName: c.title,
-      productPrice: Number(c.price_cents || 0),
+      productPrice: Number(c.price || 0),
       quantity: 1,
     }));
 
@@ -200,7 +200,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       productType: "Book" as const,
       productName: b.title,
       productPrice:
-        typeof b.price_cents === "number" ? b.price_cents : undefined,
+        typeof b.price === "number" ? b.price : undefined,
       quantity: Math.max(1, Number(b.quantity) || 1),
     }));
 
