@@ -336,41 +336,89 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
  */
 export const createUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, email, password, phone, role, avatar } = req.body;
+    let { name, email, password, phone, role, avatar } = req.body;
+
+  
+    name = String(name || "").trim();
+    email = String(email || "").trim().toLowerCase();
+    password = String(password || "");
+    phone = phone ? String(phone).trim() : "";
+    avatar = avatar ? String(avatar).trim() : "";
+
 
     if (!name || !email || !role || !password) {
-      res.status(400).json({ message: "name, email, role, password are required." });
+      res.status(400).json({
+        message: "name, email, role, password are required.",
+      });
       return;
     }
 
-    const exists = await UserModel.exists({ email: String(email).toLowerCase() });
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      res.status(400).json({ message: "Invalid email format." });
+      return;
+    }
+
+    
+    const exists = await UserModel.exists({ email });
     if (exists) {
       res.status(409).json({ message: "Email already exists." });
       return;
     }
 
+   
+    if (password.length < 6) {
+      res.status(400).json({
+        message: "Password must be at least 6 characters.",
+      });
+      return;
+    }
+
+   
+    if (phone && !/^\d{9,11}$/.test(phone)) {
+      res.status(400).json({ message: "Invalid phone number." });
+      return;
+    }
+
+    
+    if (avatar && !/^https?:\/\/.+/.test(avatar)) {
+      res.status(400).json({ message: "Invalid avatar URL." });
+      return;
+    }
+
+   
     const bcrypt = await import("bcryptjs");
     const hashedPassword = await bcrypt.hash(password, 10);
 
+  
     const user = await UserModel.create({
       name,
-      email: String(email).toLowerCase(),
+      email,
       password: hashedPassword,
-      phone,
+      phone: phone || null,
       role,
-      avatar,
+      avatar: avatar || null,
       is_verified: false,
     });
 
+    // Xóa password trước khi trả về
     const plainUser = user.toObject() as Record<string, any>;
     delete plainUser.password;
 
-    res.status(201).json({ message: "User created successfully.", user: plainUser });
+    res.status(201).json({
+      message: "User created successfully.",
+      user: plainUser,
+    });
   } catch (error: any) {
     console.error("❌ CreateUser Error:", error);
-    res.status(500).json({ message: "Server error.", error: error.message });
+    res.status(500).json({
+      message: "Server error.",
+      error: error.message,
+    });
   }
 };
+
 
 
 /**
