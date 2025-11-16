@@ -28,6 +28,25 @@ const getImageSrc = (img?: string) => {
   return "/no-image.png";
 };
 
+const unwrapData = <T,>(res: any): T | null => {
+  if (!res) return null;
+  if (res.data !== undefined) {
+    if (res.data.data !== undefined) return res.data.data as T;
+    return res.data as T;
+  }
+  return res as T;
+};
+
+const unwrapList = <T,>(res: any): T[] => {
+  const payload = unwrapData<T[] | Record<string, unknown>>(res);
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray((payload as any).items)) return (payload as any).items;
+  if (payload && Array.isArray((payload as any).data)) return (payload as any).data;
+  if (payload && Array.isArray((payload as any).rows)) return (payload as any).rows;
+  if (payload && Array.isArray((payload as any).result)) return (payload as any).result;
+  return [];
+};
+
 const BookDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const [book, setBook] = useState<BookDto | null>(null);
@@ -58,19 +77,21 @@ const BookDetailPage = () => {
 
         // 1️⃣ Chi tiết sách
         const res = await bookApi.getById(id);
-        const bookData: BookDto = res.data;
+        const bookData = unwrapData<BookDto>(res);
+        if (!bookData?._id) throw new Error("Invalid book data");
         setBook(bookData);
 
         // 2️⃣ Sách cùng thể loại
+        const rawCategory = bookData.category_id;
         const categoryId =
-          typeof bookData.category_id === "object"
-            ? bookData.category_id._id
-            : bookData.category_id;
+          rawCategory && typeof rawCategory === "object"
+            ? (rawCategory as Category)._id
+            : rawCategory;
 
         if (categoryId) {
           const catRes = await bookApi.getAll({ categoryId });
-          const books: BookDto[] = catRes.data || [];
-          setSameCategoryBooks(books.filter((b) => b._id !== id));
+          const books = unwrapList<BookDto>(catRes);
+          setSameCategoryBooks(books.filter((b) => b._id !== bookData._id));
         } else {
           setSameCategoryBooks([]);
         }
@@ -90,7 +111,7 @@ const BookDetailPage = () => {
     const fetchPurchasedBooks = async () => {
       try {
         const res = await bookApi.getBookOrderAndOrderitem();
-        const books = res.data?.data || [];
+        const books = unwrapList<BookDto>(res);
         const purchasedIds: string[] = books.map((b: any) => b._id);
         setPurchasedBookIds(new Set(purchasedIds));
       } catch (err) {
@@ -132,7 +153,8 @@ const BookDetailPage = () => {
   if (error) return <p className="error-text">{error}</p>;
   if (!book) return <p className="error-text">Không tìm thấy sách.</p>;
 
-  const priceVND = book.price.toLocaleString("vi-VN", {
+  const priceNumber = typeof book.price === "number" ? book.price : 0;
+  const priceVND = priceNumber.toLocaleString("vi-VN", {
     style: "currency",
     currency: "VND",
   });

@@ -8,7 +8,6 @@ export interface BookCartItem {
   price?: number;
   quantity: number;
   images?: string[];
-  stock: number;
 }
 
 type CartContextType = {
@@ -52,7 +51,6 @@ function migrateBooks(value: any): BookCartItem[] {
         title: "",
         quantity: 1,
         images: [],
-        stock: 0,
       }));
     }
     if (Array.isArray(value) && value.every((x) => typeof x === "object")) {
@@ -63,7 +61,6 @@ function migrateBooks(value: any): BookCartItem[] {
           typeof b.price === "number" ? b.price : undefined,
         images: Array.isArray(b.images) ? b.images : [],
         quantity: Math.max(1, Number(b.quantity) || 1),
-        stock: b.stock ?? 0,
       }));
     }
     return [];
@@ -120,11 +117,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
                 title: b.title ?? x.title,
                 price: b.price ?? x.price,
                 images: Array.isArray(b.images) ? b.images : x.images,
-                stock: b.stock ?? x.stock ?? 0,
-                quantity: Math.min(
-                  x.quantity + qty,
-                  b.stock ?? x.stock ?? Infinity
-                ), // ✅ giới hạn theo stock
+                quantity: x.quantity + qty,
               }
             : x
         );
@@ -137,7 +130,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           title: b.title,
           price: b.price,
           images: Array.isArray(b.images) ? b.images : [],
-          stock: b.stock ?? 0,
           quantity: qty,
         },
       ];
@@ -147,13 +139,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const updateBookQty = (bookId: string, quantity: number) => {
     const q = Math.max(1, Number(quantity) || 1);
     setBooks((prev) =>
-      prev.map((b) => ({
-        ...b,
-        quantity:
-          b._id === bookId
-            ? Math.min(q, b.stock || Infinity) // ✅ không vượt quá stock
-            : b.quantity,
-      }))
+      prev.map((b) =>
+        b._id === bookId ? { ...b, quantity: q } : b
+      )
     );
   };
 
