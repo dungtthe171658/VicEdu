@@ -19,6 +19,14 @@ export interface EnrollmentMiniRaw {
   status?: string;
 }
 
+export interface EnrollmentByCourse {
+  _id: string | null;
+  course_id: string;
+  status: string;
+  completed_lessons: string[];
+  progress: number;
+}
+
 const enrollmentApi = {
   // Mini list of my enrollments: [{ _id, course_id, status }]
   getMyEnrollMini: (params?: Record<string, unknown>): Promise<EnrollmentMiniRaw[]> =>
@@ -38,6 +46,14 @@ const enrollmentApi = {
       return new Set<string>();
     }
   },
+
+  // Get enrollment for a specific course with completed_lessons
+  getEnrollmentByCourse: (courseId: string): Promise<EnrollmentByCourse> =>
+    axios.get(`${BASE_URL}/enrollments/course/${courseId}`),
+
+  // Mark a lesson as completed
+  completeLesson: (lessonId: string): Promise<{ message: string; completed_lessons: string[]; progress: number }> =>
+    axios.post(`${BASE_URL}/enrollments/complete-lesson`, { lessonId }),
 };
 
 export default enrollmentApi;

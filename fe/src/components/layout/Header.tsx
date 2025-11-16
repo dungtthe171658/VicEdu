@@ -30,7 +30,7 @@ const Header: React.FC = () => {
     <header className="bg-white shadow-md px-6 py-3 flex justify-between items-center">
       {/* Trái: logo/tiêu đề + link nhanh */}
       <div className="flex items-center space-x-6">
-        <h1 className="text-xl font-semibold text-gray-700">Dashboard</h1>
+        <h1 className="text-xl font-semibold text-gray-700">Bảng điều khiển</h1>
 
         {/* Link Sách (admin chuyển vào trang quản trị sách, user -> books) */}
         <Link

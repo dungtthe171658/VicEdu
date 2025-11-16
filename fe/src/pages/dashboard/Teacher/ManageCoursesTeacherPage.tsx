@@ -122,8 +122,8 @@ const ManageCoursesTeacherPage = () => {
   return (
     <div className="course-management-container">
       <div className="header">
-        <h2>Quan ly khoa hoc</h2>
-        <button className="add-btn" onClick={handleAdd}>+ Them khoa hoc</button>
+        <h2>Quản lý khóa học</h2>
+        <button className="add-btn" onClick={handleAdd}>+ Thêm khóa học</button>
       </div>
 
       <ul className="course-list">

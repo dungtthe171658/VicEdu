@@ -1,5 +1,5 @@
 import { useLocation, useParams, Link } from "react-router-dom";
-import { ArrowLeft, BookOpen, Star, Lock, HelpCircle } from "lucide-react";
+import { ArrowLeft, BookOpen, Star, Lock, HelpCircle, CheckCircle2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import courseApi from "../../api/courseApi";
 import enrollmentApi from "../../api/enrollmentApi";
@@ -29,6 +29,7 @@ export default function CourseDetail() {
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [playbackUrl, setPlaybackUrl] = useState<string>("");
   const [loadingPlayback, setLoadingPlayback] = useState(false);
+  const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
 
   // Subtitles
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -93,18 +94,39 @@ export default function CourseDetail() {
     })();
   }, [slug]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Resolve enrolled status
+  // Resolve enrolled status and load completed lessons
   useEffect(() => {
     (async () => {
       try {
         if (!course) return;
         const ids = await enrollmentApi.getMyEnrolledCourseIds();
-        setIsEnrolled(ids.has(toId((course as any)._id)));
+        const enrolled = ids.has(toId((course as any)._id));
+        setIsEnrolled(enrolled);
+
+        // Load completed lessons if enrolled and user is logged in
+        if (enrolled && user) {
+          try {
+            const enrollment = await enrollmentApi.getEnrollmentByCourse(toId((course as any)._id));
+            const completedSet = new Set<string>();
+            if (enrollment.completed_lessons && Array.isArray(enrollment.completed_lessons)) {
+              enrollment.completed_lessons.forEach((id: any) => {
+                completedSet.add(toId(id));
+              });
+            }
+            setCompletedLessons(completedSet);
+          } catch (err) {
+            console.warn("Could not load completed lessons:", err);
+            setCompletedLessons(new Set());
+          }
+        } else {
+          setCompletedLessons(new Set());
+        }
       } catch {
         setIsEnrolled(false);
+        setCompletedLessons(new Set());
       }
     })();
-  }, [course]);
+  }, [course, user]);
 
   // Load lessons when course is ready
   useEffect(() => {
@@ -844,7 +866,22 @@ export default function CourseDetail() {
             isEnrolled ? (
               playbackUrl ? (
                 <div className="relative">
-                  <video ref={videoRef} controls src={playbackUrl} className="w-full rounded-lg bg-black" />
+                  <video 
+                    ref={videoRef} 
+                    controls 
+                    src={playbackUrl} 
+                    className="w-full rounded-lg bg-black"
+                    onEnded={async () => {
+                      if (selectedLessonId && isEnrolled && user && !completedLessons.has(selectedLessonId)) {
+                        try {
+                          await enrollmentApi.completeLesson(selectedLessonId);
+                          setCompletedLessons((prev) => new Set([...prev, selectedLessonId]));
+                        } catch (err) {
+                          console.error("Failed to mark lesson as completed:", err);
+                        }
+                      }
+                    }}
+                  />
                   <BilingualSubtitles videoRef={videoRef} cues={subCues} mode={subMode} visible={subVisible} />
                 </div>
               ) : (
@@ -879,6 +916,7 @@ export default function CourseDetail() {
             <ul className="divide-y divide-gray-100">
               {lessons.map((ls) => {
                 const lessonHasQuiz = lessonsWithQuiz.has(ls._id);
+                const isCompleted = completedLessons.has(ls._id);
                 return (
                   <li key={ls._id}>
                     <div className="flex items-start gap-2">
@@ -889,7 +927,10 @@ export default function CourseDetail() {
                         }`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="font-medium">
+                          <span className="font-medium flex items-center gap-2">
+                            {isCompleted && (
+                              <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                            )}
                             {ls.position}. {ls.title}
                           </span>
                           {!isEnrolled && <Lock className="w-4 h-4 text-gray-400" />}

@@ -48,7 +48,7 @@ const MuiSidebar: React.FC<SidebarProps> = ({
   const theme = useTheme();
 
   const items = [
-    { label: 'Dashboard', path: '/teacher', icon: HomeIcon },
+    { label: 'Bảng điều khiển', path: '/teacher', icon: HomeIcon },
     // { label: 'Theo dõi học viên', path: 'manage-student', icon: ShoppingCartIcon },
     { label: 'Khóa học', path: 'manage-courses', icon: ArticleIcon },
     // { label: 'Bình luận', path: 'manage-reviews', icon: ReviewsIcon },
