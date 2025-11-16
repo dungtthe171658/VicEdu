@@ -20,6 +20,8 @@ const ManageUsersPage: React.FC = () => {
   const [users, setUsers] = useState<UserDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
   
   // State cho Modal/Dialog
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -65,23 +67,35 @@ if (Array.isArray(items)) {
 
   // --- Thao tác Form (Create/Edit) ---
   const handleSaveUser = async (data: Partial<UserDto>) => {
-      try {
-          if (editingUser?._id) {
-              // Edit (UC: Update User)
-              await userApi.update(editingUser._id, data);
-          } else {
-              // Create (UC01: Create New User)
-              // Lưu ý: API create user thường cần password, bạn cần đảm bảo UserForm cung cấp đủ
-              await userApi.create(data); 
-          }
-          setIsModalOpen(false);
-          setEditingUser(null);
-          loadUsers();
-      } catch (e) {
-          console.error("Lỗi khi lưu người dùng:", e);
-          setError("Lỗi khi thao tác: " + e.message);
-      }
+  try {
+    if (editingUser?._id) {
+        await userApi.update(editingUser._id, data);
+    } else {
+        await userApi.create(data);
+    }
+
+    setFormErrors({});
+    setIsModalOpen(false);
+    setEditingUser(null);
+    loadUsers();
+
+  } catch (e: any) {
+
+    const msg = e?.response?.data?.message || "Lỗi khi thao tác.";
+
+    if (msg.includes("Password")) {
+      setFormErrors({ password: msg });
+    } else if (msg.includes("Email")) {
+      setFormErrors({ email: msg });
+    } else if (msg.includes("Name")) {
+      setFormErrors({ name: msg });
+    } else {
+      setFormErrors({ general: msg });
+    }
   }
+};
+
+
 
   const handleOpenCreateModal = () => {
     setEditingUser(null); // Tạo mới
@@ -94,22 +108,22 @@ if (Array.isArray(items)) {
   }
 
   // --- Thao tác Lock/Unlock (UC: Lock/Unlock Account) ---
-  const handleLockUnlock = async (userId: string, isLocked: boolean) => {
-      try {
-          if (isLocked) {
-              // Giả sử khóa 1 giờ nếu đang mở khóa
-              await userApi.lock(userId, 1); 
-              alert("User đã bị khóa.");
-          } else {
-              await userApi.unlock(userId);
-              alert("User đã được mở khóa.");
-          }
-          loadUsers();
-      } catch (err) {
-          console.error("Lỗi khóa/mở khóa:", err);
-          setError("Thao tác thất bại.");
-      }
-  }
+  // const handleLockUnlock = async (userId: string, isLocked: boolean) => {
+  //     try {
+  //         if (isLocked) {
+  //             // Giả sử khóa 1 giờ nếu đang mở khóa
+  //             await userApi.lock(userId, 1); 
+  //             alert("User đã bị khóa.");
+  //         } else {
+  //             await userApi.unlock(userId);
+  //             alert("User đã được mở khóa.");
+  //         }
+  //         loadUsers();
+  //     } catch (err) {
+  //         console.error("Lỗi khóa/mở khóa:", err);
+  //         setError("Thao tác thất bại.");
+  //     }
+  // }
 
   // --- Thao tác Xóa mềm (UC: Delete User - Soft Delete) ---
   const handleDelete = async (userId: string) => {
@@ -198,7 +212,7 @@ if (Array.isArray(items)) {
                     </IconButton>
                     
                     {/* Thao tác Khóa/Mở Khóa */}
-                    {!user.deletedAt && (
+                    {/* {!user.deletedAt && (
                         <IconButton 
                             title={user.lockedUntil ? "Mở khóa tài khoản" : "Khóa tài khoản"} 
                             color={user.lockedUntil ? "success" : "warning"}
@@ -206,7 +220,7 @@ if (Array.isArray(items)) {
                         >
                             {user.lockedUntil ? <UnlockIcon fontSize="small" /> : <LockIcon fontSize="small" />}
                         </IconButton>
-                    )}
+                    )} */}
 
                     {/* Thao tác Xóa mềm */}
                     <IconButton title="Xóa tài khoản" color="error" onClick={() => handleDelete(user._id)}>
@@ -233,6 +247,7 @@ if (Array.isArray(items)) {
             <UserForm 
                 initialData={editingUser || {}} 
                 onSubmit={handleSaveUser} 
+                errors={formErrors}
             /> 
           }
           
