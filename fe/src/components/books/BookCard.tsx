@@ -20,7 +20,7 @@ const BookCard = ({ book }: BookCardProps) => {
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isOutOfStock || isAdding || hasPurchased) return;
+    if (isAdding || hasPurchased) return;
 
     setIsAdding(true);
 
@@ -29,8 +29,7 @@ const BookCard = ({ book }: BookCardProps) => {
         _id: book._id,
         title: book.title,
         price: book.price,
-        stock: book.stock ?? 0,
-        image: book.images ?? [],
+        images: book.images ?? [],
         quantity: 1,
       });
 
@@ -44,9 +43,11 @@ const BookCard = ({ book }: BookCardProps) => {
     const fetchPurchasedBooks = async () => {
       try {
         const res = await fetch("/orders/user-books", {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
         });
-        const data: string[] = await res.json(); // giả sử backend trả về mảng book _id
+        const data: string[] = await res.json();
         setHasPurchased(data.includes(book._id));
       } catch (err) {
         console.error("Không thể kiểm tra sách đã mua:", err);
@@ -60,48 +61,38 @@ const BookCard = ({ book }: BookCardProps) => {
     currency: "VND",
   });
 
-  const isOutOfStock = !book.stock || book.stock <= 0;
-
   return (
-    <div
-      className={`book-card ${isOutOfStock ? "out-of-stock" : ""}`}
-      onClick={handleCardClick}
-    >
+    <div className="book-card" onClick={handleCardClick}>
       <div className="image-wrapper">
         <img
           src={book.images?.[0] || "/no-image.png"}
           alt={book.title}
-          className={`book-image ${isOutOfStock ? "dimmed" : ""}`}
+          className="book-image"
         />
-        {isOutOfStock && <div className="sold-out-overlay">Hết hàng</div>}
+        {hasPurchased && (
+          <div className="sold-out-overlay">Đã mua</div>
+        )}
       </div>
 
       <div className="book-content">
         <h3 className="book-title">{book.title}</h3>
-        <p className="book-author">{book.author || "Tác giả không rõ"}</p>
-        <p className="book-price">{priceVND}</p>
-        <p className="book-stock">
-          {isOutOfStock ? "Số lượng: 0" : `Số lượng: ${book.stock}`}
+        <p className="book-author">
+          {book.author || "Tác giả không rõ"}
         </p>
+        <p className="book-price">{priceVND}</p>
 
         <button
           className={`add-to-cart-btn ${
-            isOutOfStock || hasPurchased
-              ? "disabled"
-              : isAdding
-              ? "loading"
-              : ""
+            hasPurchased ? "disabled" : isAdding ? "loading" : ""
           }`}
           onClick={handleAddToCart}
-          disabled={isOutOfStock || isAdding || hasPurchased}
+          disabled={isAdding || hasPurchased}
         >
           {hasPurchased
             ? "Bạn đã mua sách này"
-            : isOutOfStock
-            ? "hết hàng"
             : isAdding
             ? "Đang thêm..."
-            : "🛒 Thêm vào giỏ hàng"}
+            : "Thêm vào giỏ hàng"}
         </button>
       </div>
     </div>
@@ -109,3 +100,4 @@ const BookCard = ({ book }: BookCardProps) => {
 };
 
 export default BookCard;
+

@@ -34,9 +34,6 @@ const BookModal = ({ book, isOpen, onClose }: BookModalProps) => {
           <strong>Giá:</strong> {book.price?.toLocaleString()} VND
         </p>
         <p>
-          <strong>Stock:</strong> {book.stock ?? 0}
-        </p>
-        <p>
           <strong>Mô tả:</strong> {book.description || "Không có mô tả"}
         </p>
 

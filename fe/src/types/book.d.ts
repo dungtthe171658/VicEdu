@@ -8,7 +8,6 @@ export interface BookDto {
   author?: string;
   description?: string;
   price: number;
-  stock?: number;
   category_id: string | Category;
   is_published?: boolean;
   images?: string[];
