@@ -9,14 +9,7 @@ const formatVND = (n: number) => n.toLocaleString("vi-VN");
 type PaymentMethod = "momo" | "vnpay" | "cod";
 
 export default function CartPage() {
-  const {
-    courses,
-    books,
-    removeCourse,
-    removeBook,
-    clear,
-    updateBookQty,
-  } = useCart();
+  const { courses, books, removeCourse, removeBook, clear } = useCart();
 
   const [payment, setPayment] = useState<PaymentMethod>("vnpay");
   const [loading, setLoading] = useState(false);
@@ -43,8 +36,8 @@ export default function CartPage() {
           productId: b._id,
           productType: "Book" as const,
           productName: b.title,
-          productPrice: Number(b.price ?? 0),
-          quantity: Math.max(1, Number(b.quantity ?? 1)),
+          productPrice: Number(b.price || 0),
+          quantity: 1,
           productImage:
             Array.isArray(b.images) && b.images.length > 0
               ? b.images[0]
@@ -53,47 +46,31 @@ export default function CartPage() {
       ];
 
       const payload: any = { items, paymentMethod: payment };
-      if (user?.email) {
-        payload.email = user.email;
-      }
+      if (user?.email) payload.email = user.email;
 
       const res: { checkoutUrl?: string } =
         await paymentsApi.createPaymentLink(payload);
 
       if (res.checkoutUrl) {
-        clear();
+        // Không xóa giỏ hàng ở đây - chỉ xóa khi thanh toán thành công
         window.location.href = res.checkoutUrl;
       } else {
         alert("Không nhận được link thanh toán");
       }
     } catch (err: any) {
       console.error("Checkout error:", err);
-      alert(
-        err?.message ||
-          "Có lỗi xảy ra khi tạo link thanh toán."
-      );
+      alert(err?.message || "Có lỗi xảy ra khi tạo link thanh toán.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleQtyChange = (bookId: string, value: number) => {
-    let parsed = Number.isFinite(value)
-      ? Math.floor(value)
-      : Math.floor(Number(value) || 1);
-    if (Number.isNaN(parsed)) parsed = 1;
-    const newQty = Math.max(1, parsed);
-    updateBookQty(bookId, newQty);
-  };
-
   const coursesTotal = courses.reduce(
-    (s, c) => s + Number(c.price || 0),
+    (sum, c) => sum + Number(c.price || 0),
     0
   );
   const booksTotal = books.reduce(
-    (sum, b) =>
-      sum +
-      Number(b.price || 0) * Number(b.quantity || 1),
+    (sum, b) => sum + Number(b.price || 0),
     0
   );
   const totalPrice = coursesTotal + booksTotal;
@@ -101,14 +78,12 @@ export default function CartPage() {
   if (courses.length === 0 && books.length === 0) {
     return (
       <div className="max-w-5xl mx-auto px-4 py-16 text-center">
-        <p className="text-gray-600 mb-4">
-          Giỏ hàng của bạn đang trống.
-        </p>
+        <p className="text-gray-600 mb-4">Giỏ hàng của bạn đang trống.</p>
         <Link
           to="/courses"
           className="bg-blue-600 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition"
         >
-          Xem khoá học
+          Xem khóa học
         </Link>
       </div>
     );
@@ -116,11 +91,9 @@ export default function CartPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
-      {/* Cột trái: danh sách items */}
+      {/* Cột trái: danh sách sản phẩm */}
       <div className="lg:col-span-2">
-        <h1 className="text-2xl font-bold mb-5">
-          Giỏ hàng của bạn
-        </h1>
+        <h1 className="text-2xl font-bold mb-5">Giỏ hàng của bạn</h1>
 
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm divide-y">
           {/* COURSES */}
@@ -131,22 +104,17 @@ export default function CartPage() {
             >
               <div className="col-span-1 flex justify-center">
                 <img
-                  src={
-                    c.thumbnail_url || "https://placehold.co/100x70"
-                  }
+                  src={c.thumbnail_url || "https://placehold.co/100x70"}
                   alt={c.title}
                   className="w-20 h-24 object-cover rounded-md border"
                 />
               </div>
-              <div className="col-span-2">
-                <p className="font-semibold text-gray-800">
-                  {c.title}
-                </p>
+              <div className="col-span-3">
+                <p className="font-semibold text-gray-800">{c.title}</p>
                 <p className="text-sm text-gray-500 mt-1">
-                  Giá: {formatVND(c.price || 0)}₫ / khoá
+                  Giá: {formatVND(c.price || 0)}₫ / khóa
                 </p>
               </div>
-              <div className="col-span-1" />
               <div className="col-span-1 flex items-center justify-between text-right">
                 <p className="text-sm text-green-700 font-semibold">
                   {formatVND(c.price || 0)}₫
@@ -161,10 +129,9 @@ export default function CartPage() {
             </div>
           ))}
 
-          {/* BOOKS (ebook) */}
+          {/* BOOKS (ebook) - mỗi sách 1 bản */}
           {books.map((b) => {
-            const totalBookPrice =
-              (b.price || 0) * (b.quantity || 1);
+            const totalBookPrice = b.price || 0;
             return (
               <div
                 key={b._id}
@@ -173,8 +140,7 @@ export default function CartPage() {
                 <div className="col-span-1 flex justify-center">
                   <img
                     src={
-                      Array.isArray(b.images) &&
-                      b.images.length > 0
+                      Array.isArray(b.images) && b.images.length > 0
                         ? b.images[0]
                         : "/no-image.png"
                     }
@@ -182,49 +148,11 @@ export default function CartPage() {
                     className="w-20 h-24 object-cover rounded-md border"
                   />
                 </div>
-                <div className="col-span-2">
-                  <p className="font-semibold text-gray-800">
-                    {b.title}
-                  </p>
+                <div className="col-span-3">
+                  <p className="font-semibold text-gray-800">{b.title}</p>
                   <p className="text-sm text-gray-500 mt-1">
                     Giá: {formatVND(b.price || 0)}₫ / ebook
                   </p>
-                </div>
-                <div className="col-span-1 flex items-center justify-center gap-2">
-                  <button
-                    onClick={() =>
-                      handleQtyChange(
-                        b._id,
-                        (b.quantity ?? 1) - 1
-                      )
-                    }
-                    className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
-                  >
-                    -
-                  </button>
-                  <input
-                    type="number"
-                    value={b.quantity ?? 1}
-                    min={1}
-                    onChange={(e) =>
-                      handleQtyChange(
-                        b._id,
-                        parseInt(e.target.value, 10) || 1
-                      )
-                    }
-                    className="w-12 text-center border rounded appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-moz-appearance]:textfield"
-                  />
-                  <button
-                    onClick={() =>
-                      handleQtyChange(
-                        b._id,
-                        (b.quantity ?? 1) + 1
-                      )
-                    }
-                    className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
-                  >
-                    +
-                  </button>
                 </div>
                 <div className="col-span-1 flex items-center justify-between text-right">
                   <p className="text-sm text-green-700 font-semibold">
@@ -243,11 +171,9 @@ export default function CartPage() {
         </div>
       </div>
 
-      {/* Cột phải: hình thức thanh toán + tổng tiền */}
+      {/* Cột phải: hình thức thanh toán */}
       <aside className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5 h-fit lg:sticky lg:top-20">
-        <h2 className="text-lg font-semibold mb-3">
-          Hình thức thanh toán
-        </h2>
+        <h2 className="text-lg font-semibold mb-3">Hình thức thanh toán</h2>
         <div className="space-y-3 mb-6">
           {[
             { id: "momo" as const, label: "Momo", icon: "💜", disabled: true },
@@ -257,12 +183,7 @@ export default function CartPage() {
               icon: "💳",
               disabled: false,
             },
-            {
-              id: "cod" as const,
-              label: "Thanh toán khi nhận (COD)",
-              icon: "📦",
-              disabled: true,
-            },
+      
           ].map((m) => (
             <button
               key={m.id}
@@ -289,7 +210,7 @@ export default function CartPage() {
         </div>
 
         <div className="flex items-center justify-between mb-4">
-          <span className="text-sm text-gray-600">Tổng tạm tính</span>
+          <span className="text-sm text-gray-600">Tổng tiền thanh toán</span>
           <span className="text-lg font-semibold text-green-700">
             {formatVND(totalPrice)}₫
           </span>
