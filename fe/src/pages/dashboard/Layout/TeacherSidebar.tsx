@@ -53,6 +53,7 @@ const MuiSidebar: React.FC<SidebarProps> = ({
     { label: 'Khóa học', path: 'manage-courses', icon: ArticleIcon },
     // { label: 'Bình luận', path: 'manage-reviews', icon: ReviewsIcon },
     { label: 'Hỏi đáp bài học', path: 'manage-comments', icon: QuestionAnswerIcon },
+    { label: 'Quản lý tiến độ học tập', path: 'manage-tracksprocess', icon: ArticleIcon },
 
     
     // { label: 'Pending edits', path: 'pending-edits', icon: ArticleIcon },

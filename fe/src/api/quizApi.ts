@@ -66,6 +66,16 @@ const quizApi = {
             correct?: number;
         }
     ) => axios.post(`/quizzes/${quizId}/attempts/log`, payload),
+
+    // [Admin] Get quiz attempts by user ID
+    getAttemptsByUserForAdmin: (userId: string): Promise<any[]> =>
+        axios.get(`/quizzes/admin/attempts-by-user/${userId}`),
+
+    // [Teacher] Get quiz attempts by course IDs
+    getAttemptsByCoursesForTeacher: (courseIds: string[]): Promise<any[]> =>
+        axios.get(`/quizzes/teacher/attempts-by-courses`, {
+            params: { courseIds: courseIds.join(",") },
+        }),
 };
 
 export default quizApi;

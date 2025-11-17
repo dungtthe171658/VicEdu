@@ -1,8 +1,10 @@
 import { Response, Request } from "express";
 import { AuthRequest } from "../middlewares/auth";
+import mongoose from "mongoose";
 import Quiz from "../models/quiz.model";
-
 import QuizAttempt from "../models/QuizAttempt.model";
+import LessonModel from "../models/lesson.model";
+import CourseModel from "../models/course.model";
 
 
 
@@ -302,6 +304,149 @@ export const submitQuiz = async (req: Request, res: Response) => {
 
     res.json({ correct, total: quiz.questions.length, score });
   } catch (e: any) {
+    return res.status(500).json({ message: e.message });
+  }
+};
+
+// [Admin] Get quiz attempts by user ID
+export const getQuizAttemptsByUserForAdmin = async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId } = req.params;
+    
+    if (!userId || !mongoose.isValidObjectId(userId)) {
+      return res.status(400).json({ message: "Invalid userId" });
+    }
+
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    
+    const attempts = await QuizAttempt.find({ user_id: userObjectId })
+      .populate("user_id", "name email")
+      .sort({ _id: -1 })
+      .lean();
+
+    // Manually populate quiz data since quiz_id is a String, not ObjectId
+    const attemptsWithQuiz = await Promise.all(
+      attempts.map(async (attempt: any) => {
+        const quiz = await Quiz.findById(attempt.quiz_id)
+          .populate({
+            path: "lesson_id",
+            select: "title course_id",
+            populate: {
+              path: "course_id",
+              select: "title slug",
+            },
+          })
+          .lean();
+
+        return {
+          ...attempt,
+          quiz: quiz || null,
+        };
+      })
+    );
+
+    return res.json(attemptsWithQuiz);
+  } catch (e: any) {
+    console.error("getQuizAttemptsByUserForAdmin error:", e);
+    return res.status(500).json({ message: e.message });
+  }
+};
+
+// [Teacher] Get quiz attempts by course IDs
+export const getQuizAttemptsByCoursesForTeacher = async (req: AuthRequest, res: Response) => {
+  try {
+    const uid = getUserIdFromToken(req);
+    if (!uid) return res.status(401).json({ message: "Unauthenticated" });
+
+    const { courseIds } = req.query;
+    if (!courseIds) {
+      return res.status(400).json({ message: "courseIds query parameter is required" });
+    }
+
+    // Parse courseIds - can be comma-separated string or array
+    let courseIdArray: string[] = [];
+    if (typeof courseIds === "string") {
+      courseIdArray = courseIds.split(",").map((id) => id.trim());
+    } else if (Array.isArray(courseIds)) {
+      courseIdArray = courseIds.map((id) => String(id));
+    }
+
+    // Validate ObjectIds
+    const validCourseIds = courseIdArray
+      .filter((id) => mongoose.isValidObjectId(id))
+      .map((id) => new mongoose.Types.ObjectId(id));
+
+    if (validCourseIds.length === 0) {
+      return res.json([]);
+    }
+
+    // Verify that these courses belong to the teacher
+    const teacherObjectId = new mongoose.Types.ObjectId(uid);
+    const courses = await CourseModel.find({
+      _id: { $in: validCourseIds },
+      teacher: teacherObjectId,
+    }).select("_id").lean();
+
+    const verifiedCourseIds = courses.map((c: any) => c._id);
+    
+    if (verifiedCourseIds.length === 0) {
+      return res.json([]);
+    }
+
+    // Get all lessons for these courses
+    const lessons = await LessonModel.find({
+      course_id: { $in: verifiedCourseIds },
+    }).select("_id").lean();
+
+    const lessonIds = lessons.map((l: any) => l._id);
+    
+    if (lessonIds.length === 0) {
+      return res.json([]);
+    }
+
+    // Get all quizzes for these lessons
+    const quizzes = await Quiz.find({
+      lesson_id: { $in: lessonIds },
+    }).select("_id").lean();
+
+    const quizIds = quizzes.map((q: any) => String(q._id));
+    
+    if (quizIds.length === 0) {
+      return res.json([]);
+    }
+
+    // Get all attempts for these quizzes
+    const attempts = await QuizAttempt.find({
+      quiz_id: { $in: quizIds },
+    })
+      .populate("user_id", "name email")
+      .sort({ _id: -1 })
+      .lean();
+
+    // Manually populate quiz data since quiz_id is a String, not ObjectId
+    const attemptsWithQuiz = await Promise.all(
+      attempts.map(async (attempt: any) => {
+        const quiz = await Quiz.findById(attempt.quiz_id)
+          .populate({
+            path: "lesson_id",
+            select: "title course_id",
+            populate: {
+              path: "course_id",
+              select: "title slug",
+            },
+          })
+          .lean();
+
+        return {
+          ...attempt,
+          quiz: quiz || null,
+        };
+      })
+    );
+
+    return res.json(attemptsWithQuiz);
+  } catch (e: any) {
+    console.error("getQuizAttemptsByCoursesForTeacher error:", e);
     return res.status(500).json({ message: e.message });
   }
 };

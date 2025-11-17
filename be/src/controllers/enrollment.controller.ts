@@ -242,4 +242,78 @@ export const completeLesson = async (req: Request, res: Response) => {
   }
 };
 
+// [Admin] Get all enrollments with user and course data
+export const getAllEnrollmentsForAdmin = async (req: Request, res: Response) => {
+  try {
+    const enrollments = await EnrollmentModel.find()
+      .populate({ path: "user_id", model: "User", select: "name email role" })
+      .populate({ path: "course_id", model: "Course", select: "title slug" })
+      .sort({ created_at: -1 })
+      .lean();
+
+    return res.json(enrollments);
+  } catch (error: any) {
+    console.error("getAllEnrollmentsForAdmin error:", error?.message || error);
+    return res.status(500).json({ message: error?.message || "Server error" });
+  }
+};
+
+// [Teacher] Get enrollments by course IDs
+export const getEnrollmentsByCoursesForTeacher = async (req: Request, res: Response) => {
+  try {
+    const uid = getUserIdFromToken(req);
+    if (!uid) return res.status(401).json({ message: "Unauthenticated" });
+
+    const { courseIds } = req.query;
+    if (!courseIds) {
+      return res.status(400).json({ message: "courseIds query parameter is required" });
+    }
+
+    // Parse courseIds - can be comma-separated string or array
+    let courseIdArray: string[] = [];
+    if (typeof courseIds === "string") {
+      courseIdArray = courseIds.split(",").map((id) => id.trim());
+    } else if (Array.isArray(courseIds)) {
+      courseIdArray = courseIds.map((id) => String(id));
+    }
+
+    // Validate ObjectIds
+    const validCourseIds = courseIdArray
+      .filter((id) => mongoose.isValidObjectId(id))
+      .map((id) => new mongoose.Types.ObjectId(id));
+
+    if (validCourseIds.length === 0) {
+      return res.json([]);
+    }
+
+    // Get enrollments for these courses
+    const enrollments = await EnrollmentModel.find({
+      course_id: { $in: validCourseIds },
+    })
+      .populate({ path: "user_id", model: "User", select: "name email role" })
+      .populate({ path: "course_id", model: "Course", select: "title slug teacher" })
+      .sort({ created_at: -1 })
+      .lean();
+
+    // Filter to only include courses owned by the teacher
+    const teacherObjectId = new mongoose.Types.ObjectId(uid);
+    const filteredEnrollments = enrollments.filter((enrollment: any) => {
+      const course = enrollment.course_id;
+      if (!course) return false;
+      
+      // Check if teacher matches
+      if (course.teacher) {
+        const teacherId = course.teacher._id || course.teacher;
+        return String(teacherId) === uid;
+      }
+      return false;
+    });
+
+    return res.json(filteredEnrollments);
+  } catch (error: any) {
+    console.error("getEnrollmentsByCoursesForTeacher error:", error?.message || error);
+    return res.status(500).json({ message: error?.message || "Server error" });
+  }
+};
+
 export default { getMyEnrollments };
