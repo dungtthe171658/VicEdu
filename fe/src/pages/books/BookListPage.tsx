@@ -20,7 +20,31 @@ const BookListPage = () => {
     useState(true);
   const [loadingBooks, setLoadingBooks] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [purchasedBookIds, setPurchasedBookIds] = useState<
+    Set<string>
+  >(new Set());
 
+  // Lấy danh sách sách đã mua để ẩn nút thêm giỏ hàng
+  useEffect(() => {
+    const fetchPurchasedBooks = async () => {
+      try {
+        const res = await bookApi.getBookOrderAndOrderitem();
+        const payload = (res as any)?.data;
+        const list: BookDto[] = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+          ? payload.data
+          : [];
+        const ids = list.map((b) => b._id);
+        setPurchasedBookIds(new Set(ids));
+      } catch (err) {
+        console.error("Không thể tải sách đã mua:", err);
+        setPurchasedBookIds(new Set());
+      }
+    };
+    fetchPurchasedBooks();
+  }, []);
+  
   // Lấy danh sách thể loại
   useEffect(() => {
     const fetchCategories = async () => {
@@ -62,6 +86,7 @@ const BookListPage = () => {
     fetchBooks();
   }, [selectedCategory]);
 
+
   // Lọc client-side
   const filteredBooks = useMemo(() => {
     return books
@@ -100,7 +125,7 @@ const BookListPage = () => {
     <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-4 gap-6">
       {/* Sidebar lọc */}
       <aside className="lg:col-span-1 border border-gray-200 rounded-xl p-5 bg-white h-fit space-y-6">
-        <h2 className="text-lg font-semibold">Bộ lọc</h2>
+        <h2 className="text-lg font-semibold">BỘ LỌC</h2>
 
         {/* Search */}
         <div>
@@ -183,13 +208,17 @@ const BookListPage = () => {
           </div>
         ) : filteredBooks.length === 0 ? (
           <p className="text-gray-500 mt-4">
-            Không có sách nào được hiển thị 😢
+            Không có sách nào được hiển thị.
           </p>
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {paginatedBooks.map((book) => (
-                <BookCard key={book._id} book={book} />
+                <BookCard
+                  key={book._id}
+                  book={book}
+                  isPurchased={purchasedBookIds.has(book._id)}
+                />
               ))}
             </div>
 
