@@ -3,24 +3,35 @@ import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Typography,
   Button,
   CircularProgress,
   Chip,
   TextField,
   InputAdornment,
+  Grid,
+  Card,
+  CardContent,
+  Avatar,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
-import { Search as SearchIcon, Visibility as VisibilityIcon } from '@mui/icons-material';
+import { 
+  Search as SearchIcon, 
+  Visibility as VisibilityIcon,
+  Speed as SpeedIcon,
+  Diamond as DiamondIcon,
+  AccessTime as AccessTimeIcon,
+  MenuBook as MenuBookIcon,
+  EmojiEvents as TrophyIcon,
+} from '@mui/icons-material';
 import { useAuth } from '../../../hooks/useAuth';
 import courseTeacherApi from '../../../api/courseTeacherApi';
 import enrollmentApi from '../../../api/enrollmentApi';
 import quizApi from '../../../api/quizApi';
+import { buildAvatarUrl } from '../../../utils/buildAvatarUrl';
 import type { UserDto } from '../../../types/user.d';
 
 interface StudentProgress {
@@ -28,6 +39,9 @@ interface StudentProgress {
   totalCourses: number;
   totalQuizAttempts: number;
   averageProgress: number;
+  totalPoints?: number;
+  totalBooks?: number;
+  totalMinutes?: number;
 }
 
 const ManageTracksProcessPageTeacher: React.FC = () => {
@@ -37,23 +51,42 @@ const ManageTracksProcessPageTeacher: React.FC = () => {
   const [students, setStudents] = useState<StudentProgress[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<StudentProgress[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('name');
 
   useEffect(() => {
     fetchStudentProgress();
   }, []);
 
   useEffect(() => {
+    let filtered = [...students];
+
+    // Filter by search term
     if (searchTerm) {
-      const filtered = students.filter(
+      filtered = filtered.filter(
         (s) =>
           s.student.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           s.student.email?.toLowerCase().includes(searchTerm.toLowerCase())
       );
-      setFilteredStudents(filtered);
-    } else {
-      setFilteredStudents(students);
     }
-  }, [searchTerm, students]);
+
+    // Sort
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return (a.student.name || '').localeCompare(b.student.name || '');
+        case 'courses':
+          return b.totalCourses - a.totalCourses;
+        case 'progress':
+          return b.averageProgress - a.averageProgress;
+        case 'quizzes':
+          return b.totalQuizAttempts - a.totalQuizAttempts;
+        default:
+          return 0;
+      }
+    });
+
+    setFilteredStudents(filtered);
+  }, [searchTerm, sortBy, students]);
 
   const fetchStudentProgress = async () => {
     try {
@@ -123,6 +156,7 @@ const ManageTracksProcessPageTeacher: React.FC = () => {
               name: userInfo.name,
               email: userInfo.email,
               role: userInfo.role,
+              avatar: userInfo.avatar,
             } as UserDto,
             courses: new Set(),
             quizAttempts: 0,
@@ -161,6 +195,9 @@ const ManageTracksProcessPageTeacher: React.FC = () => {
         totalCourses: item.courses.size,
         totalQuizAttempts: item.quizAttempts,
         averageProgress: item.progressCount > 0 ? item.progressSum / item.progressCount : 0,
+        totalPoints: Math.floor(Math.random() * 5000) + 500, // Mock data - replace with real data
+        totalBooks: Math.floor(Math.random() * 50) + 10, // Mock data
+        totalMinutes: Math.floor(Math.random() * 2000) + 200, // Mock data
       }));
 
       setStudents(progressData);
@@ -174,6 +211,30 @@ const ManageTracksProcessPageTeacher: React.FC = () => {
 
   const handleViewDetail = (studentId: string) => {
     navigate(`/teacher/manage-tracksprocess/${studentId}`);
+  };
+
+  const getLevelBadge = (progress: number) => {
+    if (progress >= 80) return { label: 'Level 6', color: '#ef4444' }; // Red
+    if (progress >= 60) return { label: 'Level 3', color: '#f59e0b' }; // Yellow/Orange
+    if (progress >= 40) return { label: 'Level 2', color: '#8b5cf6' }; // Purple
+    if (progress >= 20) return { label: 'Level 1', color: '#10b981' }; // Green
+    return { label: 'Starter', color: '#ff6b9d' }; // Pink
+  };
+
+  // Calculate class stats
+  const classStats = {
+    averageScore: students.length > 0
+      ? Math.round(students.reduce((sum, s) => sum + (s.totalPoints || 0), 0) / students.length)
+      : 0,
+    averageLevel: students.length > 0
+      ? Math.round(students.reduce((sum, s) => sum + s.averageProgress, 0) / students.length)
+      : 0,
+    averageReadingTime: students.length > 0
+      ? Math.round(students.reduce((sum, s) => sum + (s.totalMinutes || 0), 0) / students.length)
+      : 0,
+    averageBooksRead: students.length > 0
+      ? Math.round(students.reduce((sum, s) => sum + (s.totalBooks || 0), 0) / students.length)
+      : 0,
   };
 
   if (loading) {
@@ -192,88 +253,295 @@ const ManageTracksProcessPageTeacher: React.FC = () => {
         </Typography>
       </Box>
 
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <TextField
-          fullWidth
-          placeholder="Tìm kiếm theo tên hoặc email học sinh..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-          }}
-        />
-      </Paper>
+      <Grid container spacing={3}>
+        {/* Main Content - Student Cards */}
+        <Grid item xs={12} md={8}>
+          {/* Search and Sort */}
+          <Box display="flex" gap={2} mb={3}>
+            <TextField
+              fullWidth
+              placeholder="Tìm kiếm theo tên hoặc email học sinh..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ flex: 1 }}
+            />
+            <FormControl sx={{ minWidth: 200 }}>
+              <InputLabel>Sắp xếp</InputLabel>
+              <Select
+                value={sortBy}
+                label="Sắp xếp"
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <MenuItem value="name">Tên (A-Z)</MenuItem>
+                <MenuItem value="courses">Số khóa học</MenuItem>
+                <MenuItem value="progress">Tiến độ</MenuItem>
+                <MenuItem value="quizzes">Số Quiz</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell><strong>Học sinh</strong></TableCell>
-              <TableCell><strong>Email</strong></TableCell>
-              <TableCell align="center"><strong>Số khóa học</strong></TableCell>
-              <TableCell align="center"><strong>Số lần Quiz</strong></TableCell>
-              <TableCell align="center"><strong>Tiến độ TB (%)</strong></TableCell>
-              <TableCell align="center"><strong>Thao tác</strong></TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredStudents.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} align="center">
-                  <Typography variant="body2" color="text.secondary" py={3}>
-                    Không có học sinh nào đăng ký khóa học của bạn
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredStudents.map((item) => (
-                <TableRow key={item.student._id} hover>
-                  <TableCell>
-                    <Typography variant="body2" fontWeight="medium">
-                      {item.student.name || 'N/A'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
-                      {item.student.email || 'N/A'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="center">
-                    <Chip label={item.totalCourses} color="primary" size="small" />
-                  </TableCell>
-                  <TableCell align="center">
-                    <Chip label={item.totalQuizAttempts} color="secondary" size="small" />
-                  </TableCell>
-                  <TableCell align="center">
-                    <Chip
-                      label={`${item.averageProgress.toFixed(1)}%`}
-                      color={item.averageProgress >= 70 ? 'success' : item.averageProgress >= 50 ? 'warning' : 'error'}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell align="center">
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<VisibilityIcon />}
-                      onClick={() => handleViewDetail(item.student._id || '')}
+          {/* Student Cards Grid */}
+          {filteredStudents.length === 0 ? (
+            <Paper sx={{ p: 4, textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                Không có học sinh nào đăng ký khóa học của bạn
+              </Typography>
+            </Paper>
+          ) : (
+            <Grid container spacing={2}>
+              {filteredStudents.map((item) => {
+                const badge = getLevelBadge(item.averageProgress);
+                const avatarUrl = buildAvatarUrl(item.student.avatar);
+                const initials = item.student.name
+                  ?.split(' ')
+                  .map((n) => n[0])
+                  .join('')
+                  .toUpperCase()
+                  .slice(0, 2) || 'U';
+
+                return (
+                  <Grid item xs={12} sm={6} md={6} key={item.student._id}>
+                    <Card
+                      sx={{
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        transition: 'transform 0.2s, box-shadow 0.2s',
+                        '&:hover': {
+                          transform: 'translateY(-4px)',
+                          boxShadow: 4,
+                        },
+                      }}
                     >
-                      Chi tiết
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                      <CardContent sx={{ flexGrow: 1, p: 2.5 }}>
+                        {/* Header with Avatar and Name */}
+                        <Box display="flex" alignItems="center" gap={2} mb={2}>
+                          {avatarUrl ? (
+                            <Avatar
+                              src={avatarUrl}
+                              alt={item.student.name}
+                              sx={{ width: 60, height: 60 }}
+                            />
+                          ) : (
+                            <Avatar
+                              sx={{
+                                width: 60,
+                                height: 60,
+                                bgcolor: badge.color,
+                                fontSize: '1.5rem',
+                                fontWeight: 'bold',
+                              }}
+                            >
+                              {initials}
+                            </Avatar>
+                          )}
+                          <Box flex={1}>
+                            <Typography variant="h6" fontWeight="bold" noWrap>
+                              {item.student.name || 'N/A'}
+                            </Typography>
+                            <Chip
+                              label={badge.label}
+                              size="small"
+                              sx={{
+                                bgcolor: badge.color,
+                                color: 'white',
+                                fontWeight: 'bold',
+                                mt: 0.5,
+                                height: 22,
+                              }}
+                            />
+                          </Box>
+                        </Box>
+
+                        {/* Stats Chips */}
+                        <Box display="flex" gap={1} mb={2}>
+                          <Chip
+                            label={`${item.totalCourses} Khóa học`}
+                            size="small"
+                            sx={{ bgcolor: '#e0f2fe', color: '#0369a1', fontSize: '0.75rem' }}
+                          />
+                          <Chip
+                            label={`${item.totalQuizAttempts} Quiz`}
+                            size="small"
+                            sx={{ bgcolor: '#e0f2fe', color: '#0369a1', fontSize: '0.75rem' }}
+                          />
+                        </Box>
+
+                        {/* Metrics */}
+                        <Box display="grid" gridTemplateColumns="repeat(2, 1fr)" gap={1.5} mb={2}>
+                          <Box>
+                            <Typography variant="caption" color="text.secondary">
+                              Điểm số
+                            </Typography>
+                            <Typography variant="body2" fontWeight="bold">
+                              {item.totalPoints?.toLocaleString() || 0} điểm
+                            </Typography>
+                          </Box>
+                          <Box>
+                            <Typography variant="caption" color="text.secondary">
+                              Sách
+                            </Typography>
+                            <Typography variant="body2" fontWeight="bold">
+                              {item.totalBooks || 0} sách
+                            </Typography>
+                          </Box>
+                          <Box>
+                            <Typography variant="caption" color="text.secondary">
+                              Thời gian
+                            </Typography>
+                            <Typography variant="body2" fontWeight="bold">
+                              {item.totalMinutes || 0} phút
+                            </Typography>
+                          </Box>
+                          <Box>
+                            <Typography variant="caption" color="text.secondary">
+                              Tỷ lệ
+                            </Typography>
+                            <Box display="flex" alignItems="center" gap={0.5}>
+                              <TrophyIcon sx={{ fontSize: 16, color: '#f59e0b' }} />
+                              <Typography variant="body2" fontWeight="bold">
+                                {item.averageProgress.toFixed(0)}%
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </Box>
+
+                        {/* View Detail Button */}
+                        <Button
+                          fullWidth
+                          variant="outlined"
+                          size="small"
+                          startIcon={<VisibilityIcon />}
+                          onClick={() => handleViewDetail(item.student._id || '')}
+                          sx={{ mt: 1 }}
+                        >
+                          Xem chi tiết
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                );
+              })}
+            </Grid>
+          )}
+        </Grid>
+
+        {/* Sidebar - Class Stats */}
+        <Grid item xs={12} md={4}>
+          <Paper sx={{ p: 3, position: 'sticky', top: 20 }}>
+            <Typography variant="h6" fontWeight="bold" mb={3}>
+              Thống kê lớp học
+            </Typography>
+
+            <Box display="flex" flexDirection="column" gap={2.5}>
+              <Box display="flex" alignItems="center" gap={2}>
+                <Box
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 2,
+                    bgcolor: '#e0f2fe',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <SpeedIcon sx={{ color: '#0369a1', fontSize: 28 }} />
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    Điểm trung bình
+                  </Typography>
+                  <Typography variant="h6" fontWeight="bold">
+                    {classStats.averageScore.toLocaleString()} điểm
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Box display="flex" alignItems="center" gap={2}>
+                <Box
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 2,
+                    bgcolor: '#fef3c7',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <DiamondIcon sx={{ color: '#d97706', fontSize: 28 }} />
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    Cấp độ trung bình
+                  </Typography>
+                  <Typography variant="h6" fontWeight="bold">
+                    Level {Math.floor(classStats.averageLevel / 20) + 1}
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Box display="flex" alignItems="center" gap={2}>
+                <Box
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 2,
+                    bgcolor: '#dbeafe',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <AccessTimeIcon sx={{ color: '#1e40af', fontSize: 28 }} />
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    Thời gian đọc TB
+                  </Typography>
+                  <Typography variant="h6" fontWeight="bold">
+                    {classStats.averageReadingTime.toLocaleString()} phút
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Box display="flex" alignItems="center" gap={2}>
+                <Box
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 2,
+                    bgcolor: '#f3e8ff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <MenuBookIcon sx={{ color: '#7c3aed', fontSize: 28 }} />
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    Sách đọc TB
+                  </Typography>
+                  <Typography variant="h6" fontWeight="bold">
+                    {classStats.averageBooksRead} sách
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+          </Paper>
+        </Grid>
+      </Grid>
     </Box>
   );
 };
 
 export default ManageTracksProcessPageTeacher;
-
