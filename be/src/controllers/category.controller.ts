@@ -3,19 +3,42 @@ import CategoryModel from "../models/category.model";
 import slugify from "slugify";
 
 // --- Create category ---
-export const createCategory = async (req: Request, res: Response) => {
+export const createCategory = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, description } = req.body;
-    if (!name)
-      return res.status(400).json({ message: "Name is required" });
+    let { name, description } = req.body;
 
+    name = String(name || "").trim();
+    description = description ? String(description).trim() : "";
+
+    if (!name) {
+      res.status(400).json({ message: "Name is required." });
+      return;
+    }
+
+    if (name.length < 2 || name.length > 50) {
+      res.status(400).json({ message: "Name must be between 2 and 50 characters." });
+      return;
+    }
+
+
+    const exists = await CategoryModel.exists({ name });
+    if (exists) {
+      res.status(409).json({ message: "Category name already exists." });
+      return;
+    }
+
+ 
     const slug = slugify(name, { lower: true, strict: true });
-    const newCategory = await CategoryModel.create({ name, slug, description });
-    res.status(201).json(newCategory);
+
+    const category = await CategoryModel.create({ name, slug, description: description || null });
+
+    res.status(201).json({
+      message: "Category created successfully.",
+      category,
+    });
   } catch (error: any) {
-    if (error.code === 11000)
-      return res.status(409).json({ message: "Category name already exists" });
-    res.status(500).json({ message: error.message });
+    console.error("❌ CreateCategory Error:", error);
+    res.status(500).json({ message: "Server error.", error: error.message });
   }
 };
 
