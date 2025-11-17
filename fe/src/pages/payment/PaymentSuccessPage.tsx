@@ -10,7 +10,8 @@ export default function PaymentSuccessPage() {
   // Xóa giỏ hàng khi thanh toán thành công
   useEffect(() => {
     clear();
-  }, [clear]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="max-w-xl mx-auto px-4 py-16 text-center">

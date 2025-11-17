@@ -108,20 +108,24 @@ const BookDetailPage = () => {
     fetchBookAndRelated();
   }, [id]);
 
-  // --- Fetch sách đã mua của user (1 lần) ---
+  // --- Fetch danh sách ID sách đã mua từ bookHistory ---
   useEffect(() => {
-    const fetchPurchasedBooks = async () => {
+    const fetchPurchasedBookIds = async () => {
       try {
-        const res = await bookApi.getBookOrderAndOrderitem();
-        const books = unwrapList<BookDto>(res);
-        const purchasedIds: string[] = books.map((b: any) => b._id);
-        setPurchasedBookIds(new Set(purchasedIds));
+        const res = await bookApi.getPurchasedBookIds();
+        const payload = (res as any)?.data || res;
+        const bookIds: string[] = Array.isArray(payload?.bookIds)
+          ? payload.bookIds
+          : Array.isArray(payload)
+          ? payload
+          : [];
+        setPurchasedBookIds(new Set(bookIds));
       } catch (err) {
-        console.error("Cannot fetch purchased books:", err);
+        console.error("Cannot fetch purchased book IDs:", err);
         setPurchasedBookIds(new Set());
       }
     };
-    fetchPurchasedBooks();
+    fetchPurchasedBookIds();
   }, []);
 
   // --- Thêm sách vào giỏ ---
@@ -204,17 +208,40 @@ const BookDetailPage = () => {
         {book.description && <p className="description">{book.description}</p>}
         <p className="price">{priceVND}</p>
 
-        <button
-          className={`add-to-cart-btn`}
-          onClick={handleAddToCartByContext}
-          disabled={hasPurchased || isInCart}
-        >
-          {hasPurchased
-            ? "Bạn đã mua sách này"
-            : isInCart
-            ? "Đã có trong giỏ hàng"
-            : "Thêm vào giỏ hàng"}
-        </button>
+        {/* Chỉ hiển thị button nếu chưa mua và chưa có trong giỏ hàng */}
+        {!hasPurchased && !isInCart && (
+          <button
+            className={`add-to-cart-btn`}
+            onClick={handleAddToCartByContext}
+          >
+            Thêm vào giỏ hàng
+          </button>
+        )}
+
+        {/* Hiển thị thông báo nếu đã có trong giỏ hàng */}
+        {!hasPurchased && isInCart && (
+          <button
+            className={`add-to-cart-btn`}
+            disabled
+            style={{ opacity: 0.6, cursor: "not-allowed" }}
+          >
+            Đã có trong giỏ hàng
+          </button>
+        )}
+
+        {/* Hiển thị thông báo nếu đã mua */}
+        {hasPurchased && (
+          <div className="purchased-badge" style={{
+            padding: "10px 20px",
+            backgroundColor: "#10b981",
+            color: "white",
+            borderRadius: "8px",
+            display: "inline-block",
+            fontWeight: "500"
+          }}>
+            ✓ Bạn đã sở hữu sách này
+          </div>
+        )}
 
         {hasPurchased && pdfUrl && (
           <a

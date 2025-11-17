@@ -5,6 +5,15 @@ import type { BookDto } from "../../types/book.d";
 import type { Category } from "../../types/category.d";
 import BookCard from "../../components/books/BookCard";
 
+// Helper để unwrap response data
+const unwrapList = <T,>(res: any): T[] => {
+  const payload = res?.data !== undefined ? res.data : res;
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray((payload as any).data)) return (payload as any).data;
+  if (payload && Array.isArray((payload as any).items)) return (payload as any).items;
+  return [];
+};
+
 const ITEMS_PER_PAGE = 9;
 
 const BookListPage = () => {
@@ -24,25 +33,24 @@ const BookListPage = () => {
     Set<string>
   >(new Set());
 
-  // Lấy danh sách sách đã mua để ẩn nút thêm giỏ hàng
+  // Lấy danh sách sách đã mua từ bookHistory để ẩn nút thêm giỏ hàng
   useEffect(() => {
-    const fetchPurchasedBooks = async () => {
+    const fetchPurchasedBookIds = async () => {
       try {
-        const res = await bookApi.getBookOrderAndOrderitem();
-        const payload = (res as any)?.data;
-        const list: BookDto[] = Array.isArray(payload)
+        const res = await bookApi.getPurchasedBookIds();
+        const payload = (res as any)?.data || res;
+        const bookIds: string[] = Array.isArray(payload?.bookIds)
+          ? payload.bookIds
+          : Array.isArray(payload)
           ? payload
-          : Array.isArray(payload?.data)
-          ? payload.data
           : [];
-        const ids = list.map((b) => b._id);
-        setPurchasedBookIds(new Set(ids));
+        setPurchasedBookIds(new Set(bookIds));
       } catch (err) {
-        console.error("Không thể tải sách đã mua:", err);
+        console.error("Không thể tải danh sách sách đã mua:", err);
         setPurchasedBookIds(new Set());
       }
     };
-    fetchPurchasedBooks();
+    fetchPurchasedBookIds();
   }, []);
   
   // Lấy danh sách thể loại
