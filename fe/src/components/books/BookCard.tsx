@@ -2,17 +2,19 @@ import type { BookDto } from "../../types/book.d";
 import { useNavigate } from "react-router-dom";
 import "./BookCard.css";
 import { useCart } from "../../contexts/CartContext";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface BookCardProps {
   book: BookDto;
+  isPurchased?: boolean;
 }
 
-const BookCard = ({ book }: BookCardProps) => {
+const BookCard = ({ book, isPurchased }: BookCardProps) => {
   const navigate = useNavigate();
   const { addBookItem } = useCart();
   const [isAdding, setIsAdding] = useState(false);
-  const [hasPurchased, setHasPurchased] = useState(false);
+
+  const hasPurchased = Boolean(isPurchased);
 
   const handleCardClick = () => {
     navigate(`/books/${book._id}`);
@@ -37,24 +39,6 @@ const BookCard = ({ book }: BookCardProps) => {
       alert(`Đã thêm "${book.title}" vào giỏ hàng!`);
     }, 400);
   };
-
-  // Kiểm tra đã mua sách chưa
-  useEffect(() => {
-    const fetchPurchasedBooks = async () => {
-      try {
-        const res = await fetch("/orders/user-books", {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
-        const data: string[] = await res.json();
-        setHasPurchased(data.includes(book._id));
-      } catch (err) {
-        console.error("Không thể kiểm tra sách đã mua:", err);
-      }
-    };
-    fetchPurchasedBooks();
-  }, [book._id]);
 
   const priceVND = (book.price || 0).toLocaleString("vi-VN", {
     style: "currency",
@@ -81,19 +65,17 @@ const BookCard = ({ book }: BookCardProps) => {
         </p>
         <p className="book-price">{priceVND}</p>
 
-        <button
-          className={`add-to-cart-btn ${
-            hasPurchased ? "disabled" : isAdding ? "loading" : ""
-          }`}
-          onClick={handleAddToCart}
-          disabled={isAdding || hasPurchased}
-        >
-          {hasPurchased
-            ? "Bạn đã mua sách này"
-            : isAdding
-            ? "Đang thêm..."
-            : "Thêm vào giỏ hàng"}
-        </button>
+        {!hasPurchased && (
+          <button
+            className={`add-to-cart-btn ${
+              isAdding ? "loading" : ""
+            }`}
+            onClick={handleAddToCart}
+            disabled={isAdding}
+          >
+            {isAdding ? "Đang thêm..." : "Thêm vào giỏ hàng"}
+          </button>
+        )}
       </div>
     </div>
   );

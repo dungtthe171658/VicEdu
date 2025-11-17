@@ -6,6 +6,13 @@ export interface ICartItem {
   price_at_added: number;
   quantity: number;
   added_at: Date;
+  product_snapshot?: {
+    title?: string;
+    slug?: string;
+    price?: number;
+    thumbnail_url?: string;
+    images?: string[];
+  };
 }
 
 export interface ICart extends Document {
@@ -50,6 +57,13 @@ const cartItemSchema = new Schema<ICartItem>(
     added_at: { 
       type: Date, 
       default: Date.now 
+    },
+    product_snapshot: {
+      title: { type: String },
+      slug: { type: String },
+      price: { type: Number, min: 0 },
+      thumbnail_url: { type: String },
+      images: [{ type: String }],
     },
   },
   { _id: false }

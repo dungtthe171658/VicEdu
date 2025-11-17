@@ -15,6 +15,7 @@ import chatRoutes from "./chat.route";
 import subtitleRoutes from "./subtitle.route";
 import commentRoutes from "./comment.route";
 import quizRoutes from "./quiz.route";
+import cartRoutes from "./cart.route";
 
 const router = express.Router();
 
@@ -33,6 +34,7 @@ router.use("/chat", chatRoutes);
 router.use("/subtitles", subtitleRoutes);
 router.use("/comments", commentRoutes);
 router.use("/quizzes", quizRoutes);
+router.use("/cart", cartRoutes);
 
 export default router;
 

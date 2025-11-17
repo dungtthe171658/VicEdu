@@ -6,6 +6,8 @@ import type { Category } from "../../types/category.d";
 import "./BookDetailPage.css";
 import { useCart } from "../../contexts/CartContext";
 
+
+
 // Kiểm tra category có dữ liệu đầy đủ
 const isCategoryPopulated = (
   category: string | Category

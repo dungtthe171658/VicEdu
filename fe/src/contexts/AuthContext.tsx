@@ -56,7 +56,7 @@ function mapBackendUserToFront(u: BackendUser): UserDto {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { clear } = useCart();
+  const { clear, syncLocalCartToServer } = useCart();
 
   const bootstrap = useCallback(async () => {
     setIsLoading(true);
@@ -96,7 +96,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const mapped = mapBackendUserToFront(me as BackendUser);
     setUser(mapped);
     localStorage.setItem("user", JSON.stringify(mapped));
-  }, []);
+
+    // After successful login, push any local cart items to backend
+    try {
+      await syncLocalCartToServer();
+    } catch (err) {
+      console.error("Failed to sync cart after login:", err);
+    }
+  }, [syncLocalCartToServer]);
 
   const logout = useCallback(() => {
     // Clear auth data
@@ -115,19 +122,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setUser(null);
   }, [clear]);
-  const loginWithGoogle = useCallback(async (token: String) => {
+  const loginWithGoogle = useCallback(
+    async (token: String) => {
       localStorage.setItem("accessToken", String(token));
-    try {
-      const me = await authApi.me();
-      const mapped = mapBackendUserToFront(me as BackendUser);
-      setUser(mapped);
-    } catch (error) {
-      console.error("Google login failed:", error);
-      localStorage.removeItem("accessToken");
-      setUser(null);
-      throw error;
-    }
-  }, []);
+      try {
+        const me = await authApi.me();
+        const mapped = mapBackendUserToFront(me as BackendUser);
+        setUser(mapped);
+
+        try {
+          await syncLocalCartToServer();
+        } catch (err) {
+          console.error("Failed to sync cart after Google login:", err);
+        }
+      } catch (error) {
+        console.error("Google login failed:", error);
+        localStorage.removeItem("accessToken");
+        setUser(null);
+        throw error;
+      }
+    },
+    [syncLocalCartToServer]
+  );
     
   const value = useMemo(
     () => ({ user, isLoading, login, logout, loginWithGoogle }),
