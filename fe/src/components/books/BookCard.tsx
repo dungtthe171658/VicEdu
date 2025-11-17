@@ -11,10 +11,11 @@ interface BookCardProps {
 
 const BookCard = ({ book, isPurchased }: BookCardProps) => {
   const navigate = useNavigate();
-  const { addBookItem } = useCart();
+  const { addBookItem, books: cartBooks } = useCart();
   const [isAdding, setIsAdding] = useState(false);
 
   const hasPurchased = Boolean(isPurchased);
+  const isInCart = cartBooks.some((item) => item._id === book._id);
 
   const handleCardClick = () => {
     navigate(`/books/${book._id}`);
@@ -22,7 +23,7 @@ const BookCard = ({ book, isPurchased }: BookCardProps) => {
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isAdding || hasPurchased) return;
+    if (isAdding || hasPurchased || isInCart) return;
 
     setIsAdding(true);
 
@@ -65,7 +66,7 @@ const BookCard = ({ book, isPurchased }: BookCardProps) => {
         </p>
         <p className="book-price">{priceVND}</p>
 
-        {!hasPurchased && (
+        {!hasPurchased && !isInCart && (
           <button
             className={`add-to-cart-btn ${
               isAdding ? "loading" : ""
@@ -74,6 +75,15 @@ const BookCard = ({ book, isPurchased }: BookCardProps) => {
             disabled={isAdding}
           >
             {isAdding ? "Đang thêm..." : "Thêm vào giỏ hàng"}
+          </button>
+        )}
+        {!hasPurchased && isInCart && (
+          <button
+            className="add-to-cart-btn"
+            disabled
+            style={{ opacity: 0.6, cursor: "not-allowed" }}
+          >
+            Đã có trong giỏ hàng
           </button>
         )}
       </div>

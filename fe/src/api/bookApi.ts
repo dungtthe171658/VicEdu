@@ -51,6 +51,18 @@ const bookApi = {
       headers: getAuthHeaders(),
       params,
     }),
+
+  // Lấy danh sách ID các sách đã mua từ bookHistory
+  getPurchasedBookIds: () =>
+    axios.get(`${BASE_URL}/books/purchased/ids`, {
+      headers: getAuthHeaders(),
+    }),
+
+  // Lấy danh sách sách đã mua từ bookHistory (không dùng getBookOrderAndOrderitem)
+  getMyBooksFromHistory: () =>
+    axios.get(`${BASE_URL}/books/my-books`, {
+      headers: getAuthHeaders(),
+    }),
 };
 
 export default bookApi;

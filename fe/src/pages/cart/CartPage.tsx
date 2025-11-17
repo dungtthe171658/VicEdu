@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCart } from "../../contexts/CartContext";
 import { useAuth } from "../../hooks/useAuth";
 import paymentsApi from "../../api/paymentsApi";
+import bookApi from "../../api/bookApi";
 
 const formatVND = (n: number) => n.toLocaleString("vi-VN");
 
@@ -13,12 +14,50 @@ export default function CartPage() {
 
   const [payment, setPayment] = useState<PaymentMethod>("vnpay");
   const [loading, setLoading] = useState(false);
+  const [purchasedBookIds, setPurchasedBookIds] = useState<Set<string>>(new Set());
   const { user } = useAuth();
+
+  // Fetch purchased books
+  useEffect(() => {
+    const fetchPurchasedBooks = async () => {
+      try {
+        const res = await bookApi.getBookOrderAndOrderitem();
+        const payload = (res as any)?.data;
+        const list: any[] = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+          ? payload.data
+          : [];
+        const ids = list.map((b) => String(b._id || b));
+        setPurchasedBookIds(new Set(ids));
+      } catch (err) {
+        console.error("Không thể tải sách đã mua:", err);
+        setPurchasedBookIds(new Set());
+      }
+    };
+
+    if (user) {
+      fetchPurchasedBooks();
+    }
+  }, [user]);
+
+  // Filter out purchased books from checkout
+  const availableBooks = books.filter((b) => !purchasedBookIds.has(b._id));
+  const purchasedBooksInCart = books.filter((b) => purchasedBookIds.has(b._id));
 
   const handleCheckout = async () => {
     if (courses.length === 0 && books.length === 0) {
       alert("Giỏ hàng trống!");
       return;
+    }
+
+    // Check if there are purchased books in cart
+    if (purchasedBooksInCart.length > 0) {
+      const purchasedTitles = purchasedBooksInCart.map((b) => b.title).join(", ");
+      const confirm = window.confirm(
+        `Bạn đã mua các sách sau: ${purchasedTitles}\n\nBạn có muốn tiếp tục thanh toán cho các sản phẩm khác không?`
+      );
+      if (!confirm) return;
     }
 
     try {
@@ -32,7 +71,7 @@ export default function CartPage() {
           productPrice: Number(c.price || 0),
           quantity: 1,
         })),
-        ...books.map((b) => ({
+        ...availableBooks.map((b) => ({
           productId: b._id,
           productType: "Book" as const,
           productName: b.title,
@@ -48,12 +87,12 @@ export default function CartPage() {
       const payload: any = { items, paymentMethod: payment };
       if (user?.email) payload.email = user.email;
 
-      const res: { checkoutUrl?: string } =
-        await paymentsApi.createPaymentLink(payload);
+      const res = await paymentsApi.createPaymentLink(payload);
+      const checkoutUrl = (res as any)?.checkoutUrl;
 
-      if (res.checkoutUrl) {
+      if (checkoutUrl) {
         // Không xóa giỏ hàng ở đây - chỉ xóa khi thanh toán thành công
-        window.location.href = res.checkoutUrl;
+        window.location.href = checkoutUrl;
       } else {
         alert("Không nhận được link thanh toán");
       }
@@ -69,7 +108,7 @@ export default function CartPage() {
     (sum, c) => sum + Number(c.price || 0),
     0
   );
-  const booksTotal = books.reduce(
+  const booksTotal = availableBooks.reduce(
     (sum, b) => sum + Number(b.price || 0),
     0
   );
@@ -94,6 +133,23 @@ export default function CartPage() {
       {/* Cột trái: danh sách sản phẩm */}
       <div className="lg:col-span-2">
         <h1 className="text-2xl font-bold mb-5">Giỏ hàng của bạn</h1>
+
+        {/* Warning for purchased books */}
+        {purchasedBooksInCart.length > 0 && (
+          <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-sm text-yellow-800 font-semibold mb-2">
+              ⚠️ Bạn đã mua các sách sau:
+            </p>
+            <ul className="text-sm text-yellow-700 list-disc list-inside">
+              {purchasedBooksInCart.map((b) => (
+                <li key={b._id}>{b.title}</li>
+              ))}
+            </ul>
+            <p className="text-xs text-yellow-600 mt-2">
+              Các sách đã mua sẽ không được tính vào đơn thanh toán. Bạn có thể xóa chúng khỏi giỏ hàng.
+            </p>
+          </div>
+        )}
 
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm divide-y">
           {/* COURSES */}
@@ -132,10 +188,13 @@ export default function CartPage() {
           {/* BOOKS (ebook) - mỗi sách 1 bản */}
           {books.map((b) => {
             const totalBookPrice = b.price || 0;
+            const isPurchased = purchasedBookIds.has(b._id);
             return (
               <div
                 key={b._id}
-                className="grid grid-cols-5 items-center gap-4 p-4 border-b last:border-b-0"
+                className={`grid grid-cols-5 items-center gap-4 p-4 border-b last:border-b-0 ${
+                  isPurchased ? "bg-yellow-50 opacity-75" : ""
+                }`}
               >
                 <div className="col-span-1 flex justify-center">
                   <img
@@ -149,13 +208,23 @@ export default function CartPage() {
                   />
                 </div>
                 <div className="col-span-3">
-                  <p className="font-semibold text-gray-800">{b.title}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-gray-800">{b.title}</p>
+                    {isPurchased && (
+                      <span className="px-2 py-0.5 text-xs bg-yellow-200 text-yellow-800 rounded-full font-semibold">
+                        Đã mua
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-gray-500 mt-1">
                     Giá: {formatVND(b.price || 0)}₫ / ebook
+                    {isPurchased && (
+                      <span className="text-yellow-600 ml-2">(Đã sở hữu)</span>
+                    )}
                   </p>
                 </div>
                 <div className="col-span-1 flex items-center justify-between text-right">
-                  <p className="text-sm text-green-700 font-semibold">
+                  <p className={`text-sm font-semibold ${isPurchased ? "text-yellow-600 line-through" : "text-green-700"}`}>
                     {formatVND(totalBookPrice)}₫
                   </p>
                   <button
@@ -218,11 +287,16 @@ export default function CartPage() {
 
         <button
           onClick={handleCheckout}
-          disabled={loading}
+          disabled={loading || (courses.length === 0 && availableBooks.length === 0)}
           className="w-full mb-3 bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
         >
           {loading ? "Đang tạo link..." : "Thanh toán ngay"}
         </button>
+        {courses.length === 0 && availableBooks.length === 0 && purchasedBooksInCart.length > 0 && (
+          <p className="text-xs text-gray-500 text-center mb-3">
+            Vui lòng xóa các sách đã mua hoặc thêm sản phẩm khác để tiếp tục thanh toán
+          </p>
+        )}
 
         <button
           onClick={clear}

@@ -4,6 +4,7 @@ import slugify from "slugify";
 import Book from "../models/book.model";
 import OrderItemModel from "../models/order_item.model";
 import Order from "../models/order.model";
+import BookHistoryModel from "../models/bookHistory.model";
 import { AuthRequest } from "../middlewares/auth";
 import UserModel from "../models/user.model";
 import cloudinary from "../utils/cloudinary";
@@ -289,6 +290,50 @@ export const getPurchasedBooks = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// Lấy danh sách sách đã mua từ bookHistory (không dùng getBookOrderAndOrderitem)
+export const getMyBooksFromHistory = async (req: Request, res: Response) => {
+  try {
+    const uid = await resolveUserId(req);
+    if (!uid) return res.status(401).json({ message: "Unauthenticated" });
+
+    const userObjectId = new mongoose.Types.ObjectId(uid);
+
+    // Lấy tất cả bookHistory của user với status "active"
+    const bookHistories = await BookHistoryModel.find({
+      user_id: userObjectId,
+      status: "active",
+    })
+      .populate({
+        path: "book_id",
+        model: "Book",
+        select: "title author description price_before price_after images pdf_url category_id slug is_published",
+      })
+      .sort({ purchased_at: -1 })
+      .lean();
+
+    // Lọc và map để lấy thông tin book
+    const books = bookHistories
+      .map((bh: any) => {
+        const book = bh.book_id;
+        if (!book || !book._id) return null;
+        // Map price_after thành price để tương thích với frontend
+        return {
+          ...book,
+          _id: book._id,
+          price: book.price_after || book.price_before || 0,
+          purchased_at: bh.purchased_at,
+          price_at_purchase: bh.price_at_purchase,
+        };
+      })
+      .filter((b: any) => b !== null);
+
+    return res.json({ data: books, count: books.length });
+  } catch (error: any) {
+    console.error("getMyBooksFromHistory error:", error?.message || error);
+    return res.status(500).json({ message: error?.message || "Server error" });
+  }
+};
+
 // Alternate controller following the requested naming and logic
 export const getBookOrderAndOrderitem = async (req: Request, res: Response) => {
   try {
@@ -424,5 +469,41 @@ export const getBookPdfUrl = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error("getBookPdfUrl error:", error?.message || error);
     return res.status(500).json({ message: error?.message || "Server error" });
+  }
+};
+
+/**
+ * GET /api/books/purchased/ids
+ * Lấy danh sách ID các sách đã mua của user hiện tại từ bookHistory
+ * Trả về: { bookIds: string[] }
+ */
+export const getPurchasedBookIds = async (req: AuthRequest, res: Response) => {
+  try {
+    const uid = getUserIdFromToken(req as any);
+    if (!uid) {
+      return res.status(401).json({ message: "Unauthenticated" });
+    }
+
+    const userObjectId = new mongoose.Types.ObjectId(uid);
+
+    // Lấy danh sách book IDs từ bookHistory với status = "active"
+    const bookHistories = await BookHistoryModel.find({
+      user_id: userObjectId,
+      status: "active",
+    })
+      .select("book_id")
+      .lean();
+
+    const bookIds = bookHistories.map((bh) => String(bh.book_id));
+
+    return res.json({
+      bookIds,
+      count: bookIds.length,
+    });
+  } catch (error: any) {
+    console.error("getPurchasedBookIds error:", error?.message || error);
+    return res.status(500).json({
+      message: error?.message || "Server error",
+    });
   }
 };
