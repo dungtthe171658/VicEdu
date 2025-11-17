@@ -34,9 +34,15 @@ const ManageCategoriesPage = () => {
       setShowModal(false);
       setSelectedCategory(null);
       loadCategories();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving category:", error);
-      alert("Error saving category. Please check your data.");
+
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Unknown error occurred.";
+
+      alert("Error: " + message);
     }
   };
 
@@ -97,9 +103,9 @@ const ManageCategoriesPage = () => {
         <div className="modal">
           <div className="modal-content">
             <h3>{selectedCategory?._id ? "Edit Category" : "Add Category"}</h3>
-            <CategoryForm 
-              initialData={selectedCategory || {}} 
-              onSubmit={handleSave} 
+            <CategoryForm
+              initialData={selectedCategory || {}}
+              onSubmit={handleSave}
             />
             <button className="close-btn" onClick={() => {
               setShowModal(false);
