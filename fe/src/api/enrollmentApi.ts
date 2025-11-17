@@ -54,6 +54,16 @@ const enrollmentApi = {
   // Mark a lesson as completed
   completeLesson: (lessonId: string): Promise<{ message: string; completed_lessons: string[]; progress: number }> =>
     axios.post(`${BASE_URL}/enrollments/complete-lesson`, { lessonId }),
+
+  // [Admin] Get all enrollments with user and course data
+  getAllForAdmin: (): Promise<any[]> =>
+    axios.get(`${BASE_URL}/enrollments/admin/all`),
+
+  // [Teacher] Get enrollments by course IDs
+  getByCoursesForTeacher: (courseIds: string[]): Promise<any[]> =>
+    axios.get(`${BASE_URL}/enrollments/teacher/by-courses`, {
+      params: { courseIds: courseIds.join(",") },
+    }),
 };
 
 export default enrollmentApi;
