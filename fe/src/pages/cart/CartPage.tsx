@@ -7,116 +7,76 @@ import bookApi from "../../api/bookApi";
 
 const formatVND = (n: number) => n.toLocaleString("vi-VN");
 
-export default function CartPage() {
-  const { courses, books, removeCourse, removeBook, clear, updateBookQty } =
-    useCart();
+type PaymentMethod = "momo" | "vnpay" | "cod";
 
-  const [payment, setPayment] = useState("vnpay");
+export default function CartPage() {
+  const { courses, books, removeCourse, removeBook, clear } = useCart();
+
+  const [payment, setPayment] = useState<PaymentMethod>("vnpay");
   const [loading, setLoading] = useState(false);
-  const [inStockBooks, setInStockBooks] = useState(books);
-  const [outOfStockBooks, setOutOfStockBooks] = useState<typeof books>([]);
-  // Thông tin liên hệ
-  const [location, setLocation] = useState("");
-  const [phone, setPhone] = useState("");
-  const [fullName, setFullName] = useState("");
+  const [purchasedBookIds, setPurchasedBookIds] = useState<Set<string>>(new Set());
   const { user } = useAuth();
 
-  // 🔄 Đồng bộ lại stock thật từ DB khi mở trang
+  // Fetch purchased books
   useEffect(() => {
-    const syncBookStock = async () => {
-      if (!books.length) return;
+    const fetchPurchasedBooks = async () => {
       try {
-        const updatedBooks = await Promise.all(
-          books.map(async (b) => {
-            try {
-              const res = await bookApi.getById(b._id);
-              const fresh = res.data;
-              if (!fresh) return b;
-
-              return {
-                ...b,
-                title: fresh.title,
-                price_cents: fresh.price_cents,
-                stock: fresh.stock,
-                images: fresh.images,
-              };
-            } catch (err) {
-              console.error("Không thể load book:", b._id, err);
-              return b;
-            }
-          })
-        );
-
-        const inStock = updatedBooks.filter(
-          (b) => typeof b.stock === "number" && b.stock > 0
-        );
-        const outStock = updatedBooks.filter(
-          (b) => typeof b.stock === "number" && b.stock <= 0
-        );
-
-        setInStockBooks(inStock);
-        setOutOfStockBooks(outStock);
-        localStorage.setItem("cart_books", JSON.stringify(updatedBooks));
+        const res = await bookApi.getBookOrderAndOrderitem();
+        const payload = (res as any)?.data;
+        const list: any[] = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+          ? payload.data
+          : [];
+        const ids = list.map((b) => String(b._id || b));
+        setPurchasedBookIds(new Set(ids));
       } catch (err) {
-        console.error("Lỗi khi đồng bộ tồn kho:", err);
+        console.error("Không thể tải sách đã mua:", err);
+        setPurchasedBookIds(new Set());
       }
     };
 
-    syncBookStock();
-  }, [books]);
+    if (user) {
+      fetchPurchasedBooks();
+    }
+  }, [user]);
+
+  // Filter out purchased books from checkout
+  const availableBooks = books.filter((b) => !purchasedBookIds.has(b._id));
+  const purchasedBooksInCart = books.filter((b) => purchasedBookIds.has(b._id));
 
   const handleCheckout = async () => {
-    if (courses.length === 0 && inStockBooks.length === 0) {
+    if (courses.length === 0 && books.length === 0) {
       alert("Giỏ hàng trống!");
       return;
     }
 
-    try {
-      // Validate địa chỉ và số điện thoại trước khi tiến hành
-      const trimmedLocation = location.trim();
-      const trimmedFullName = fullName.trim();
-      const phoneDigits = phone.replace(/\D/g, "");
-      if (!trimmedFullName) {
-        alert("Vui lòng nhập họ và tên.");
-        return;
-      }
-      if (!trimmedLocation) {
-        alert("Vui lòng nhập địa chỉ nhận hàng.");
-        return;
-      }
-      if (!/^\d{9,11}$/.test(phoneDigits)) {
-        alert("Số điện thoại không hợp lệ (9-11 số).");
-        return;
-      }
+    // Check if there are purchased books in cart
+    if (purchasedBooksInCart.length > 0) {
+      const purchasedTitles = purchasedBooksInCart.map((b) => b.title).join(", ");
+      const confirm = window.confirm(
+        `Bạn đã mua các sách sau: ${purchasedTitles}\n\nBạn có muốn tiếp tục thanh toán cho các sản phẩm khác không?`
+      );
+      if (!confirm) return;
+    }
 
+    try {
       setLoading(true);
 
-      // 1️⃣ Kiểm tra stock trước khi thanh toán (không trừ stock ở đây)
-      for (const b of inStockBooks) {
-        const currentStock = b.stock ?? 0;
-        const requestedQty = b.quantity ?? 1;
-        if (currentStock < requestedQty) {
-          alert(`Sản phẩm ${b.title} không đủ hàng! (Còn lại: ${currentStock} quyển)`);
-          setLoading(false);
-          return;
-        }
-      }
-
-      // 2️⃣ Chuẩn bị payload thanh toán
       const items = [
         ...courses.map((c) => ({
           productId: c._id!,
           productType: "Course" as const,
           productName: c.title,
-          productPrice: Number(c.price_cents || 0),
+          productPrice: Number(c.price || 0),
           quantity: 1,
         })),
-        ...inStockBooks.map((b) => ({
+        ...availableBooks.map((b) => ({
           productId: b._id,
           productType: "Book" as const,
           productName: b.title,
-          productPrice: Number(b.price_cents ?? 0),
-          quantity: Math.max(1, Number(b.quantity ?? 1)),
+          productPrice: Number(b.price || 0),
+          quantity: 1,
           productImage:
             Array.isArray(b.images) && b.images.length > 0
               ? b.images[0]
@@ -124,26 +84,15 @@ export default function CartPage() {
         })),
       ];
 
-      const payload = {
-        location: "Hà Nội",
-        phone: "0123456789",
-        items,
-        paymentMethod: payment,
-      };
-      (payload as any).location = trimmedLocation;
-      (payload as any).phone = phoneDigits;
-      (payload as any).fullName = trimmedFullName;
-      if (user?.email) (payload as any).email = user.email;
-      delete (payload as any).paymentMethod;
+      const payload: any = { items, paymentMethod: payment };
+      if (user?.email) payload.email = user.email;
 
-      // 3️⃣ Gọi API tạo link thanh toán
-      const res: { checkoutUrl?: string } = await paymentsApi.createPaymentLink(
-        payload
-      );
+      const res = await paymentsApi.createPaymentLink(payload);
+      const checkoutUrl = (res as any)?.checkoutUrl;
 
-      if (res.checkoutUrl) {
-        clear();
-        window.location.href = res.checkoutUrl;
+      if (checkoutUrl) {
+        // Không xóa giỏ hàng ở đây - chỉ xóa khi thanh toán thành công
+        window.location.href = checkoutUrl;
       } else {
         alert("Không nhận được link thanh toán");
       }
@@ -155,24 +104,15 @@ export default function CartPage() {
     }
   };
 
-  const handleQtyChange = (bookId: string, value: number, stock: number) => {
-    let parsed = Number.isFinite(value)
-      ? Math.floor(value)
-      : Math.floor(Number(value) || 1);
-    if (Number.isNaN(parsed)) parsed = 1;
-    const newQty = Math.max(1, Math.min(parsed, stock));
-    updateBookQty(bookId, newQty);
-  };
-
   const coursesTotal = courses.reduce(
-    (s, c) => s + Number(c.price_cents || 0),
+    (sum, c) => sum + Number(c.price || 0),
     0
   );
-  const booksInStockTotal = inStockBooks.reduce(
-    (sum, b) => sum + Number(b.price_cents || 0) * Number(b.quantity || 1),
+  const booksTotal = availableBooks.reduce(
+    (sum, b) => sum + Number(b.price || 0),
     0
   );
-  const totalPrice = coursesTotal + booksInStockTotal;
+  const totalPrice = coursesTotal + booksTotal;
 
   if (courses.length === 0 && books.length === 0) {
     return (
@@ -190,9 +130,26 @@ export default function CartPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
-      {/* === BÊN TRÁI: Danh sách === */}
+      {/* Cột trái: danh sách sản phẩm */}
       <div className="lg:col-span-2">
-        <h1 className="text-2xl font-bold mb-5">🛒 Giỏ hàng của bạn</h1>
+        <h1 className="text-2xl font-bold mb-5">Giỏ hàng của bạn</h1>
+
+        {/* Warning for purchased books */}
+        {purchasedBooksInCart.length > 0 && (
+          <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-sm text-yellow-800 font-semibold mb-2">
+              ⚠️ Bạn đã mua các sách sau:
+            </p>
+            <ul className="text-sm text-yellow-700 list-disc list-inside">
+              {purchasedBooksInCart.map((b) => (
+                <li key={b._id}>{b.title}</li>
+              ))}
+            </ul>
+            <p className="text-xs text-yellow-600 mt-2">
+              Các sách đã mua sẽ không được tính vào đơn thanh toán. Bạn có thể xóa chúng khỏi giỏ hàng.
+            </p>
+          </div>
+        )}
 
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm divide-y">
           {/* COURSES */}
@@ -208,16 +165,15 @@ export default function CartPage() {
                   className="w-20 h-24 object-cover rounded-md border"
                 />
               </div>
-              <div className="col-span-2">
+              <div className="col-span-3">
                 <p className="font-semibold text-gray-800">{c.title}</p>
                 <p className="text-sm text-gray-500 mt-1">
-                  Giá: {formatVND(c.price_cents || 0)}đ / khóa
+                  Giá: {formatVND(c.price || 0)}₫ / khóa
                 </p>
               </div>
-              <div className="col-span-1"></div>
               <div className="col-span-1 flex items-center justify-between text-right">
                 <p className="text-sm text-green-700 font-semibold">
-                  {formatVND(c.price_cents || 0)}đ
+                  {formatVND(c.price || 0)}₫
                 </p>
                 <button
                   onClick={() => removeCourse(c._id!)}
@@ -229,13 +185,16 @@ export default function CartPage() {
             </div>
           ))}
 
-          {/* BOOKS CÒN HÀNG */}
-          {inStockBooks.map((b) => {
-            const totalBookPrice = (b.price_cents || 0) * (b.quantity || 1);
+          {/* BOOKS (ebook) - mỗi sách 1 bản */}
+          {books.map((b) => {
+            const totalBookPrice = b.price || 0;
+            const isPurchased = purchasedBookIds.has(b._id);
             return (
               <div
                 key={b._id}
-                className="grid grid-cols-5 items-center gap-4 p-4 border-b last:border-b-0"
+                className={`grid grid-cols-5 items-center gap-4 p-4 border-b last:border-b-0 ${
+                  isPurchased ? "bg-yellow-50 opacity-75" : ""
+                }`}
               >
                 <div className="col-span-1 flex justify-center">
                   <img
@@ -248,58 +207,25 @@ export default function CartPage() {
                     className="w-20 h-24 object-cover rounded-md border"
                   />
                 </div>
-                <div className="col-span-2">
-                  <p className="font-semibold text-gray-800">{b.title}</p>
+                <div className="col-span-3">
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-gray-800">{b.title}</p>
+                    {isPurchased && (
+                      <span className="px-2 py-0.5 text-xs bg-yellow-200 text-yellow-800 rounded-full font-semibold">
+                        Đã mua
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-gray-500 mt-1">
-                    Giá: {formatVND(b.price_cents || 0)}đ / quyển
+                    Giá: {formatVND(b.price || 0)}₫ / ebook
+                    {isPurchased && (
+                      <span className="text-yellow-600 ml-2">(Đã sở hữu)</span>
+                    )}
                   </p>
-                  {/* <p className="text-xs text-gray-400 mt-1">
-                    Còn lại: {b.stock ?? 0} quyển
-                  </p> */}
-                </div>
-                <div className="col-span-1 flex items-center justify-center gap-2">
-                  <button
-                    onClick={() =>
-                      handleQtyChange(
-                        b._id,
-                        (b.quantity ?? 1) - 1,
-                        b.stock ?? 1
-                      )
-                    }
-                    className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
-                  >
-                    -
-                  </button>
-                  <input
-                    type="number"
-                    value={b.quantity ?? 1}
-                    min={1}
-                    max={b.stock}
-                    onChange={(e) =>
-                      handleQtyChange(
-                        b._id,
-                        parseInt(e.target.value, 10) || 1,
-                        b.stock ?? 1
-                      )
-                    }
-                    className="w-12 text-center border rounded appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-moz-appearance]:textfield"
-                  />
-                  <button
-                    onClick={() =>
-                      handleQtyChange(
-                        b._id,
-                        (b.quantity ?? 1) + 1,
-                        b.stock ?? 1
-                      )
-                    }
-                    className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
-                  >
-                    +
-                  </button>
                 </div>
                 <div className="col-span-1 flex items-center justify-between text-right">
-                  <p className="text-sm text-green-700 font-semibold">
-                    {formatVND(totalBookPrice)}đ
+                  <p className={`text-sm font-semibold ${isPurchased ? "text-yellow-600 line-through" : "text-green-700"}`}>
+                    {formatVND(totalBookPrice)}₫
                   </p>
                   <button
                     onClick={() => removeBook(b._id!)}
@@ -312,179 +238,74 @@ export default function CartPage() {
             );
           })}
         </div>
-
-        {/* === SẢN PHẨM HẾT HÀNG === */}
-        {outOfStockBooks.length > 0 && (
-          <div className="mt-6 bg-white border border-gray-100 rounded-2xl shadow-sm divide-y">
-            <h3 className="text-lg font-semibold text-gray-700 px-4 pt-4">
-              📦 Các sản phẩm đang hết
-            </h3>
-            {outOfStockBooks.map((b) => (
-              <div
-                key={b._id}
-                className="grid grid-cols-5 items-center gap-4 p-4 border-b last:border-b-0 opacity-70"
-              >
-                <div className="col-span-1 flex justify-center">
-                  <img
-                    src={
-                      Array.isArray(b.images) && b.images.length > 0
-                        ? b.images[0]
-                        : "/no-image.png"
-                    }
-                    alt={b.title ?? "Book"}
-                    className="w-20 h-24 object-cover rounded-md border"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <p className="font-semibold text-gray-800">{b.title}</p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Giá: {formatVND(b.price_cents || 0)}đ / quyển
-                  </p>
-                  <p className="text-xs text-red-500 mt-1">Hết hàng</p>
-                </div>
-                <div className="col-span-1 flex items-center justify-center gap-2">
-                  <button
-                    disabled
-                    className="px-2 py-1 bg-gray-200 rounded cursor-not-allowed opacity-50"
-                  >
-                    -
-                  </button>
-                  <input
-                    type="number"
-                    value={b.quantity ?? 1}
-                    disabled
-                    className="w-12 text-center border rounded bg-gray-100 text-gray-400"
-                  />
-                  <button
-                    disabled
-                    className="px-2 py-1 bg-gray-200 rounded cursor-not-allowed opacity-50"
-                  >
-                    +
-                  </button>
-                </div>
-                <div className="col-span-1 flex items-center justify-between text-right">
-                  <p className="text-sm text-gray-500 font-semibold">
-                    {formatVND(b.price_cents || 0)}đ
-                  </p>
-                  <button
-                    onClick={() => removeBook(b._id!)}
-                    className="text-red-600 hover:underline text-xs ml-3"
-                  >
-                    Xóa
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="mt-6 flex justify-between items-center">
-          <p className="text-lg font-semibold">
-            Tổng tạm tính:{" "}
-            <span className="text-green-700">{formatVND(totalPrice)}đ</span>
-          </p>
-          <button
-            onClick={clear}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
-          >
-            Xóa hết
-          </button>
-        </div>
       </div>
 
-      {/* === BÊN PHẢI: Thanh toán === */}
-      <aside className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 h-fit sticky top-20">
-        <h2 className="text-xl font-semibold mb-4">💳 Hình thức thanh toán</h2>
-
-        {/* Thông tin liên hệ */}
-        <div className="mb-6 space-y-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên</label>
-            <input
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Ví dụ: Nguyễn Văn A"
-              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ nhận hàng</label>
-            <input
-              type="text"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="Ví dụ: 123 Trần Duy Hưng, Cầu Giấy, Hà Nội"
-              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
-            <input
-              type="tel"
-              inputMode="numeric"
-              pattern="[0-9]+"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="Ví dụ: 0912345678"
-              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
-
+      {/* Cột phải: hình thức thanh toán */}
+      <aside className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5 h-fit lg:sticky lg:top-20">
+        <h2 className="text-lg font-semibold mb-3">Hình thức thanh toán</h2>
         <div className="space-y-3 mb-6">
           {[
-            { id: "momo", label: "Momo", icon: "📱", disabled: true },
+            { id: "momo" as const, label: "Momo", icon: "💜", disabled: true },
             {
-              id: "vnpay",
+              id: "vnpay" as const,
               label: "VNPay (PayOS)",
-              icon: "🏦",
+              icon: "💳",
               disabled: false,
             },
-            { id: "bank", label: "Chuyển khoản", icon: "💸", disabled: true },
-          ].map((opt) => (
-            <label
-              key={opt.id}
-              className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition ${
-                payment === opt.id
-                  ? "border-blue-600 bg-blue-50"
-                  : "border-gray-200 hover:bg-gray-50"
-              } ${opt.disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+      
+          ].map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              disabled={m.disabled}
+              onClick={() => !m.disabled && setPayment(m.id)}
+              className={`w-full flex items-center justify-between px-4 py-3 border rounded-xl text-sm ${
+                payment === m.id
+                  ? "border-blue-500 bg-blue-50 text-blue-700"
+                  : "border-gray-200 bg-white text-gray-700"
+              } ${m.disabled ? "opacity-60 cursor-not-allowed" : ""}`}
             >
-              <input
-                type="radio"
-                name="payment"
-                value={opt.id}
-                checked={payment === opt.id}
-                onChange={() => !opt.disabled && setPayment(opt.id)}
-                disabled={opt.disabled}
-                className="text-blue-600 focus:ring-blue-600"
-              />
-              <span className="text-gray-800 font-medium flex items-center gap-2">
-                {opt.icon} {opt.label}
-              </span>
-            </label>
+              <div className="flex items-center gap-3">
+                <span className="text-xl">{m.icon}</span>
+                <span className="font-medium">{m.label}</span>
+              </div>
+              {payment === m.id && !m.disabled && (
+                <span className="text-xs text-blue-600 font-semibold">
+                  Đã chọn
+                </span>
+              )}
+            </button>
           ))}
         </div>
 
-        <div className="border-t pt-4">
-          <p className="text-lg font-semibold mb-2">
-            Tổng thanh toán:{" "}
-            <span className="text-green-700">{formatVND(totalPrice)}đ</span>
-          </p>
-          <button
-            onClick={handleCheckout}
-            disabled={loading}
-            className={`w-full text-white font-semibold py-3 rounded-lg transition ${
-              loading
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-700"
-            }`}
-          >
-            {loading ? "Đang xử lý..." : "Xác nhận thanh toán"}
-          </button>
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-sm text-gray-600">Tổng tiền thanh toán</span>
+          <span className="text-lg font-semibold text-green-700">
+            {formatVND(totalPrice)}₫
+          </span>
         </div>
+
+        <button
+          onClick={handleCheckout}
+          disabled={loading || (courses.length === 0 && availableBooks.length === 0)}
+          className="w-full mb-3 bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
+        >
+          {loading ? "Đang tạo link..." : "Thanh toán ngay"}
+        </button>
+        {courses.length === 0 && availableBooks.length === 0 && purchasedBooksInCart.length > 0 && (
+          <p className="text-xs text-gray-500 text-center mb-3">
+            Vui lòng xóa các sách đã mua hoặc thêm sản phẩm khác để tiếp tục thanh toán
+          </p>
+        )}
+
+        <button
+          onClick={clear}
+          className="w-full border border-gray-300 text-gray-700 py-2 rounded-xl hover:bg-gray-50 transition text-sm"
+        >
+          Xóa hết giỏ hàng
+        </button>
       </aside>
     </div>
   );
 }
+

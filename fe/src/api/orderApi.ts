@@ -28,7 +28,6 @@ export interface OrderItem {
     title: string;
     slug: string;
     price?: number;
-    price_cents?: number;
     thumbnail_url?: string;
     images?: string[];
     // For Course products

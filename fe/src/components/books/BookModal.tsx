@@ -31,10 +31,7 @@ const BookModal = ({ book, isOpen, onClose }: BookModalProps) => {
             : book.category_id || "Chưa có"}
         </p>
         <p>
-          <strong>Giá:</strong> {book.price_cents?.toLocaleString()} VND
-        </p>
-        <p>
-          <strong>Stock:</strong> {book.stock ?? 0}
+          <strong>Giá:</strong> {book.price?.toLocaleString()} VND
         </p>
         <p>
           <strong>Mô tả:</strong> {book.description || "Không có mô tả"}

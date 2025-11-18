@@ -87,21 +87,6 @@ export const createOrder = async (req: Request, res: Response) => {
 
     // Nếu payment_method không phải PayOS (COD, bank, etc.), trừ stock ngay
     // Vì các phương thức này được xem như đã thanh toán ngay
-    if (payment_method && payment_method.toLowerCase() !== "payos") {
-      const bookItems = items.filter((it) => it.productType === "Book");
-      if (bookItems.length > 0) {
-        await Promise.all(
-          bookItems.map(async (it) => {
-            const bookId = new mongoose.Types.ObjectId(it.productId);
-            const quantity = Math.max(1, Number(it.quantity || 1));
-            await BookModel.updateOne(
-              { _id: bookId },
-              { $inc: { stock: -Math.abs(quantity) } }
-            );
-          })
-        );
-      }
-    }
 
     return res.status(201).json({
       message: "Order created successfully",
@@ -164,7 +149,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
                 .lean();
             } else if (item.product_type === "Book") {
               product = await BookModel.findById(item.product_id)
-                .select("title slug price_cents images")
+                .select("title slug price images")
                 .lean();
             }
 
@@ -226,7 +211,7 @@ export const getOrderItems = async (req: Request, res: Response) => {
             .lean();
         } else if (item.product_type === "Book") {
           product = await BookModel.findById(item.product_id)
-            .select("title slug price_cents images")
+            .select("title slug price images")
             .lean();
         }
 

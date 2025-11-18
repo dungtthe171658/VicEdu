@@ -20,6 +20,7 @@ import subtitleRoutes from "./routes/subtitle.route";
 import historyRoutes from "./routes/history.route";
 import commentRoutes from "./routes/comment.route";
 import quizzRoutes from "./routes/quiz.route";
+import cartRoutes from "./routes/cart.route";
 
 // import apiRoutes from "./routes/index";
 const app = express();
@@ -47,6 +48,7 @@ app.use("/api/subtitles", subtitleRoutes);
 app.use("/api/history", historyRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/quizzes", quizzRoutes);
+app.use("/api/cart", cartRoutes);
 
 //app.use("/api", apiRoutes);
 export default app;

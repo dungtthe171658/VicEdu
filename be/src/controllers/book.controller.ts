@@ -4,6 +4,7 @@ import slugify from "slugify";
 import Book from "../models/book.model";
 import OrderItemModel from "../models/order_item.model";
 import Order from "../models/order.model";
+import BookHistoryModel from "../models/bookHistory.model";
 import { AuthRequest } from "../middlewares/auth";
 import UserModel from "../models/user.model";
 import cloudinary from "../utils/cloudinary";
@@ -18,14 +19,18 @@ function getUserIdFromToken(req: Request & { user?: any }): string | null {
   return id || null;
 }
 
-async function resolveUserId(req: Request & { user?: any }): Promise<string | null> {
+async function resolveUserId(
+  req: Request & { user?: any }
+): Promise<string | null> {
   const isDev = (process.env.NODE_ENV || "development") !== "production";
   let uid = getUserIdFromToken(req);
   if (!uid && isDev) {
     const qEmailRaw = (req.query as any)?.email;
     if (qEmailRaw && typeof qEmailRaw === "string") {
       const qEmail = qEmailRaw.trim().toLowerCase();
-      const user = await UserModel.findOne({ email: qEmail }).select({ _id: 1 }).lean();
+      const user = await UserModel.findOne({ email: qEmail })
+        .select({ _id: 1 })
+        .lean();
       if (user?._id) uid = String((user as any)._id);
     }
   }
@@ -44,15 +49,15 @@ export const getBooks = async (req: Request, res: Response) => {
       if (catId) filter.category_id = catId;
     }
     if (minPrice || maxPrice) {
-      filter.price_cents = {};
-      if (minPrice) filter.price_cents.$gte = Number(minPrice);
-      if (maxPrice) filter.price_cents.$lte = Number(maxPrice);
+      filter.price = {};
+      if (minPrice) filter.price.$gte = Number(minPrice);
+      if (maxPrice) filter.price.$lte = Number(maxPrice);
     }
 
     const dir = order === "asc" ? 1 : -1;
     const sort: Record<string, 1 | -1> =
       sortBy === "price"
-        ? { price_cents: dir }
+        ? { price: dir }
         : sortBy === "title"
         ? { title: dir }
         : { created_at: -1 };
@@ -141,16 +146,16 @@ export const getBookById = async (req: Request, res: Response) => {
 // 📘 Tạo sách mới
 export const createBook = async (req: Request, res: Response) => {
   try {
-    const { title, price_cents, category_id, pdf_url } = req.body;
+    const { title, price, category_id, pdf_url } = req.body;
 
     // DEBUG: in payload nhận được
     console.log("CreateBook payload:", req.body);
     console.log("pdf_url:", pdf_url);
 
-    if (!title || !price_cents || !category_id)
+    if (!title || price === undefined || !category_id)
       return res
         .status(400)
-        .json({ message: "title, price_cents, category_id are required" });
+        .json({ message: "title, price, category_id are required" });
 
     const catId = toObjectId(category_id);
     if (!catId) return res.status(400).json({ message: "Invalid category_id" });
@@ -228,33 +233,7 @@ export const deleteBook = async (req: Request, res: Response) => {
   }
 };
 
-// 📘 Cập nhật stock sách
-export const updateBookStock = async (req: Request, res: Response) => {
-  try {
-    const bookId = toObjectId(req.params.id);
-    if (!bookId) return res.status(400).json({ message: "Invalid book ID" });
-
-    const { stock } = req.body;
-    if (typeof stock !== "number" || stock < 0)
-      return res.status(400).json({ message: "Stock không hợp lệ" });
-
-    const updated = await Book.findByIdAndUpdate(
-      bookId,
-      { stock },
-      { new: true, runValidators: true }
-    ).populate("category_id", "name slug");
-
-    if (!updated) return res.status(404).json({ message: "Book not found" });
-
-    res.json({ message: "Stock updated successfully", data: updated });
-  } catch (err: any) {
-    res
-      .status(500)
-      .json({ message: "Failed to update stock", error: err.message });
-  }
-};
-
-// 📘 Lấy danh sách sách đã mua của user
+// Lấy danh sách sách đã mua của user
 export const getPurchasedBooks = async (req: AuthRequest, res: Response) => {
   try {
     const isDev = (process.env.NODE_ENV || "development") !== "production";
@@ -296,7 +275,11 @@ export const getPurchasedBooks = async (req: AuthRequest, res: Response) => {
     ]);
 
     let books = (viaOrders as any[]).map((row) => row.book);
-    if (!books.length && isDev && String((req.query as any)?.forceAll || "0") === "1") {
+    if (
+      !books.length &&
+      isDev &&
+      String((req.query as any)?.forceAll || "0") === "1"
+    ) {
       books = await Book.find({}).sort({ created_at: -1 }).limit(24).lean();
     }
 
@@ -304,6 +287,50 @@ export const getPurchasedBooks = async (req: AuthRequest, res: Response) => {
   } catch (err: any) {
     console.error(err);
     return res.status(500).json({ message: err.message || "Server error" });
+  }
+};
+
+// Lấy danh sách sách đã mua từ bookHistory (không dùng getBookOrderAndOrderitem)
+export const getMyBooksFromHistory = async (req: Request, res: Response) => {
+  try {
+    const uid = await resolveUserId(req);
+    if (!uid) return res.status(401).json({ message: "Unauthenticated" });
+
+    const userObjectId = new mongoose.Types.ObjectId(uid);
+
+    // Lấy tất cả bookHistory của user với status "active"
+    const bookHistories = await BookHistoryModel.find({
+      user_id: userObjectId,
+      status: "active",
+    })
+      .populate({
+        path: "book_id",
+        model: "Book",
+        select: "title author description price_before price_after images pdf_url category_id slug is_published",
+      })
+      .sort({ purchased_at: -1 })
+      .lean();
+
+    // Lọc và map để lấy thông tin book
+    const books = bookHistories
+      .map((bh: any) => {
+        const book = bh.book_id;
+        if (!book || !book._id) return null;
+        // Map price_after thành price để tương thích với frontend
+        return {
+          ...book,
+          _id: book._id,
+          price: book.price_after || book.price_before || 0,
+          purchased_at: bh.purchased_at,
+          price_at_purchase: bh.price_at_purchase,
+        };
+      })
+      .filter((b: any) => b !== null);
+
+    return res.json({ data: books, count: books.length });
+  } catch (error: any) {
+    console.error("getMyBooksFromHistory error:", error?.message || error);
+    return res.status(500).json({ message: error?.message || "Server error" });
   }
 };
 
@@ -316,8 +343,10 @@ export const getBookOrderAndOrderitem = async (req: Request, res: Response) => {
 
     const userObjectId = new mongoose.Types.ObjectId(uid);
 
-    const includePending = String((req.query as any)?.includePending || "0") === "1";
-    const statuses = includePending && isDev ? ["completed", "pending"] : ["completed"];
+    const includePending =
+      String((req.query as any)?.includePending || "0") === "1";
+    const statuses =
+      includePending && isDev ? ["completed", "pending"] : ["completed"];
 
     const results = await Order.aggregate([
       { $match: { user_id: userObjectId, status: { $in: statuses } } },
@@ -354,12 +383,17 @@ export const getBookOrderAndOrderitem = async (req: Request, res: Response) => {
 
     // Fallback for environments where order_items are not populated yet
     if (!books.length) {
-      const orders = await Order.find({ user_id: userObjectId, status: { $in: statuses } })
+      const orders = await Order.find({
+        user_id: userObjectId,
+        status: { $in: statuses },
+      })
         .select({ meta: 1 })
         .lean();
       const idSet = new Set<string>();
       for (const o of orders as any[]) {
-        const list = Array.isArray(o?.meta?.books) ? (o.meta.books as any[]) : [];
+        const list = Array.isArray(o?.meta?.books)
+          ? (o.meta.books as any[])
+          : [];
         for (const bid of list) {
           try {
             idSet.add(String(bid));
@@ -367,7 +401,9 @@ export const getBookOrderAndOrderitem = async (req: Request, res: Response) => {
         }
       }
       if (idSet.size) {
-        const ids = Array.from(idSet).map((s) => new mongoose.Types.ObjectId(s));
+        const ids = Array.from(idSet).map(
+          (s) => new mongoose.Types.ObjectId(s)
+        );
         books = await Book.find({ _id: { $in: ids } }).lean();
       }
     }
@@ -385,9 +421,12 @@ export const getBookPdfUrl = async (req: Request, res: Response) => {
     const bookId = toObjectId(req.params.id);
     if (!bookId) return res.status(400).json({ message: "Invalid book ID" });
 
-    const book = await Book.findById(bookId).select({ pdf_url: 1, _id: 1 }).lean();
+    const book = await Book.findById(bookId)
+      .select({ pdf_url: 1, _id: 1 })
+      .lean();
     if (!book) return res.status(404).json({ message: "Book not found" });
-    if (!book.pdf_url) return res.status(404).json({ message: "No PDF available" });
+    if (!book.pdf_url)
+      return res.status(404).json({ message: "No PDF available" });
 
     // Parse public_id and extension from a Cloudinary URL, e.g.:
     // https://res.cloudinary.com/<cloud>/raw/upload/v12345/folder/name/file.pdf
@@ -421,9 +460,50 @@ export const getBookPdfUrl = async (req: Request, res: Response) => {
 
     const disposition = String((req.query as any)?.disposition || "inline");
     const selected = disposition === "attachment" ? downloadUrl : inlineUrl;
-    return res.json({ url: selected, inline: inlineUrl, download: downloadUrl, raw: original });
+    return res.json({
+      url: selected,
+      inline: inlineUrl,
+      download: downloadUrl,
+      raw: original,
+    });
   } catch (error: any) {
     console.error("getBookPdfUrl error:", error?.message || error);
     return res.status(500).json({ message: error?.message || "Server error" });
+  }
+};
+
+/**
+ * GET /api/books/purchased/ids
+ * Lấy danh sách ID các sách đã mua của user hiện tại từ bookHistory
+ * Trả về: { bookIds: string[] }
+ */
+export const getPurchasedBookIds = async (req: AuthRequest, res: Response) => {
+  try {
+    const uid = getUserIdFromToken(req as any);
+    if (!uid) {
+      return res.status(401).json({ message: "Unauthenticated" });
+    }
+
+    const userObjectId = new mongoose.Types.ObjectId(uid);
+
+    // Lấy danh sách book IDs từ bookHistory với status = "active"
+    const bookHistories = await BookHistoryModel.find({
+      user_id: userObjectId,
+      status: "active",
+    })
+      .select("book_id")
+      .lean();
+
+    const bookIds = bookHistories.map((bh) => String(bh.book_id));
+
+    return res.json({
+      bookIds,
+      count: bookIds.length,
+    });
+  } catch (error: any) {
+    console.error("getPurchasedBookIds error:", error?.message || error);
+    return res.status(500).json({
+      message: error?.message || "Server error",
+    });
   }
 };

@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import User, { IUser } from "../models/user.model";
 import bcrypt from "bcryptjs";
-import jwt, { JwtPayload } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
 import { JWT_SECRET } from "../middlewares/auth";
@@ -21,12 +21,15 @@ const transporter = nodemailer.createTransport({
 export const register = async (req: Request, res: Response) => {
   try {
     const { name, email, password, phone, role } = req.body;
-    if (!name || !email || !password)
+
+    if (!name || !email || !password) {
       return res.status(400).json({ message: "Thiếu thông tin" });
+    }
 
     const existing = await User.findOne({ email });
-    if (existing)
+    if (existing) {
       return res.status(400).json({ message: "Email đã được sử dụng" });
+    }
 
     const hashed = await bcrypt.hash(password, 10);
     const verifyToken = crypto.randomBytes(32).toString("hex");
@@ -37,19 +40,21 @@ export const register = async (req: Request, res: Response) => {
       password: hashed,
       phone,
       role,
+      is_verified: false, // đảm bảo mặc định false
       verifyToken,
-      verifyTokenExpiry: new Date(Date.now() + 15 * 60 * 1000),
+      verifyTokenExpiry: new Date(Date.now() + 15 * 60 * 1000), // 15 phút
     });
+
     await newUser.save();
 
     const verifyUrl = `${process.env.BACKEND_URL}/api/auth/verify-email?token=${verifyToken}`;
     await transporter.sendMail({
       to: email,
       subject: "Xác minh email",
-      html: `<p>Chào ngài ${name},</p>
-                 <p>Cảm ơn ngài đã bỏ thời gian đăng ký. Click vào đường link để xác nhận ngài muốn dùng sản phẩm của chúng tôi :</p>
-                 <a href="${verifyUrl}">Nhận bánh danisa</a>
-                 <p>Link có 1 giờ thôi, ấn nhanh thì được.</p>`,
+      html: `<p>Chào ${name},</p>
+             <p>Vui lòng click vào link sau để xác nhận email:</p>
+             <a href="${verifyUrl}">${verifyUrl}</a>
+             <p>Link có hiệu lực trong 15 phút.</p>`,
     });
 
     res.status(201).json({
@@ -65,32 +70,37 @@ export const register = async (req: Request, res: Response) => {
 export const verifyEmail = async (req: Request, res: Response) => {
   try {
     const { token } = req.query;
-    if (!token) return res.status(400).json({ message: "Thiếu token" });
 
-    const user = await User.findOne({
-      verifyToken: token,
-      verifyTokenExpiry: { $gt: new Date() },
-    });
+    if (!token) {
+      return res.redirect(`${process.env.FE_URL}/login?is_verified=false`);
+    }
+
+    const user = await User.findOne({ verifyToken: token as string });
 
     if (!user) {
-      res.redirect(`${process.env.FE_URL}/login?is_verified=false`)
-      return res.status(400).json({ message: "Token không hợp lệ hoặc đã hết hạn" });}
-
-    if (user.verifyTokenExpiry && user.verifyTokenExpiry < new Date()) {
-      if(!user.is_verified) {
-        await User.deleteOne({ _id: user._id });
-        return res.status(400).json({ message: "Token đã hết hạn. Vui lòng đăng ký lại." });
-      }
+      return res.redirect(`${process.env.FE_URL}/login?is_verified=false`);
     }
+
+    // Token hết hạn
+    if (
+      !user.is_verified &&
+      user.verifyTokenExpiry &&
+      user.verifyTokenExpiry < new Date()
+    ) {
+      await User.deleteOne({ _id: user._id });
+      return res.redirect(`${process.env.FE_URL}/login?is_verified=false`);
+    }
+
+    // Xác minh email
     user.is_verified = true;
     user.verifyToken = undefined;
     user.verifyTokenExpiry = undefined;
     await user.save();
-    return res.redirect(`${process.env.FE_URL}/login?is_verified=true`)
-    res.json({ message: "Xác minh email thành công" });
+
+    return res.redirect(`${process.env.FE_URL}/login?is_verified=true`);
   } catch (error: any) {
     console.error("Lỗi xác minh email:", error);
-    res.status(500).json({ message: "Lỗi máy chủ", error: error.message });
+    return res.redirect(`${process.env.FE_URL}/login?is_verified=false`);
   }
 };
 
@@ -98,18 +108,19 @@ export const verifyEmail = async (req: Request, res: Response) => {
 export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body || {};
+    if (!email || !password)
+      return res.status(400).json({ message: "Thiếu email hoặc mật khẩu" });
+
     const user: IUser | null = await User.findOne({ email });
-    console.log("User tìm thấy:", user);
     if (!user)
       return res.status(400).json({ message: "Tài khoản không tồn tại" });
 
     if (user.password === "google_oauth") {
       return res.status(400).json({ message: "Hãy đăng nhập bằng Google" });
     }
-    
+
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch)
-      return res.status(400).json({ message: "Sai mật khẩu" });
+    if (!isMatch) return res.status(400).json({ message: "Sai mật khẩu" });
 
     if (!user.is_verified)
       return res.status(400).json({ message: "Email chưa xác minh" });
@@ -140,9 +151,10 @@ export const login = async (req: Request, res: Response) => {
 export const forgotPassword = async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Thiếu email" });
+
     const user = await User.findOne({ email });
-    if (!user)
-      return res.status(400).json({ message: "Email không tồn tại" });
+    if (!user) return res.status(400).json({ message: "Email không tồn tại" });
 
     const resetToken = crypto.randomBytes(32).toString("hex");
     user.resetToken = resetToken;
@@ -174,13 +186,18 @@ export const resetPassword = async (req: Request, res: Response) => {
     const { token } = req.params;
     const { newPassword } = req.body;
 
+    if (!token || !newPassword)
+      return res.status(400).json({ message: "Thiếu thông tin" });
+
     const user = await User.findOne({
       resetToken: token,
       resetTokenExpiry: { $gt: new Date() },
     });
 
     if (!user)
-      return res.status(400).json({ message: "Token không hợp lệ hoặc hết hạn" });
+      return res
+        .status(400)
+        .json({ message: "Token không hợp lệ hoặc hết hạn" });
 
     const hashed = await bcrypt.hash(newPassword, 10);
     user.password = hashed;
@@ -195,24 +212,28 @@ export const resetPassword = async (req: Request, res: Response) => {
   }
 };
 
-// ====================== GOOGLE LOGIN SUCCESS ======================
+// ====================== GOOGLE LOGIN ======================
 export const googleSuccess = (req: Request, res: Response) => {
-  const user = req.user as IUser;
-  if (!user) return res.redirect(`${process.env.FE_URL}/login?error=google_failed`);
+  try {
+    const user = req.user as IUser;
+    if (!user)
+      return res.redirect(`${process.env.FE_URL}/login?error=google_failed`);
 
-  const token = jwt.sign(
-    { id: user._id, role: user.role, email: user.email },
-    JWT_SECRET,
-    { expiresIn: "7d" }
-  );
+    const token = jwt.sign(
+      { id: user._id, role: user.role, email: user.email },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
-  const redirectUrl = `${process.env.FE_URL}/login?token=${token}`;
-  res.redirect(redirectUrl);
+    return res.redirect(`${process.env.FE_URL}/login?token=${token}`);
+  } catch (error: any) {
+    console.error("Lỗi googleSuccess:", error);
+    return res.redirect(`${process.env.FE_URL}/login?error=google_failed`);
+  }
 };
 
-// ====================== GOOGLE LOGIN FAILURE ======================
 export const googleFailure = (_req: Request, res: Response) => {
-  res.redirect(`${process.env.FE_URL}/login?error=google_failed`);
+  return res.redirect(`${process.env.FE_URL}/login?error=google_failed`);
 };
 
 export default {

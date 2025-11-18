@@ -12,14 +12,8 @@ export default function MyBooksPage() {
     (async () => {
       try {
         setLoading(true);
-        const params: any = {};
-        const testEmail = (import.meta as any).env?.VITE_PURCHASED_TEST_EMAIL;
-        if (testEmail) params.email = String(testEmail);
-        if ((import.meta as any).env?.DEV) params.includePending = 1;
-        const forceAll = (import.meta as any).env?.VITE_PURCHASED_FORCE_ALL;
-        if (forceAll) params.forceAll = 1;
-
-        const res = await bookApi.getBookOrderAndOrderitem(params);
+        // Sử dụng API mới để lấy sách từ bookHistory
+        const res = await bookApi.getMyBooksFromHistory();
         const payload = res?.data as any;
         const list: BookDto[] = Array.isArray(payload)
           ? payload
@@ -28,6 +22,7 @@ export default function MyBooksPage() {
           : [];
         setBooks(list);
       } catch (err) {
+        console.error("Error loading my books:", err);
         setError("Không thể tải danh sách sách đã mua.");
         setBooks([]);
       } finally {
@@ -91,8 +86,8 @@ export default function MyBooksPage() {
                 )}
                 <div className="mt-3 flex items-center justify-between">
                   <div className="text-sm text-gray-600">
-                    {typeof b.price_cents === "number"
-                      ? `${(b.price_cents || 0).toLocaleString("vi-VN")}đ`
+                    {typeof b.price === "number"
+                      ? `${(b.price || 0).toLocaleString("vi-VN")}đ`
                       : "Miễn phí"}
                   </div>
                   <div className="flex items-center gap-3">

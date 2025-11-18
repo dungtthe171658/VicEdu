@@ -96,7 +96,7 @@ export function CourseCard({ c, isEnrolled = false }: { c: Course; isEnrolled?: 
             </div>
             {!isEnrolled && (
               <p className="font-semibold text-green-700">
-                {VND((c as any).price_cents || 0)}₫
+                {VND((c as any).price || 0)}₫
               </p>
             )}
           </div>

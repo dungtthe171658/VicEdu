@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
 import type { Category } from "../../types/category";
+import slugify from "slugify";
 import "./CategoryForm.css";
 
 interface CategoryFormProps {
@@ -17,7 +18,7 @@ const CategoryForm = ({ initialData = {}, onSubmit }: CategoryFormProps) => {
     description: initialData.description || "",
   });
 
-  // Update form data when initialData changes
+  // 🔹 Cập nhật lại formData khi edit (initialData thay đổi)
   useEffect(() => {
     setFormData({
       name: initialData.name || "",
@@ -25,6 +26,16 @@ const CategoryForm = ({ initialData = {}, onSubmit }: CategoryFormProps) => {
       description: initialData.description || "",
     });
   }, [initialData]);
+
+  // 🔥 Tạo slug tự động mỗi khi name thay đổi
+  useEffect(() => {
+    const generatedSlug = slugify(formData.name || "", { lower: true, strict: true });
+
+    setFormData((prev) => ({
+      ...prev,
+      slug: generatedSlug,
+    }));
+  }, [formData.name]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -62,15 +73,15 @@ const CategoryForm = ({ initialData = {}, onSubmit }: CategoryFormProps) => {
         />
       </div>
 
+      {/* 🔥 Slug tự động – disabled */}
       <div className="form-group">
-        <label htmlFor="slug">Slug</label>
+        <label htmlFor="slug">Slug (tự động)</label>
         <input
           id="slug"
           type="text"
           name="slug"
           value={formData.slug || ""}
-          onChange={handleChange}
-          required
+          disabled
         />
       </div>
 

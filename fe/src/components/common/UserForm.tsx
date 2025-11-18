@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { TextField, Button, Box, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
+import { TextField, Button, Box, Select, MenuItem, FormControl, InputLabel,Typography  } from '@mui/material';
 import type { UserDto, UserRole } from '../../types/user';
 
 interface UserFormProps {
   initialData?: Partial<UserDto>;
   onSubmit: (data: Partial<UserDto>) => void;
+  errors?: Record<string, string>;
 }
 
-const UserForm: React.FC<UserFormProps> = ({ initialData = {}, onSubmit }) => {
+const UserForm: React.FC<UserFormProps> = ({ initialData = {}, onSubmit, errors = {} }) => {
   const [name, setName] = useState(initialData.name || '');
   const [email, setEmail] = useState(initialData.email || '');
   const [role, setRole] = useState<UserRole>(initialData.role || 'customer');
@@ -15,14 +16,40 @@ const UserForm: React.FC<UserFormProps> = ({ initialData = {}, onSubmit }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({ name, email, role, password });
+
+    const payload: Partial<UserDto> = { name, email, role };
+
+    if (!initialData._id) {
+      payload.password = password;        // Tạo mới thì phải có password
+    }
+
+    onSubmit(payload);
   };
 
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ display: 'grid', gap: 2 }}>
-      <TextField label="Họ & Tên" value={name} onChange={e => setName(e.target.value)} fullWidth required />
-      <TextField label="Email" value={email} onChange={e => setEmail(e.target.value)} fullWidth required />
-      <FormControl fullWidth required>
+
+      <TextField 
+        label="Họ & Tên"
+        value={name}
+        onChange={e => setName(e.target.value)}
+        fullWidth
+        required
+        error={!!errors.name} 
+        helperText={errors.name}
+      />
+
+      <TextField 
+        label="Email"
+        value={email}
+        onChange={e => setEmail(e.target.value)}
+        fullWidth
+        required
+        error={!!errors.email}
+        helperText={errors.email}
+      />
+
+      <FormControl fullWidth required error={!!errors.role}>
         <InputLabel>Vai trò</InputLabel>
         <Select
           value={role}
@@ -34,7 +61,25 @@ const UserForm: React.FC<UserFormProps> = ({ initialData = {}, onSubmit }) => {
           <MenuItem value="teacher">Teacher</MenuItem>
         </Select>
       </FormControl>
-      {!initialData._id && <TextField label="Mật khẩu" value={password} onChange={e => setPassword(e.target.value)} type="password" fullWidth required />}
+
+      {/* Chỉ hiển thị Password khi tạo mới */}
+      {!initialData._id && (
+        <TextField 
+          label="Mật khẩu"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          type="password"
+          fullWidth
+          required
+          error={!!errors.password}
+          helperText={errors.password}
+        />
+      )}
+
+      {errors.general && (
+        <Typography color="error">{errors.general}</Typography>
+      )}
+
       <Button type="submit" variant="contained">Lưu</Button>
     </Box>
   );

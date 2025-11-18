@@ -10,6 +10,7 @@ import TeacherLayout from "../pages/dashboard/Layout/TeacherLayout";
 import ProfilePage from "../pages/my-account/ProfilePage";
 import MyCoursesPage from "../pages/my-account/MyCoursesPage";
 import OrderHistoryPage from "../pages/my-account/OrderHistoryPage.tsx";
+import MyTrackProcessLearning from "../pages/my-account/MyTrackProcessLearning";
 
 // 🔹 Public pages
 // import about from "../pages/user/about.tsx";
@@ -48,6 +49,10 @@ import CourseManageDetailTeacher from "../pages/dashboard/Teacher/CourseManageDe
 import LessonManageDetailTeacher from "../pages/dashboard/Teacher/LessonManageDetailTeacher";
 import PendingEditsTeacher from "../pages/dashboard/Teacher/PendingEditsTeacher";
 import ManageCommentTeacherPages from "../pages/dashboard/Teacher/ManageCommentTeacherPages";
+import ManageTracksProcessPage from "../pages/dashboard/Admin/ManageTracksProcessPage";
+import ManageTracksProcessPageTeacher from "../pages/dashboard/Teacher/ManageTracksProcessPageTeacher";
+import StudentProgressDetailPage from "../pages/dashboard/Shared/StudentProgressDetailPage";
+import ManageSaleOffPage from "../pages/dashboard/Admin/ManageSaleOffPage";
 
 import ProtectedRoute from "./ProtectedRoute";
 import About from "../pages/user/about.tsx";
@@ -73,6 +78,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/about" element={<About/>}/>
                 <Route path="/my-courses" element={<MyCoursesPage/>}/>
                 <Route path="/my-orders" element={<OrderHistoryPage/>}/>
+                <Route path="/tracking-learming-process" element={<MyTrackProcessLearning/>}/>
 
                 {/* Payment callbacks */}
                 <Route path="/payment-success" element={<PaymentSuccessPage/>}/>
@@ -193,6 +199,30 @@ const AppRoutes: React.FC = () => {
                         </ProtectedRoute>
                     }
                 />
+                <Route
+                    path="manage-tracksprocess"
+                    element={
+                        <ProtectedRoute allowedRoles={["admin"]}>
+                            <ManageTracksProcessPage/>
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="manage-tracksprocess/:studentId"
+                    element={
+                        <ProtectedRoute allowedRoles={["admin"]}>
+                            <StudentProgressDetailPage/>
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="manage-saleoff"
+                    element={
+                        <ProtectedRoute allowedRoles={["admin"]}>
+                            <ManageSaleOffPage/>
+                        </ProtectedRoute>
+                    }
+                />
             </Route>
 
             {/* 👨‍🏫 Teacher routes */}
@@ -208,9 +238,13 @@ const AppRoutes: React.FC = () => {
                 <Route path="manage-courses" element={<ManageCoursesTeacherPage/>}/>
                 <Route path="manage-courses/:courseId" element={<CourseManageDetailTeacher/>}/>
                 <Route path="manage-courses/:courseId/lessons/:lessonId" element={<LessonManageDetailTeacher/>}/>
+                <Route path="manage-courses/:courseId/lessons/:lessonId/quizzes" element={<QuizzManage />}/>
                 <Route path="manage-students" element={<ManageStudentsPage/>}/>
                 <Route path="manage-comments" element={<ManageCommentTeacherPages/>}/>
                 <Route path="pending-edits" element={<PendingEditsTeacher/>}/>
+                <Route path="manage-tracksprocess" element={<ManageTracksProcessPageTeacher/>}/>
+                <Route path="manage-tracksprocess/:studentId" element={<StudentProgressDetailPage/>}/>
+          
             </Route>
 
 

@@ -28,6 +28,8 @@ function toId(val: any): string {
 const formatVND = (n: number) =>
   n.toLocaleString("vi-VN", { style: "currency", currency: "VND" });
 
+const ITEMS_PER_PAGE = 9;
+
 export const CoursePage = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -38,6 +40,7 @@ export const CoursePage = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [priceLimit, setPriceLimit] = useState<number>(500000);
   const [sortBy, setSortBy] = useState<string>("none");
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Fetch data
   useEffect(() => {
@@ -84,16 +87,27 @@ export const CoursePage = () => {
     }
 
     // Filter by price range
-    list = list.filter((c) => (c.price_cents || 0) <= priceLimit);
+    list = list.filter((c) => (c.price || 0) <= priceLimit);
 
     // Sort by price
     if (sortBy === "asc")
-      list.sort((a, b) => (a.price_cents || 0) - (b.price_cents || 0));
+      list.sort((a, b) => (a.price || 0) - (b.price || 0));
     if (sortBy === "desc")
-      list.sort((a, b) => (b.price_cents || 0) - (a.price_cents || 0));
+      list.sort((a, b) => (b.price || 0) - (a.price || 0));
 
     return list;
   }, [courses, selectedCategory, priceLimit, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredCourses.length / ITEMS_PER_PAGE));
+
+  const paginatedCourses = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredCourses.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredCourses, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory, priceLimit, sortBy]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -171,11 +185,32 @@ export const CoursePage = () => {
         ) : filteredCourses.length === 0 ? (
           <p className="text-gray-500 mt-4">Không tìm thấy khóa học phù hợp.</p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredCourses.map((c) => (
-              <CourseCard key={toId(c._id)} c={c} isEnrolled={enrolledIds.has(toId((c as any)._id))} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {paginatedCourses.map((c) => (
+                <CourseCard key={toId(c._id)} c={c} isEnrolled={enrolledIds.has(toId((c as any)._id))} />
+              ))}
+            </div>
+            <div className="flex items-center justify-center gap-4 mt-8">
+              <button
+                className="px-4 py-2 rounded-lg border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              >
+                Trang trước
+              </button>
+              <span className="text-sm text-gray-600">
+                Trang {currentPage} / {totalPages}
+              </span>
+              <button
+                className="px-4 py-2 rounded-lg border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              >
+                Trang sau
+              </button>
+            </div>
+          </>
         )}
       </main>
     </div>

@@ -1,5 +1,5 @@
 import { useLocation, useParams, Link } from "react-router-dom";
-import { ArrowLeft, BookOpen, Star, Lock } from "lucide-react";
+import { ArrowLeft, BookOpen, Star, Lock, HelpCircle, CheckCircle2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import courseApi from "../../api/courseApi";
 import enrollmentApi from "../../api/enrollmentApi";
@@ -13,6 +13,7 @@ import { subtitleApi, type SubtitleFormat, type BilingualCue } from "../../api/s
 import { useAuth } from "../../hooks/useAuth";
 import commentApi from "../../api/commentApi";
 import type { LessonComment } from "../../types/comment";
+import quizApi from "../../api/quizApi";
 
 export default function CourseDetail() {
   const { slug } = useParams();
@@ -28,6 +29,7 @@ export default function CourseDetail() {
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [playbackUrl, setPlaybackUrl] = useState<string>("");
   const [loadingPlayback, setLoadingPlayback] = useState(false);
+  const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
 
   // Subtitles
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -58,6 +60,12 @@ export default function CourseDetail() {
   const [discussionMessage, setDiscussionMessage] = useState<string>("");
   const [replyBoxOpen, setReplyBoxOpen] = useState<Record<string, boolean>>({});
 
+  // Quiz
+  const [hasQuiz, setHasQuiz] = useState<boolean>(false);
+  const [checkingQuiz, setCheckingQuiz] = useState<boolean>(false);
+  const [lessonsWithQuiz, setLessonsWithQuiz] = useState<Set<string>>(new Set());
+  const [lessonQuizMap, setLessonQuizMap] = useState<Record<string, { quizId: string; title: string }>>({});
+
   // Tabs: Q&A vs Reviews
   const [activeTab, setActiveTab] = useState<"qa" | "reviews">("qa");
   const { addCourse, courses, removeCourse } = useCart();
@@ -86,18 +94,39 @@ export default function CourseDetail() {
     })();
   }, [slug]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Resolve enrolled status
+  // Resolve enrolled status and load completed lessons
   useEffect(() => {
     (async () => {
       try {
         if (!course) return;
         const ids = await enrollmentApi.getMyEnrolledCourseIds();
-        setIsEnrolled(ids.has(toId((course as any)._id)));
+        const enrolled = ids.has(toId((course as any)._id));
+        setIsEnrolled(enrolled);
+
+        // Load completed lessons if enrolled and user is logged in
+        if (enrolled && user) {
+          try {
+            const enrollment = await enrollmentApi.getEnrollmentByCourse(toId((course as any)._id));
+            const completedSet = new Set<string>();
+            if (enrollment.completed_lessons && Array.isArray(enrollment.completed_lessons)) {
+              enrollment.completed_lessons.forEach((id: any) => {
+                completedSet.add(toId(id));
+              });
+            }
+            setCompletedLessons(completedSet);
+          } catch (err) {
+            console.warn("Could not load completed lessons:", err);
+            setCompletedLessons(new Set());
+          }
+        } else {
+          setCompletedLessons(new Set());
+        }
       } catch {
         setIsEnrolled(false);
+        setCompletedLessons(new Set());
       }
     })();
-  }, [course]);
+  }, [course, user]);
 
   // Load lessons when course is ready
   useEffect(() => {
@@ -109,6 +138,26 @@ export default function CourseDetail() {
         const arr = Array.isArray(list) ? list : [];
         setLessons(arr);
         if (arr.length > 0) setSelectedLessonId(arr[0]._id);
+
+        // Check which lessons have quizzes and store quiz info
+        const quizSet = new Set<string>();
+        const quizMap: Record<string, { quizId: string; title: string }> = {};
+        await Promise.allSettled(
+          arr.map(async (lesson) => {
+            try {
+              const quiz = await quizApi.getByLesson(lesson._id);
+              quizSet.add(lesson._id);
+              quizMap[lesson._id] = {
+                quizId: quiz._id,
+                title: quiz.title || "Quiz",
+              };
+            } catch {
+              // Quiz doesn't exist for this lesson
+            }
+          })
+        );
+        setLessonsWithQuiz(quizSet);
+        setLessonQuizMap(quizMap);
       } catch (e) {
         console.warn("Could not load lessons list", e);
       } finally {
@@ -218,6 +267,47 @@ export default function CourseDetail() {
       cancelled = true;
     };
   }, [selectedLessonId, threadFilter]);
+
+  // Check if lesson has quiz
+  useEffect(() => {
+    if (!selectedLessonId) {
+      setHasQuiz(false);
+      return;
+    }
+    // Use cached quiz info if available
+    if (lessonQuizMap[selectedLessonId]) {
+      setHasQuiz(true);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setCheckingQuiz(true);
+      try {
+        const quiz = await quizApi.getByLesson(selectedLessonId);
+        if (!cancelled) {
+          setHasQuiz(true);
+          // Update quiz map
+          setLessonQuizMap((prev) => ({
+            ...prev,
+            [selectedLessonId]: {
+              quizId: quiz._id,
+              title: quiz.title || "Quiz",
+            },
+          }));
+        }
+      } catch (error: any) {
+        if (!cancelled) {
+          setHasQuiz(false);
+        }
+      } finally {
+        if (!cancelled) setCheckingQuiz(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedLessonId]);
 
   const isInCart = courses.some((c) => (c as any)._id === (course as any)?._id);
 
@@ -663,7 +753,7 @@ export default function CourseDetail() {
           {/* Price hidden if enrolled */}
           {!isEnrolled && (
             <p className="text-2xl font-semibold text-green-700 mb-6">
-              {formatVND((course as any).price_cents || 0)}
+              {formatVND((course as any).price || 0)}
             </p>
           )}
 
@@ -758,6 +848,15 @@ export default function CourseDetail() {
             >
               {subVisible ? "Ẩn phụ đề" : "Hiện phụ đề"}
             </button>
+            {hasQuiz && selectedLessonId && lessonQuizMap[selectedLessonId] && (
+              <Link
+                to={`/quiz/${lessonQuizMap[selectedLessonId].quizId}`}
+                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded border transition"
+              >
+                <HelpCircle className="w-4 h-4" />
+                Làm quiz
+              </Link>
+            )}
             {loadingSubs && <span className="text-sm text-gray-500">Đang xử lý phụ đề...</span>}
           </div>
 
@@ -767,7 +866,22 @@ export default function CourseDetail() {
             isEnrolled ? (
               playbackUrl ? (
                 <div className="relative">
-                  <video ref={videoRef} controls src={playbackUrl} className="w-full rounded-lg bg-black" />
+                  <video 
+                    ref={videoRef} 
+                    controls 
+                    src={playbackUrl} 
+                    className="w-full rounded-lg bg-black"
+                    onEnded={async () => {
+                      if (selectedLessonId && isEnrolled && user && !completedLessons.has(selectedLessonId)) {
+                        try {
+                          await enrollmentApi.completeLesson(selectedLessonId);
+                          setCompletedLessons((prev) => new Set([...prev, selectedLessonId]));
+                        } catch (err) {
+                          console.error("Failed to mark lesson as completed:", err);
+                        }
+                      }
+                    }}
+                  />
                   <BilingualSubtitles videoRef={videoRef} cues={subCues} mode={subMode} visible={subVisible} />
                 </div>
               ) : (
@@ -800,26 +914,45 @@ export default function CourseDetail() {
             <div>Chưa có bài học nào.</div>
           ) : (
             <ul className="divide-y divide-gray-100">
-              {lessons.map((ls) => (
-                <li key={ls._id}>
-                  <button
-                    onClick={() => setSelectedLessonId(ls._id)}
-                    className={`w-full text-left p-3 hover:bg-gray-50 transition ${
-                      selectedLessonId === ls._id ? "bg-blue-50" : ""
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">
-                        {ls.position}. {ls.title}
-                      </span>
-                      {!isEnrolled && <Lock className="w-4 h-4 text-gray-400" />}
+              {lessons.map((ls) => {
+                const lessonHasQuiz = lessonsWithQuiz.has(ls._id);
+                const isCompleted = completedLessons.has(ls._id);
+                return (
+                  <li key={ls._id}>
+                    <div className="flex items-start gap-2">
+                      <button
+                        onClick={() => setSelectedLessonId(ls._id)}
+                        className={`flex-1 text-left p-3 hover:bg-gray-50 transition ${
+                          selectedLessonId === ls._id ? "bg-blue-50" : ""
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium flex items-center gap-2">
+                            {isCompleted && (
+                              <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                            )}
+                            {ls.position}. {ls.title}
+                          </span>
+                          {!isEnrolled && <Lock className="w-4 h-4 text-gray-400" />}
+                        </div>
+                        {ls.description && (
+                          <div className="text-xs text-gray-500 mt-1 line-clamp-2">{ls.description}</div>
+                        )}
+                      </button>
+                      {lessonHasQuiz && lessonQuizMap[ls._id] && (
+                        <Link
+                          to={`/quiz/${lessonQuizMap[ls._id].quizId}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center justify-center p-2 text-blue-600 hover:bg-blue-50 rounded transition"
+                          title={lessonQuizMap[ls._id].title}
+                        >
+                          <HelpCircle className="w-4 h-4" />
+                        </Link>
+                      )}
                     </div>
-                    {ls.description && (
-                      <div className="text-xs text-gray-500 mt-1 line-clamp-2">{ls.description}</div>
-                    )}
-                  </button>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </aside>

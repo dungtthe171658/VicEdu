@@ -1,8 +1,17 @@
 import { Link, useSearchParams } from "react-router-dom";
+import { useEffect } from "react";
+import { useCart } from "../../contexts/CartContext";
 
 export default function PaymentSuccessPage() {
   const [search] = useSearchParams();
   const orderId = search.get("orderId") ?? "";
+  const { clear } = useCart();
+
+  // Xóa giỏ hàng khi thanh toán thành công
+  useEffect(() => {
+    clear();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="max-w-xl mx-auto px-4 py-16 text-center">

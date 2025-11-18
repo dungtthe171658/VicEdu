@@ -11,8 +11,6 @@ interface BookFormProps {
   onSubmit: (data: Partial<BookDto>) => void;
 }
 
-// Signed uploads are used; no need for env CLOUD_NAME/UPLOAD_PRESET here.
-
 type CloudinarySign = {
   timestamp: number;
   signature: string;
@@ -90,7 +88,9 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
       typeof initialData.category_id === "object"
         ? initialData.category_id?._id
         : initialData.category_id || "",
-    images: Array.isArray(initialData.images) ? initialData.images : [],
+    images: Array.isArray(initialData.images)
+      ? initialData.images
+      : [],
     pdf_url: initialData.pdf_url || "",
   });
 
@@ -99,7 +99,6 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
 
-  // Load danh mục
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -122,14 +121,19 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
     fetchCategories();
   }, []);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploadingImage(true);
     try {
-      const sign = await getCloudinarySignature("vicedu/images/books");
-      const { secure_url } = await uploadImageToCloudinary(file, sign);
+      setUploadingImage(true);
+      const sign = await getCloudinarySignature("books/images");
+      const { secure_url } = await uploadImageToCloudinary(
+        file,
+        sign
+      );
       setFormData((prev) => ({
         ...prev,
         images: [...(prev.images || []), secure_url],
@@ -142,15 +146,15 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
     }
   };
 
-  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePdfUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploadingPdf(true);
     try {
-      // Use folder that matches your actual Cloudinary structure
-      // Tip: keep it consistent everywhere to avoid 404 on private/signed URLs
-      const sign = await getCloudinarySignature("pdfs/books");
+      setUploadingPdf(true);
+      const sign = await getCloudinarySignature("books/pdfs");
       const { secure_url } = await uploadRawToCloudinary(file, sign);
       setFormData((prev) => ({
         ...prev,
@@ -172,8 +176,7 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]:
-        name === "price_cents" || name === "stock" ? Number(value) : value,
+      [name]: name === "price" ? Number(value) : value,
     }));
   };
 
@@ -183,24 +186,21 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
     const payload: Partial<BookDto> = {
       ...formData,
       category_id: formData.category_id?.toString() || "",
-      price_cents: Number(formData.price_cents) || 0,
-      stock: Number(formData.stock) || 0,
+      price: Number(formData.price) || 0,
       pdf_url: formData.pdf_url,
       images: formData.images,
     };
 
-    console.log("Submitting payload to backend:", payload); // 🔹 thêm dòng này
     onSubmit(payload);
   };
 
- const handleRemoveImage = (idx: number) => {
+  const handleRemoveImage = (idx: number) => {
     setFormData((prev) => ({
       ...prev,
       images: (prev.images || []).filter((_, i) => i !== idx),
     }));
   };
 
-  
   return (
     <form onSubmit={handleSubmit} className="book-form">
       <div className="form-group">
@@ -237,25 +237,14 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
       </div>
 
       <div className="form-group">
-        <label htmlFor="price_cents">Giá (VND)</label>
+        <label htmlFor="price">Giá (VND)</label>
         <input
-          id="price_cents"
+          id="price"
           type="number"
-          name="price_cents"
-          value={formData.price_cents ?? ""}
+          name="price"
+          value={formData.price ?? ""}
           onChange={handleChange}
           required
-        />
-      </div>
-
-      <div className="form-group">
-        <label htmlFor="stock">Số lượng</label>
-        <input
-          id="stock"
-          type="number"
-          name="stock"
-          value={formData.stock ?? ""}
-          onChange={handleChange}
         />
       </div>
 
@@ -287,11 +276,15 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
 
       <div className="form-group">
         <label>Ảnh bìa</label>
-        <input type="file" accept="image/*" onChange={handleImageUpload} />
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleImageUpload}
+        />
         {uploadingImage && <p>Đang tải ảnh lên...</p>}
         <div className="preview-container">
           {formData.images?.map((url, idx) => (
-         <div key={idx} className="preview-item">
+            <div key={idx} className="preview-item">
               <img
                 className="preview-thumb"
                 src={url}
@@ -310,7 +303,7 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
         </div>
       </div>
 
-      {/* <div className="form-group">
+      <div className="form-group">
         <label>File PDF</label>
         <input
           type="file"
@@ -319,8 +312,8 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
         />
         {uploadingPdf && <p>Đang tải PDF lên...</p>}
         {formData.pdf_url && (
-          <p>
-            PDF đã upload:{" "}
+          <p className="pdf-link">
+            Đã có PDF:{" "}
             <a
               href={formData.pdf_url}
               target="_blank"
@@ -330,26 +323,9 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
             </a>
           </p>
         )}
-      </div> */}
-
-      
-      <div className="form-group">
-        <label htmlFor="pdf_url">nhập URL PDF (Drive)</label>
-        <input
-          id="pdf_url"
-          type="url"
-          name="pdf_url"
-          placeholder="https://drive.google.com/file/d/.../view?usp=sharing"
-          value={formData.pdf_url || ""}
-          onChange={handleChange}
-        />
-        <small>
-          Gợi ý: đặt quyền chia sẻ Drive là "Anyone with the link". Bạn có thể dùng
-          link xem trước hoặc link tải xuống trực tiếp.
-        </small>
       </div>
 
-      <button type="submit" className="btn-save">
+      <button type="submit" className="submit-btn">
         Lưu sách
       </button>
     </form>
@@ -357,3 +333,4 @@ const BookForm = ({ initialData = {}, onSubmit }: BookFormProps) => {
 };
 
 export default BookForm;
+

@@ -130,6 +130,13 @@ const UserHeader = () => {
                   >
                     🧾 Đơn hàng của tôi
                   </Link>
+                  <Link
+                    to="/tracking-learming-process"
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    onClick={() => setOpen(false)}
+                  >
+                    <FaBook className="mr-2" />Tiến độ học tập của tôi
+                  </Link>
                   <button
                     onClick={handleLogout}
                     className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"

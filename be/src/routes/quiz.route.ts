@@ -1,5 +1,18 @@
 import { Router } from "express";
-import { autoSaveAttempt, createQuiz, deleteQuiz, getQuizAttempts, getQuizMeta, getQuizz, getQuizzesByLesson, startQuiz, submitQuiz, updateQuiz } from "../controllers/quiz.controller";
+import { 
+  autoSaveAttempt, 
+  createQuiz, 
+  deleteQuiz, 
+  getQuizAttempts, 
+  getQuizMeta, 
+  getQuizz, 
+  getQuizzesByLesson, 
+  startQuiz, 
+  submitQuiz, 
+  updateQuiz,
+  getQuizAttemptsByUserForAdmin,
+  getQuizAttemptsByCoursesForTeacher
+} from "../controllers/quiz.controller";
 import { authenticateToken, checkRole } from "../middlewares/auth";
 
 const router = Router();
@@ -39,4 +52,11 @@ router.delete(
     checkRole(["teacher", "admin"]),
     deleteQuiz
 );
+
+// Admin routes
+router.get("/admin/attempts-by-user/:userId", authenticateToken, checkRole(["admin"]), getQuizAttemptsByUserForAdmin);
+
+// Teacher routes
+router.get("/teacher/attempts-by-courses", authenticateToken, checkRole(["teacher"]), getQuizAttemptsByCoursesForTeacher);
+
 export default router;
