@@ -76,6 +76,10 @@ const quizApi = {
         axios.get(`/quizzes/teacher/attempts-by-courses`, {
             params: { courseIds: courseIds.join(",") },
         }),
+
+    // [User] Get my quiz attempts
+    getMyAttempts: (): Promise<any[]> =>
+        axios.get(`/quizzes/my/attempts`),
 };
 
 export default quizApi;

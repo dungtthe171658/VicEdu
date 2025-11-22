@@ -507,3 +507,33 @@ export const getPurchasedBookIds = async (req: AuthRequest, res: Response) => {
     });
   }
 };
+
+/**
+ * GET /api/books/admin/purchased-count/:userId
+ * [Admin/Teacher] Lấy số lượng sách đã mua của một user cụ thể từ bookHistory
+ * Trả về: { count: number }
+ */
+export const getPurchasedBookCountByUserId = async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId } = req.params;
+    
+    if (!userId || !mongoose.isValidObjectId(userId)) {
+      return res.status(400).json({ message: "Invalid userId" });
+    }
+
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
+    // Đếm số sách đã mua từ bookHistory với status = "active"
+    const count = await BookHistoryModel.countDocuments({
+      user_id: userObjectId,
+      status: "active",
+    });
+
+    return res.json({ count });
+  } catch (error: any) {
+    console.error("getPurchasedBookCountByUserId error:", error?.message || error);
+    return res.status(500).json({
+      message: error?.message || "Server error",
+    });
+  }
+};

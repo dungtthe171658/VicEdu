@@ -63,6 +63,12 @@ const bookApi = {
     axios.get(`${BASE_URL}/books/my-books`, {
       headers: getAuthHeaders(),
     }),
+
+  // [Admin/Teacher] Lấy số lượng sách đã mua của một user cụ thể
+  getPurchasedBookCountByUserId: (userId: string) =>
+    axios.get(`${BASE_URL}/books/admin/purchased-count/${userId}`, {
+      headers: getAuthHeaders(),
+    }),
 };
 
 export default bookApi;
