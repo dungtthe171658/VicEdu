@@ -11,7 +11,8 @@ import {
   submitQuiz, 
   updateQuiz,
   getQuizAttemptsByUserForAdmin,
-  getQuizAttemptsByCoursesForTeacher
+  getQuizAttemptsByCoursesForTeacher,
+  getMyQuizAttempts
 } from "../controllers/quiz.controller";
 import { authenticateToken, checkRole } from "../middlewares/auth";
 
@@ -21,6 +22,9 @@ router.get("/:quizId", authenticateToken, getQuizMeta);
 router.post("/:quizId/start", authenticateToken, startQuiz);
 router.get("/:quizId/attempts/autosave", authenticateToken, autoSaveAttempt);
 router.post("/:quizId/submit", authenticateToken, submitQuiz);
+
+// User routes - get my quiz attempts
+router.get("/my/attempts", authenticateToken, getMyQuizAttempts);
 
 router.get("/by-lesson/:lessonId", getQuizz);
 

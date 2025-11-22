@@ -5,7 +5,6 @@ import crypto from "crypto";
 import OrderModel from "../models/order.model";
 import OrderItemModel from "../models/order_item.model";
 import EnrollmentModel from "../models/enrollment.model";
-import BookHistoryModel from "../models/bookHistory.model";
 import type { Webhook } from "@payos/node";
 import { PayOS } from "@payos/node";
 
@@ -279,12 +278,8 @@ export const payosReturnHandler = async (
     const order = await OrderModel.findOne(filter).lean();
     if (!order) return;
 
-    const orderObjectId = order._id as mongoose.Types.ObjectId;
-    const userId = order.user_id as mongoose.Types.ObjectId;
-
-    // Xử lý Course enrollments
     const courseItems = await OrderItemModel.find({
-      order_id: orderObjectId,
+      order_id: order._id,
       product_type: "Course",
     }).lean();
 
@@ -293,7 +288,7 @@ export const payosReturnHandler = async (
         courseItems.map((it) =>
           EnrollmentModel.updateOne(
             {
-              user_id: userId,
+              user_id: order.user_id as mongoose.Types.ObjectId,
               course_id:
                 it.product_id as mongoose.Types.ObjectId,
             },
@@ -301,7 +296,8 @@ export const payosReturnHandler = async (
               $set: {
                 status: "active",
                 activated_at: new Date(),
-                order_id: orderObjectId,
+                order_id:
+                  order._id as mongoose.Types.ObjectId,
               },
               $setOnInsert: {
                 progress: 0,
@@ -314,50 +310,13 @@ export const payosReturnHandler = async (
       );
 
       await OrderModel.updateOne(
-        { _id: orderObjectId },
+        { _id: order._id },
         {
           $set: {
             "meta.activation_source": "returnUrl",
             "meta.activation_at": new Date(),
           },
         }
-      );
-    }
-
-    // Xử lý Book history - Lưu sách vào bookHistory sau khi thanh toán thành công
-    const bookItems = await OrderItemModel.find({
-      order_id: orderObjectId,
-      product_type: "Book",
-    }).lean();
-
-    if (bookItems.length) {
-      console.log(`[payosReturnHandler] Lưu ${bookItems.length} sách vào bookHistory cho order ${orderObjectId}`);
-      await Promise.all(
-        bookItems.map(async (it) => {
-          try {
-            const result = await BookHistoryModel.updateOne(
-              {
-                user_id: userId,
-                book_id: it.product_id as mongoose.Types.ObjectId,
-              },
-              {
-                $set: {
-                  order_id: orderObjectId,
-                  price_at_purchase: it.price_at_purchase,
-                  purchased_at: new Date(),
-                  status: "active",
-                },
-              },
-              { upsert: true }
-            );
-            console.log(`[payosReturnHandler] Đã lưu book ${it.product_id} vào bookHistory:`, result.upsertedCount > 0 ? 'created' : 'updated');
-          } catch (e: any) {
-            if (e?.code !== 11000) {
-              console.error(`[payosReturnHandler] Lỗi khi lưu book ${it.product_id} vào bookHistory:`, e?.message || e);
-              throw e;
-            }
-          }
-        })
       );
     }
   } catch (e: any) {
@@ -455,9 +414,6 @@ export const payosWebhook = async (req: Request, res: Response) => {
       order.meta = { ...(order.meta || {}), payos: verified };
       await order.save();
 
-      const userId = order.user_id as mongoose.Types.ObjectId;
-
-      // Xử lý Course enrollments
       const courseItems = await OrderItemModel.find({
         order_id: orderId,
         product_type: "Course",
@@ -467,7 +423,8 @@ export const payosWebhook = async (req: Request, res: Response) => {
         courseItems.map((it) =>
           EnrollmentModel.updateOne(
             {
-              user_id: userId,
+              user_id:
+                order.user_id as mongoose.Types.ObjectId,
               course_id:
                 it.product_id as mongoose.Types.ObjectId,
             },
@@ -486,43 +443,6 @@ export const payosWebhook = async (req: Request, res: Response) => {
           )
         )
       );
-
-      // Xử lý Book history - Lưu sách vào bookHistory sau khi thanh toán thành công
-      const bookItems = await OrderItemModel.find({
-        order_id: orderId,
-        product_type: "Book",
-      }).lean();
-
-      if (bookItems.length) {
-        console.log(`[payosWebhook] Lưu ${bookItems.length} sách vào bookHistory cho order ${orderId}`);
-        await Promise.all(
-          bookItems.map(async (it) => {
-            try {
-              const result = await BookHistoryModel.updateOne(
-                {
-                  user_id: userId,
-                  book_id: it.product_id as mongoose.Types.ObjectId,
-                },
-                {
-                  $set: {
-                    order_id: orderId,
-                    price_at_purchase: it.price_at_purchase,
-                    purchased_at: order.paid_at,
-                    status: "active",
-                  },
-                },
-                { upsert: true }
-              );
-              console.log(`[payosWebhook] Đã lưu book ${it.product_id} vào bookHistory:`, result.upsertedCount > 0 ? 'created' : 'updated');
-            } catch (e: any) {
-              if (e?.code !== 11000) {
-                console.error(`[payosWebhook] Lỗi khi lưu book ${it.product_id} vào bookHistory:`, e?.message || e);
-                throw e;
-              }
-            }
-          })
-        );
-      }
     }
 
     return res.json({ ok: true });

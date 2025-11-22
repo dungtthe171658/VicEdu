@@ -352,6 +352,46 @@ export const getQuizAttemptsByUserForAdmin = async (req: AuthRequest, res: Respo
   }
 };
 
+// [User] Get my quiz attempts
+export const getMyQuizAttempts = async (req: AuthRequest, res: Response) => {
+  try {
+    const uid = getUserIdFromToken(req);
+    if (!uid) return res.status(401).json({ message: "Unauthenticated" });
+
+    const userObjectId = new mongoose.Types.ObjectId(uid);
+    
+    const attempts = await QuizAttempt.find({ user_id: userObjectId })
+      .sort({ _id: -1 })
+      .lean();
+
+    // Manually populate quiz data since quiz_id is a String, not ObjectId
+    const attemptsWithQuiz = await Promise.all(
+      attempts.map(async (attempt: any) => {
+        const quiz = await Quiz.findById(attempt.quiz_id)
+          .populate({
+            path: "lesson_id",
+            select: "title course_id",
+            populate: {
+              path: "course_id",
+              select: "title slug",
+            },
+          })
+          .lean();
+
+        return {
+          ...attempt,
+          quiz: quiz || null,
+        };
+      })
+    );
+
+    return res.json(attemptsWithQuiz);
+  } catch (e: any) {
+    console.error("getMyQuizAttempts error:", e);
+    return res.status(500).json({ message: e.message });
+  }
+};
+
 // [Teacher] Get quiz attempts by course IDs
 export const getQuizAttemptsByCoursesForTeacher = async (req: AuthRequest, res: Response) => {
   try {

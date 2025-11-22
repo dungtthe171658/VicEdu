@@ -31,6 +31,7 @@ import { useAuth } from '../../../hooks/useAuth';
 import courseTeacherApi from '../../../api/courseTeacherApi';
 import enrollmentApi from '../../../api/enrollmentApi';
 import quizApi from '../../../api/quizApi';
+import bookApi from '../../../api/bookApi';
 import { buildAvatarUrl } from '../../../utils/buildAvatarUrl';
 import type { UserDto } from '../../../types/user.d';
 
@@ -177,17 +178,35 @@ const ManageTracksProcessPageTeacher: React.FC = () => {
         }
       });
 
-      // Count quiz attempts per student
+      // Count quiz attempts per student (chỉ đếm các attempts đã hoàn thành)
       quizAttempts.forEach((attempt: any) => {
         const userId = attempt.user_id?._id || attempt.user_id;
         if (!userId) return;
 
-        const studentId = String(userId);
-        const studentData = studentMap.get(studentId);
-        if (studentData) {
-          studentData.quizAttempts++;
+        // Chỉ đếm các quiz attempts đã hoàn thành
+        if (attempt.completed === true) {
+          const studentId = String(userId);
+          const studentData = studentMap.get(studentId);
+          if (studentData) {
+            studentData.quizAttempts++;
+          }
         }
       });
+
+      // Get purchased books count for all students
+      const booksCountMap = new Map<string, number>();
+      await Promise.all(
+        Array.from(studentMap.keys()).map(async (studentId) => {
+          try {
+            const booksRes = await bookApi.getPurchasedBookCountByUserId(studentId);
+            const count = booksRes?.data?.count || booksRes?.count || 0;
+            booksCountMap.set(studentId, count);
+          } catch (error) {
+            console.error(`Error fetching books count for student ${studentId}:`, error);
+            booksCountMap.set(studentId, 0);
+          }
+        })
+      );
 
       // Convert map to array
       const progressData: StudentProgress[] = Array.from(studentMap.values()).map((item) => ({
@@ -196,7 +215,7 @@ const ManageTracksProcessPageTeacher: React.FC = () => {
         totalQuizAttempts: item.quizAttempts,
         averageProgress: item.progressCount > 0 ? item.progressSum / item.progressCount : 0,
         totalPoints: Math.floor(Math.random() * 5000) + 500, // Mock data - replace with real data
-        totalBooks: Math.floor(Math.random() * 50) + 10, // Mock data
+        totalBooks: booksCountMap.get(item.student._id || '') || 0,
         totalMinutes: Math.floor(Math.random() * 2000) + 200, // Mock data
       }));
 

@@ -10,6 +10,7 @@ import {
   getBookPdfUrl,
   getPurchasedBookIds,
   getMyBooksFromHistory,
+  getPurchasedBookCountByUserId,
 } from "../controllers/book.controller";
 import { authenticateToken, checkRole } from "../middlewares/auth";
 
@@ -22,6 +23,8 @@ router.get("/purchased", authenticateToken, getBookOrderAndOrderitem);
 router.get("/purchased/ids", authenticateToken, getPurchasedBookIds);
 // Lấy sách đã mua từ bookHistory (không dùng getBookOrderAndOrderitem)
 router.get("/my-books", authenticateToken, getMyBooksFromHistory);
+// [Admin/Teacher] Lấy số lượng sách đã mua của một user cụ thể
+router.get("/admin/purchased-count/:userId", authenticateToken, checkRole(["admin", "teacher"]), getPurchasedBookCountByUserId);
 router.get("/:id/pdf", authenticateToken, getBookPdfUrl);
 router.get("/:id", getBookById);
 

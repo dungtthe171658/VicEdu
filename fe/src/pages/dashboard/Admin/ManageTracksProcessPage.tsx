@@ -30,6 +30,7 @@ import {
 import userApi from '../../../api/userApi';
 import enrollmentApi from '../../../api/enrollmentApi';
 import quizApi from '../../../api/quizApi';
+import bookApi from '../../../api/bookApi';
 import { buildAvatarUrl } from '../../../utils/buildAvatarUrl';
 import type { UserDto } from '../../../types/user.d';
 
@@ -154,15 +155,33 @@ const ManageTracksProcessPage: React.FC = () => {
         studentUsers.map(async (student) => {
           try {
             const attemptsRes = await quizApi.getAttemptsByUserForAdmin(student._id || '');
+            // Handle different response structures from axios
             const attempts = Array.isArray(attemptsRes?.data)
               ? attemptsRes.data
               : Array.isArray(attemptsRes)
               ? attemptsRes
               : [];
-            quizAttemptsMap.set(student._id || '', attempts.length);
+            // Chỉ đếm các quiz attempts đã hoàn thành
+            const completedAttempts = attempts.filter((attempt: any) => attempt.completed === true);
+            quizAttemptsMap.set(student._id || '', completedAttempts.length);
           } catch (error) {
             console.error(`Error fetching quiz attempts for student ${student._id}:`, error);
             quizAttemptsMap.set(student._id || '', 0);
+          }
+        })
+      );
+
+      // Get purchased books count for all students
+      const booksCountMap = new Map<string, number>();
+      await Promise.all(
+        studentUsers.map(async (student) => {
+          try {
+            const booksRes = await bookApi.getPurchasedBookCountByUserId(student._id || '');
+            const count = booksRes?.data?.count || booksRes?.count || 0;
+            booksCountMap.set(student._id || '', count);
+          } catch (error) {
+            console.error(`Error fetching books count for student ${student._id}:`, error);
+            booksCountMap.set(student._id || '', 0);
           }
         })
       );
@@ -179,7 +198,7 @@ const ManageTracksProcessPage: React.FC = () => {
           totalQuizAttempts: quizAttemptsMap.get(item.student._id || '') || 0,
           averageProgress,
           totalPoints: Math.floor(Math.random() * 5000) + 500, // Mock data - replace with real data
-          totalBooks: Math.floor(Math.random() * 50) + 10, // Mock data
+          totalBooks: booksCountMap.get(item.student._id || '') || 0,
           totalMinutes: Math.floor(Math.random() * 2000) + 200, // Mock data
         };
       });
