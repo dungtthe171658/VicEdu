@@ -137,17 +137,51 @@ export const getQuizMeta = async (req: Request, res: Response) => {
   try {
     const { quizId } = req.params;
     const userId = getUserIdFromToken(req);
+    const attemptId = (req.query as any).attemptId;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthenticated" });
+    }
 
     const quiz = await Quiz.findById(quizId);
     if (!quiz) return res.status(404).json({ message: "Quiz not found" });
 
-    const attempt = await QuizAttempt.findOne({ quiz_id: quizId, user_id: userId });
+    let attempt = null;
+
+    // Nếu có attemptId từ query, load attempt cụ thể đó
+    if (attemptId && mongoose.isValidObjectId(attemptId)) {
+      const userObjectId = new mongoose.Types.ObjectId(userId);
+      const attemptObjectId = new mongoose.Types.ObjectId(attemptId);
+      attempt = await QuizAttempt.findOne({
+        _id: attemptObjectId,
+        quiz_id: quizId,
+        user_id: userObjectId
+      });
+    }
+
+    // Nếu không có attemptId hoặc không tìm thấy attempt cụ thể, tìm attempt chưa completed trước, nếu không có thì lấy attempt completed mới nhất
+    if (!attempt) {
+      attempt = await QuizAttempt.findOne({ 
+        quiz_id: quizId, 
+        user_id: userId,
+        completed: false
+      }).sort({ _id: -1 });
+
+      if (!attempt) {
+        attempt = await QuizAttempt.findOne({ 
+          quiz_id: quizId, 
+          user_id: userId,
+          completed: true
+        }).sort({ _id: -1 });
+      }
+    }
 
     return res.json({
       _id: quiz._id,
       title: quiz.title,
       lesson_id: quiz.lesson_id,
       duration_seconds: quiz.duration_seconds,
+      attempt_id: attempt ? attempt._id.toString() : null,
 
       status: attempt
         ? attempt.completed
@@ -184,24 +218,63 @@ export const startQuiz = async (req: Request, res: Response) => {
   try {
     const { quizId } = req.params;
     const userId = getUserIdFromToken(req);
+    const attemptId = (req.query as any).attemptId;
+    
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthenticated" });
+    }
+
     const quiz = await Quiz.findById(quizId);
     if (!quiz) {
       return res.status(404).json({ message: "Quiz not found" });
     }
-    let attempt = await QuizAttempt.findOne({
-      quiz_id: quizId,
-      user_id: userId
-    });
+    
+    let attempt = null;
 
+    // Nếu có attemptId từ query, tìm và resume attempt đó
+    if (attemptId && mongoose.isValidObjectId(attemptId)) {
+      const userObjectId = new mongoose.Types.ObjectId(userId);
+      const attemptObjectId = new mongoose.Types.ObjectId(attemptId);
+      attempt = await QuizAttempt.findOne({
+        _id: attemptObjectId,
+        quiz_id: quizId,
+        user_id: userObjectId
+      });
+
+      // Nếu tìm thấy attempt, reset nó về chưa completed để tiếp tục
+      if (attempt) {
+        attempt.completed = false;
+        attempt.answers = new Array(quiz.questions.length).fill(-1);
+        attempt.spent_seconds = 0;
+        attempt.violations = 0;
+        attempt.correct = 0;
+        attempt.total = 0;
+        attempt.score = 0;
+        attempt.submitted_at = undefined as any;
+        await attempt.save();
+      }
+    }
+
+    // Nếu không có attemptId hoặc không tìm thấy attempt, tìm attempt chưa completed (đang làm dở)
+    if (!attempt) {
+      attempt = await QuizAttempt.findOne({
+        quiz_id: quizId,
+        user_id: userId,
+        completed: false
+      });
+    }
+
+    // Nếu không có attempt chưa completed, tạo attempt mới
+    // (giữ lại lịch sử các attempts đã completed)
     if (!attempt) {
       attempt = await QuizAttempt.create({
         quiz_id: quizId,
         user_id: userId,
         answers: new Array(quiz.questions.length).fill(-1),
+        completed: false,
+        spent_seconds: 0,
+        violations: 0,
       });
-    }
-    if (attempt && attempt.completed) {
-      return res.status(400).json({ message: "Quiz already completed" });
     }
 
     return res.json({
@@ -214,6 +287,39 @@ export const startQuiz = async (req: Request, res: Response) => {
       violations: attempt.violations,
       completed: attempt.completed
     });
+  } catch (e: any) {
+    return res.status(500).json({ message: e.message });
+  }
+};
+
+export const resetQuiz = async (req: Request, res: Response) => {
+  try {
+    const { quizId } = req.params;
+    const userId = getUserIdFromToken(req);
+    
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthenticated" });
+    }
+
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) {
+      return res.status(404).json({ message: "Quiz not found" });
+    }
+
+    // Đánh dấu attempt chưa completed (nếu có) là completed để lưu lịch sử
+    // Sau đó startQuiz sẽ tạo attempt mới
+    await QuizAttempt.updateMany(
+      {
+        quiz_id: quizId,
+        user_id: userId,
+        completed: false
+      },
+      {
+        completed: true
+      }
+    );
+
+    return res.json({ message: "Quiz reset successfully" });
   } catch (e: any) {
     return res.status(500).json({ message: e.message });
   }
@@ -282,6 +388,8 @@ export const submitQuiz = async (req: Request, res: Response) => {
     if (!quiz) {
       return res.status(404).json({ message: "Quiz not found" });
     }
+    
+    // Tính điểm
     let correct = 0;
     quiz.questions.forEach((q, i) => {
       if (answers[i] === q.correct_option_index) correct++;
@@ -289,18 +397,40 @@ export const submitQuiz = async (req: Request, res: Response) => {
 
     const score = Math.round((correct / quiz.questions.length) * 100);
 
-    await QuizAttempt.updateOne(
-      { quiz_id: quizId, user_id: userId },
-      {
+    // Tìm attempt chưa completed (đang làm dở)
+    let attempt = await QuizAttempt.findOne({
+      quiz_id: quizId,
+      user_id: userId,
+      completed: false
+    });
+
+    if (attempt) {
+      // Cập nhật attempt hiện tại với kết quả đầy đủ
+      attempt.answers = answers;
+      attempt.spent_seconds = spent_seconds;
+      attempt.violations = violations;
+      attempt.correct = correct;
+      attempt.total = quiz.questions.length;
+      attempt.score = score;
+      attempt.completed = true;
+      attempt.submitted_at = new Date();
+      await attempt.save();
+    } else {
+      // Nếu không có attempt chưa completed, tạo attempt mới với kết quả
+      // (trường hợp này ít xảy ra nhưng để đảm bảo)
+      attempt = await QuizAttempt.create({
+        quiz_id: quizId,
+        user_id: userId,
         answers,
         spent_seconds,
         violations,
         correct,
         total: quiz.questions.length,
         score: score,
-        completed: true
-      }
-    );
+        completed: true,
+        submitted_at: new Date()
+      });
+    }
 
     res.json({ correct, total: quiz.questions.length, score });
   } catch (e: any) {
@@ -487,6 +617,43 @@ export const getQuizAttemptsByCoursesForTeacher = async (req: AuthRequest, res: 
     return res.json(attemptsWithQuiz);
   } catch (e: any) {
     console.error("getQuizAttemptsByCoursesForTeacher error:", e);
+    return res.status(500).json({ message: e.message });
+  }
+};
+
+// [User] Delete my quiz attempt
+export const deleteMyQuizAttempt = async (req: AuthRequest, res: Response) => {
+  try {
+    const { attemptId } = req.params;
+    const userId = getUserIdFromToken(req);
+    
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthenticated" });
+    }
+
+    if (!attemptId || !mongoose.isValidObjectId(attemptId)) {
+      return res.status(400).json({ message: "Invalid attemptId" });
+    }
+
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    const attemptObjectId = new mongoose.Types.ObjectId(attemptId);
+
+    // Verify that the attempt belongs to the user
+    const attempt = await QuizAttempt.findOne({
+      _id: attemptObjectId,
+      user_id: userObjectId
+    });
+
+    if (!attempt) {
+      return res.status(404).json({ message: "Attempt not found or not authorized" });
+    }
+
+    // Delete the attempt
+    await QuizAttempt.deleteOne({ _id: attemptObjectId });
+
+    return res.json({ message: "Attempt deleted successfully" });
+  } catch (e: any) {
+    console.error("deleteMyQuizAttempt error:", e);
     return res.status(500).json({ message: e.message });
   }
 };
