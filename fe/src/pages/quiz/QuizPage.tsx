@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useRef, useState} from "react";
-import {useParams} from "react-router-dom";
+import {useParams, useSearchParams} from "react-router-dom";
 import quizApi from "@/api/quizApi";
 import type {QuizSubmitResult} from "@/types/quiz";
 
@@ -14,8 +14,11 @@ const shuffleArray = <T, >(arr: T[]): T[] => {
 
 const QuizPage: React.FC = () => {
     const {quizId} = useParams<{ quizId: string }>();
+    const [searchParams] = useSearchParams();
+    const attemptIdFromUrl = searchParams.get("attemptId");
 
     const [meta, setMeta] = useState<any>(null);
+    const [attemptId, setAttemptId] = useState<string | null>(attemptIdFromUrl);
 
     const [quiz, setQuiz] = useState<any>(null);
 
@@ -52,9 +55,13 @@ const QuizPage: React.FC = () => {
         setLoading(true);
 
         quizApi
-            .get(quizId)
+            .get(quizId, attemptId || undefined)
             .then((data) => {
                 setMeta(data);
+                // Lưu attemptId từ meta nếu có (để dùng khi chơi lại)
+                if (data.attempt_id && !attemptId) {
+                    setAttemptId(data.attempt_id);
+                }
                 initialDurationRef.current = data.duration_seconds || 300;
                 setTimeLeft(initialDurationRef.current);
 
@@ -76,13 +83,13 @@ const QuizPage: React.FC = () => {
             })
             .catch(() => setError("Không tải được thông tin quiz"))
             .finally(() => setLoading(false));
-    }, [quizId]);
+    }, [quizId, attemptId]);
 
 
     const handleStart = async () => {
         if (!quizId) return;
         try {
-            const data = await quizApi.start(quizId);
+            const data = await quizApi.start(quizId, attemptId || undefined);
 
             const questions = shuffleArray(
                 data.questions.map((q: any, idx: number) => ({
@@ -108,6 +115,45 @@ const QuizPage: React.FC = () => {
             setHasStarted(true);
         } catch {
             setError("Không thể bắt đầu quiz");
+        }
+    };
+
+    const handleNewGame = async () => {
+        if (!quizId) return;
+        try {
+            setLoading(true);
+            setError("");
+            
+            // Reset quiz attempt trên server (đánh dấu attempt chưa completed là completed để lưu lịch sử)
+            await quizApi.reset(quizId);
+            
+            // Reset tất cả state về ban đầu
+            setQuiz(null);
+            setAnswers([]);
+            setCurrentIndex(0);
+            setResult(null);
+            setHasStarted(false);
+            setViolations(0);
+            setTimeLeft(null);
+            spentSecondsRef.current = 0;
+            lastViolationRef.current = 0;
+            setAttemptId(null);
+            
+            // Reload quiz meta - sau khi reset, sẽ không có attempt chưa completed nữa
+            // nên sẽ hiển thị màn hình bắt đầu
+            const data = await quizApi.get(quizId);
+            setMeta({
+                ...data,
+                completed: false, // Force hiển thị màn hình bắt đầu
+                in_progress: false,
+                progress: null
+            });
+            initialDurationRef.current = data.duration_seconds || 300;
+            setTimeLeft(initialDurationRef.current);
+        } catch {
+            setError("Không thể tạo quiz mới");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -206,6 +252,40 @@ const QuizPage: React.FC = () => {
             setResult(res);
         } catch {
             setError("Nộp bài thất bại");
+        }
+    };
+
+    const handleRetry = async () => {
+        if (!quizId) return;
+        try {
+            setLoading(true);
+            setError("");
+            
+            // Reset tất cả state về ban đầu
+            setQuiz(null);
+            setAnswers([]);
+            setCurrentIndex(0);
+            setResult(null);
+            setHasStarted(false);
+            setViolations(0);
+            setTimeLeft(initialDurationRef.current);
+            spentSecondsRef.current = 0;
+            lastViolationRef.current = 0;
+            
+            // Reload quiz meta để cập nhật trạng thái
+            const data = await quizApi.get(quizId, attemptId || undefined);
+            setMeta({
+                ...data,
+                completed: false,
+                in_progress: false,
+                progress: null
+            });
+            initialDurationRef.current = data.duration_seconds || 300;
+            setTimeLeft(initialDurationRef.current);
+        } catch {
+            setError("Không thể chơi lại quiz");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -390,14 +470,32 @@ const QuizPage: React.FC = () => {
 
                     {result && (
                         <div className="bg-green-50 p-6 rounded-xl border border-green-200">
-                            <h2 className="font-semibold text-green-700 mb-2">Kết quả</h2>
-                            <p>
-                                Đúng {result.correct}/{result.total}
-                            </p>
-                            <p>Điểm: {result.score}</p>
-                            <p className="text-xs mt-2 text-green-700">
-                                Số lần rời khỏi màn hình: {violations}
-                            </p>
+                            <h2 className="font-semibold text-green-700 mb-4 text-xl">Kết quả</h2>
+                            <div className="space-y-2 mb-4">
+                                <p className="text-base">
+                                    Đúng <span className="font-bold text-green-700">{result.correct}/{result.total}</span>
+                                </p>
+                                <p className="text-base">
+                                    Điểm: <span className="font-bold text-green-700">{result.score}</span>
+                                </p>
+                                <p className="text-xs text-green-700">
+                                    Số lần rời khỏi màn hình: {violations}
+                                </p>
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={handleRetry}
+                                    className="flex-1 px-6 py-3 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+                                >
+                                    🔄 Chơi lại
+                                </button>
+                                <button
+                                    onClick={handleNewGame}
+                                    className="flex-1 px-6 py-3 rounded-md bg-purple-600 text-white text-sm font-medium hover:bg-purple-700 transition-colors"
+                                >
+                                    ✨ Chơi mới
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>

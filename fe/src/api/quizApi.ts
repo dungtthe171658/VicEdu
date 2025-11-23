@@ -39,12 +39,15 @@ const quizApi = {
     getAttempts(quizId: string) {
         return axios.get(`/quizzes/dashboard/${quizId}/attempts`).then(res => res);
     },
-    get: (id: string): Promise<Quiz> =>
-        axios.get(`/quizzes/${id}`),
+    get: (id: string, attemptId?: string): Promise<Quiz> =>
+        axios.get(`/quizzes/${id}`, attemptId ? { params: { attemptId } } : undefined),
     getByLesson: (lessonId: string): Promise<Quiz> =>
         axios.get(`/quizzes/by-lesson/${lessonId}`),
-    start(quizId: string): Promise<QuizStartResponse> {
-        return axios.post(`/quizzes/${quizId}/start`);
+    start(quizId: string, attemptId?: string): Promise<QuizStartResponse> {
+        return axios.post(`/quizzes/${quizId}/start`, {}, attemptId ? { params: { attemptId } } : undefined);
+    },
+    reset(quizId: string): Promise<{ message: string }> {
+        return axios.post(`/quizzes/${quizId}/reset`);
     },
     autoSave(quizId: string, payload: any) {
         return axios.post(`/quizzes/${quizId}/autosave`, payload);
@@ -80,6 +83,10 @@ const quizApi = {
     // [User] Get my quiz attempts
     getMyAttempts: (): Promise<any[]> =>
         axios.get(`/quizzes/my/attempts`),
+    
+    // [User] Delete my quiz attempt
+    deleteMyAttempt: (attemptId: string): Promise<{ message: string }> =>
+        axios.delete(`/quizzes/my/attempts/${attemptId}`),
 };
 
 export default quizApi;

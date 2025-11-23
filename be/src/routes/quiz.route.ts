@@ -12,7 +12,9 @@ import {
   updateQuiz,
   getQuizAttemptsByUserForAdmin,
   getQuizAttemptsByCoursesForTeacher,
-  getMyQuizAttempts
+  getMyQuizAttempts,
+  resetQuiz,
+  deleteMyQuizAttempt
 } from "../controllers/quiz.controller";
 import { authenticateToken, checkRole } from "../middlewares/auth";
 
@@ -20,11 +22,13 @@ const router = Router();
 
 router.get("/:quizId", authenticateToken, getQuizMeta);
 router.post("/:quizId/start", authenticateToken, startQuiz);
+router.post("/:quizId/reset", authenticateToken, resetQuiz);
 router.get("/:quizId/attempts/autosave", authenticateToken, autoSaveAttempt);
 router.post("/:quizId/submit", authenticateToken, submitQuiz);
 
 // User routes - get my quiz attempts
 router.get("/my/attempts", authenticateToken, getMyQuizAttempts);
+router.delete("/my/attempts/:attemptId", authenticateToken, deleteMyQuizAttempt);
 
 router.get("/by-lesson/:lessonId", getQuizz);
 
