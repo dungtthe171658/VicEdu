@@ -51,6 +51,17 @@ export class ChatController {
         systemDataExtra = await geminiService.getTeacherSystemData(userId);
       }
 
+      // Nếu là học viên (user/customer), tự động lấy dữ liệu học tập để AI có thể đưa ra gợi ý
+      if (user.role === "user" || !user.role || user.role === "customer") {
+        try {
+          const learningData = await geminiService.getStudentLearningData(userId);
+          systemDataExtra.learningData = learningData;
+        } catch (error) {
+          console.error("Error fetching learning data for chat:", error);
+          // Không throw error, chỉ log để không làm gián đoạn chat
+        }
+      }
+
       // Tạo context cho AI
       const context = {
         userRole: user.role,
@@ -191,6 +202,67 @@ export class ChatController {
     } catch (error) {
       console.error("Get all sessions error:", error);
       res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  // Tạo kế hoạch học tập
+  async generateStudyPlan(req: Request, res: Response) {
+    try {
+      const authUser = (req as any).user as { id?: string; role?: string };
+      const userId = authUser?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Lấy số ngày từ query, mặc định là 7 ngày
+      const days = req.query.days ? parseInt(req.query.days as string, 10) : 7;
+      
+      if (isNaN(days) || days < 1 || days > 90) {
+        return res.status(400).json({ 
+          message: "Số ngày phải là số nguyên từ 1 đến 90" 
+        });
+      }
+
+      // Gọi service để tạo kế hoạch học tập
+      const studyPlan = await geminiService.generateStudyPlan(userId, days);
+
+      res.json({
+        success: true,
+        data: {
+          studyPlan,
+          days,
+          generatedAt: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      console.error("Generate study plan error:", error);
+      res.status(500).json({ 
+        message: "Có lỗi xảy ra khi tạo kế hoạch học tập. Vui lòng thử lại sau." 
+      });
+    }
+  }
+
+  // Lấy dữ liệu học tập của học viên (để phân tích)
+  async getLearningData(req: Request, res: Response) {
+    try {
+      const authUser = (req as any).user as { id?: string; role?: string };
+      const userId = authUser?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Lấy dữ liệu học tập
+      const learningData = await geminiService.getStudentLearningData(userId);
+
+      res.json({
+        success: true,
+        data: learningData,
+      });
+    } catch (error) {
+      console.error("Get learning data error:", error);
+      res.status(500).json({ 
+        message: "Có lỗi xảy ra khi lấy dữ liệu học tập. Vui lòng thử lại sau." 
+      });
     }
   }
 }

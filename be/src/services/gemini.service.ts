@@ -8,6 +8,8 @@ import LessonCommentModel from "../models/comment.model";
 import mongoose from "mongoose";
 import OrderModel from "../models/order.model";
 import OrderItemModel from "../models/order_item.model";
+import QuizAttemptModel from "../models/QuizAttempt.model";
+import LessonModel from "../models/lesson.model";
 
 export interface ChatContext {
   userRole: string;
@@ -21,6 +23,7 @@ export interface ChatContext {
     orderItems?: any[];
     teacherStats?: any;
     teacherCourses?: any[];
+    learningData?: any; // Dữ liệu học tập của học viên
   };
 }
 
@@ -35,6 +38,40 @@ export class GeminiService {
 
   async generateResponse(message: string, context: ChatContext): Promise<string> {
     try {
+      // Nhận diện câu hỏi về kế hoạch học tập
+      const studyPlanKeywords = [
+        "kế hoạch học tập",
+        "lịch học",
+        "học trong",
+        "nên học",
+        "gợi ý học",
+        "kế hoạch",
+        "học bao nhiêu",
+        "làm quiz",
+        "ôn tập",
+        "củng cố kiến thức",
+        "nâng cao trí nhớ",
+        "học thêm bài",
+        "học bài nào",
+      ];
+      
+      const messageLower = message.toLowerCase();
+      const isStudyPlanQuestion = studyPlanKeywords.some(keyword => 
+        messageLower.includes(keyword)
+      );
+
+      // Nếu là câu hỏi về kế hoạch học tập, tự động tạo kế hoạch chi tiết
+      if (isStudyPlanQuestion && context.userId && (context.userRole === "user" || !context.userRole || context.userRole === "customer")) {
+        // Trích xuất số ngày từ câu hỏi (nếu có)
+        const daysMatch = message.match(/(\d+)\s*(ngày|day)/i);
+        const days = daysMatch ? parseInt(daysMatch[1], 10) : 7;
+        const validDays = days >= 1 && days <= 90 ? days : 7;
+
+        // Tạo kế hoạch học tập chi tiết
+        const studyPlan = await this.generateStudyPlan(context.userId, validDays);
+        return studyPlan;
+      }
+
       const systemPrompt = this.buildSystemPrompt(context);
       const fullPrompt = `${systemPrompt}\n\nUser: ${message}`;
 
@@ -182,8 +219,47 @@ Quyền khách hàng - Bạn có thể:
 - Gợi ý sách hỗ trợ học tập.
 - Trả lời câu hỏi về nội dung học.
 - Hướng dẫn sử dụng hệ thống.
+- Tư vấn và tạo kế hoạch học tập cá nhân hóa dựa trên tiến độ học tập hiện tại.
 
 Không cung cấp thông tin nhạy cảm về hệ thống hoặc người dùng khác.`;
+
+      // Thêm thông tin học tập của học viên nếu có
+      if (systemData?.learningData) {
+        const ld = systemData.learningData;
+        basePrompt += `
+
+THÔNG TIN HỌC TẬP CỦA HỌC VIÊN:
+- Tổng số khóa học đã đăng ký: ${ld.totalCourses}
+- Số quiz đã hoàn thành: ${ld.quizStats.totalQuizzes}
+- Tỷ lệ đúng quiz: ${ld.quizStats.successRate}%
+- Điểm trung bình quiz: ${ld.quizStats.averageScore}%
+- Số quiz trong 30 ngày gần đây: ${ld.quizStats.recentQuizCount}
+- Số bài học đã hoàn thành: ${ld.lessonStats.totalCompletedLessons} / ${ld.lessonStats.totalLessons}
+- Số bài học còn lại: ${ld.lessonStats.remainingLessons}
+
+CHI TIẾT CÁC KHÓA HỌC:
+${ld.enrollments.map((e: any, idx: number) => 
+  `${idx + 1}. ${e.courseTitle} - Tiến độ: ${e.progress}% - Đã hoàn thành ${e.completedLessons} bài học`
+).join('\n')}
+
+KHI HỌC VIÊN HỎI VỀ KẾ HOẠCH HỌC TẬP:
+- Phân tích tình hình học tập hiện tại và đưa ra đánh giá ngắn gọn
+- Đề xuất số lần làm quiz để nâng cao trí nhớ và củng cố kiến thức (dựa trên spaced repetition)
+- Đề xuất số bài học (lessons) nên học thêm
+- Gợi ý các khóa học cần ưu tiên dựa trên tiến độ
+- Động viên và khuyến khích học viên
+- Kế hoạch phải thực tế và có thể thực hiện được
+- Phân bổ thời gian hợp lý, không quá tải`;
+
+        // Nếu có khóa học với tiến độ thấp, gợi ý ưu tiên
+        const lowProgressCourses = ld.enrollments.filter((e: any) => e.progress < 50 && e.progress > 0);
+        if (lowProgressCourses.length > 0) {
+          basePrompt += `
+
+CÁC KHÓA HỌC CẦN ƯU TIÊN (tiến độ < 50%):
+${lowProgressCourses.map((e: any) => `- ${e.courseTitle}: ${e.progress}% - Còn ${e.completedLessons} bài học đã hoàn thành`).join('\n')}`;
+        }
+      }
 
       if (systemData?.courses?.length) {
         basePrompt += `
@@ -381,6 +457,177 @@ Hãy trả lời một cách tự nhiên, có cảm xúc và tập trung vào m�
     } catch (error) {
       console.error("Error fetching teacher system data:", error);
       return {};
+    }
+  }
+
+  /**
+   * Lấy dữ liệu học tập của học viên để phân tích và đưa ra kế hoạch học tập
+   */
+  async getStudentLearningData(userId: string): Promise<any> {
+    try {
+      const userObjectId = new mongoose.Types.ObjectId(userId);
+
+      // Lấy tất cả enrollments của học viên
+      const enrollments = await EnrollmentModel.find({ user_id: userObjectId })
+        .populate("course_id", "title slug")
+        .lean();
+
+      const courseIds = enrollments.map((e: any) => e.course_id?._id || e.course_id).filter(Boolean);
+
+      // Lấy tất cả quiz attempts đã hoàn thành
+      const quizAttempts = await QuizAttemptModel.find({
+        user_id: userObjectId,
+        completed: true,
+      })
+        .sort({ created_at: -1 })
+        .lean();
+
+      // Tính toán thống kê quiz
+      const totalQuizzes = quizAttempts.length;
+      let totalCorrect = 0;
+      let totalAnswers = 0;
+      let totalScore = 0;
+
+      quizAttempts.forEach((attempt: any) => {
+        if (attempt.correct !== undefined && attempt.total !== undefined) {
+          totalCorrect += attempt.correct;
+          totalAnswers += attempt.total;
+        }
+        if (attempt.score !== undefined) {
+          totalScore += attempt.score;
+        }
+      });
+
+      const averageScore = totalQuizzes > 0 ? Math.round(totalScore / totalQuizzes) : 0;
+      const successRate = totalAnswers > 0 ? Math.round((totalCorrect / totalAnswers) * 100) : 0;
+
+      // Lấy số lượng lessons đã hoàn thành
+      let totalCompletedLessons = 0;
+      let totalLessons = 0;
+
+      for (const enrollment of enrollments) {
+        const courseId = (enrollment as any).course_id?._id || (enrollment as any).course_id;
+        if (courseId) {
+          const courseObjectId = new mongoose.Types.ObjectId(courseId);
+          const completedCount = (enrollment as any).completed_lessons?.length || 0;
+          const totalCount = await LessonModel.countDocuments({ course_id: courseObjectId });
+          totalCompletedLessons += completedCount;
+          totalLessons += totalCount;
+        }
+      }
+
+      // Lấy quiz attempts trong 30 ngày gần đây để phân tích tần suất
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const recentQuizAttempts = quizAttempts.filter((attempt: any) => {
+        const createdAt = attempt.created_at || attempt.createdAt;
+        return createdAt && new Date(createdAt) >= thirtyDaysAgo;
+      });
+
+      return {
+        enrollments: enrollments.map((e: any) => ({
+          courseTitle: e.course_id?.title || "Khóa học không xác định",
+          courseSlug: e.course_id?.slug || "",
+          progress: e.progress || 0,
+          completedLessons: e.completed_lessons?.length || 0,
+        })),
+        quizStats: {
+          totalQuizzes,
+          totalCorrect,
+          totalAnswers,
+          successRate,
+          averageScore,
+          recentQuizCount: recentQuizAttempts.length, // Số quiz trong 30 ngày gần đây
+        },
+        lessonStats: {
+          totalCompletedLessons,
+          totalLessons,
+          remainingLessons: totalLessons - totalCompletedLessons,
+        },
+        totalCourses: enrollments.length,
+      };
+    } catch (error) {
+      console.error("Error fetching student learning data:", error);
+      return {
+        enrollments: [],
+        quizStats: {
+          totalQuizzes: 0,
+          totalCorrect: 0,
+          totalAnswers: 0,
+          successRate: 0,
+          averageScore: 0,
+          recentQuizCount: 0,
+        },
+        lessonStats: {
+          totalCompletedLessons: 0,
+          totalLessons: 0,
+          remainingLessons: 0,
+        },
+        totalCourses: 0,
+      };
+    }
+  }
+
+  /**
+   * Tạo kế hoạch học tập trong n ngày với gợi ý về quiz và lessons
+   * @param userId - ID của học viên
+   * @param days - Số ngày cho kế hoạch học tập (mặc định 7 ngày)
+   * @returns Kế hoạch học tập được tạo bởi AI
+   */
+  async generateStudyPlan(userId: string, days: number = 7): Promise<string> {
+    try {
+      // Lấy dữ liệu học tập của học viên
+      const learningData = await this.getStudentLearningData(userId);
+
+      // Xây dựng prompt cho AI
+      const prompt = `Bạn là ViceduAI, trợ lý AI thông minh của VicEdu. Nhiệm vụ của bạn là tạo một kế hoạch học tập chi tiết và cá nhân hóa cho học viên trong ${days} ngày tới.
+
+THÔNG TIN HỌC TẬP HIỆN TẠI CỦA HỌC VIÊN:
+- Tổng số khóa học đã đăng ký: ${learningData.totalCourses}
+- Số quiz đã hoàn thành: ${learningData.quizStats.totalQuizzes}
+- Tỷ lệ đúng quiz: ${learningData.quizStats.successRate}%
+- Điểm trung bình quiz: ${learningData.quizStats.averageScore}%
+- Số quiz trong 30 ngày gần đây: ${learningData.quizStats.recentQuizCount}
+- Số bài học đã hoàn thành: ${learningData.lessonStats.totalCompletedLessons} / ${learningData.lessonStats.totalLessons}
+- Số bài học còn lại: ${learningData.lessonStats.remainingLessons}
+
+CHI TIẾT CÁC KHÓA HỌC:
+${learningData.enrollments.map((e: any, idx: number) => 
+  `${idx + 1}. ${e.courseTitle} - Tiến độ: ${e.progress}% - Đã hoàn thành ${e.completedLessons} bài học`
+).join('\n')}
+
+YÊU CẦU KẾ HOẠCH HỌC TẬP:
+1. Phân tích tình hình học tập hiện tại và đưa ra đánh giá ngắn gọn
+2. Đề xuất số lần làm quiz trong ${days} ngày để nâng cao trí nhớ và củng cố kiến thức (dựa trên tần suất hiện tại và mục tiêu cải thiện)
+3. Đề xuất số bài học (lessons) nên học thêm trong ${days} ngày (phân bổ hợp lý theo tiến độ hiện tại)
+4. Đưa ra lịch trình học tập cụ thể từng ngày (nếu có thể)
+5. Gợi ý các khóa học cần ưu tiên dựa trên tiến độ
+6. Động viên và khuyến khích học viên
+
+LƯU Ý:
+- Kế hoạch phải thực tế và có thể thực hiện được
+- Phân bổ thời gian hợp lý, không quá tải
+- Ưu tiên các khóa học có tiến độ thấp hoặc chưa hoàn thành
+- Gợi ý số lần quiz dựa trên nghiên cứu về spaced repetition (lặp lại ngắt quãng) để tăng cường trí nhớ
+- Sử dụng ngôn ngữ thân thiện, động viên và có cảm xúc
+- Trả lời bằng tiếng Việt
+
+Hãy tạo kế hoạch học tập chi tiết và hấp dẫn!`;
+
+      const response: any = await (this.ai as any).models.generateContent({
+        model: "gemini-2.0-flash",
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: prompt }],
+          },
+        ],
+      });
+
+      return response?.text || response?.response?.text || "Xin lỗi, tôi không thể tạo kế hoạch học tập lúc này. Vui lòng thử lại sau.";
+    } catch (error) {
+      console.error("Gemini generateStudyPlan error:", error);
+      return "Xin lỗi, có lỗi xảy ra khi tạo kế hoạch học tập. Vui lòng thử lại sau.";
     }
   }
 }

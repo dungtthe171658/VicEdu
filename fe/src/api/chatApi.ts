@@ -80,4 +80,92 @@ export const chatApi = {
     const response = await axios.get("/chat/sessions");
     return response as { success: boolean; data: any[] };
   },
+
+  // Tạo kế hoạch học tập
+  generateStudyPlan: async (days: number = 7): Promise<{
+    success: boolean;
+    data: {
+      studyPlan: string;
+      days: number;
+      generatedAt: string;
+    };
+  }> => {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error(
+        "Chưa đăng nhập. Vui lòng đăng nhập trước khi sử dụng tính năng này."
+      );
+    }
+
+    const response = await axios.get(`/chat/study-plan?days=${days}`);
+    return response as {
+      success: boolean;
+      data: {
+        studyPlan: string;
+        days: number;
+        generatedAt: string;
+      };
+    };
+  },
+
+  // Lấy dữ liệu học tập của học viên
+  getLearningData: async (): Promise<{
+    success: boolean;
+    data: {
+      enrollments: Array<{
+        courseTitle: string;
+        courseSlug: string;
+        progress: number;
+        completedLessons: number;
+      }>;
+      quizStats: {
+        totalQuizzes: number;
+        totalCorrect: number;
+        totalAnswers: number;
+        successRate: number;
+        averageScore: number;
+        recentQuizCount: number;
+      };
+      lessonStats: {
+        totalCompletedLessons: number;
+        totalLessons: number;
+        remainingLessons: number;
+      };
+      totalCourses: number;
+    };
+  }> => {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error(
+        "Chưa đăng nhập. Vui lòng đăng nhập trước khi sử dụng tính năng này."
+      );
+    }
+
+    const response = await axios.get("/chat/learning-data");
+    return response as {
+      success: boolean;
+      data: {
+        enrollments: Array<{
+          courseTitle: string;
+          courseSlug: string;
+          progress: number;
+          completedLessons: number;
+        }>;
+        quizStats: {
+          totalQuizzes: number;
+          totalCorrect: number;
+          totalAnswers: number;
+          successRate: number;
+          averageScore: number;
+          recentQuizCount: number;
+        };
+        lessonStats: {
+          totalCompletedLessons: number;
+          totalLessons: number;
+          remainingLessons: number;
+        };
+        totalCourses: number;
+      };
+    };
+  },
 };

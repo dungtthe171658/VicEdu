@@ -393,7 +393,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                   <>
                     <br />• Tìm khóa học phù hợp
                     <br />• Gợi ý sách hỗ trợ học tập
-                    <br />• Trả lời câu hỏi về nội dung
+                    <br />• Gợi ý kế hoạch học tập hiệu quả
                   </>
                 )}
               </p>
