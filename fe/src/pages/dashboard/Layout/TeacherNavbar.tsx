@@ -288,20 +288,6 @@ const TeacherNavbar: React.FC<TeacherNavbarProps> = ({
           </Menu>
         </Box>
       </Toolbar>
-
-      {/* {showSearch && isSmDown && (
-        <Box px={2} pb={1.5}>
-          <Search>
-            <SearchIconWrapper>
-              <SearchIcon />
-            </SearchIconWrapper>
-            <StyledInputBase placeholder="Tìm kiếm…" inputProps={{ 'aria-label': 'search' }} />
-          </Search>
-        </Box>
-      )} */}
-
-
-
     </AppBar>
   );
 };
