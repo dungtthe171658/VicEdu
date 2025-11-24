@@ -376,8 +376,8 @@ const ManageTracksProcessPage: React.FC = () => {
                             sx={{ bgcolor: '#e0f2fe', color: '#0369a1', fontSize: '0.75rem' }}
                           />
                         </Box>
-
-                        {/* Metrics */}
+{/* 
+                
                         <Box display="grid" gridTemplateColumns="repeat(2, 1fr)" gap={1.5} mb={2}>
                           <Box>
                             <Typography variant="caption" color="text.secondary">
@@ -414,7 +414,7 @@ const ManageTracksProcessPage: React.FC = () => {
                               </Typography>
                             </Box>
                           </Box>
-                        </Box>
+                        </Box> */}
 
                         {/* View Detail Button */}
                         <Button
@@ -437,7 +437,7 @@ const ManageTracksProcessPage: React.FC = () => {
         </Grid>
 
         {/* Sidebar - School Stats */}
-        <Grid item xs={12} md={4}>
+        {/* <Grid item xs={12} md={4}>
           <Paper sx={{ p: 3, position: 'sticky', top: 20 }}>
             <Typography variant="h6" fontWeight="bold" mb={3}>
               Thống kê tổng quan
@@ -541,7 +541,7 @@ const ManageTracksProcessPage: React.FC = () => {
               </Box>
             </Box>
           </Paper>
-        </Grid>
+        </Grid> */}
       </Grid>
     </Box>
   );
