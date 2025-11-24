@@ -4,6 +4,8 @@ import EnrollmentModel from "../models/enrollment.model";
 import OrderModel from "../models/order.model";
 import UserModel from "../models/user.model";
 import LessonModel from "../models/lesson.model";
+import WatchHistoryModel from "../models/watchHistory.model";
+import QuizAttemptModel from "../models/QuizAttempt.model";
 
 // Align with getMyProfileFull: prefer req.user._id or req.user.id (as string)
 function getUserIdFromToken(req: Request & { user?: any }): string | null {
@@ -231,6 +233,24 @@ export const completeLesson = async (req: Request, res: Response) => {
       await enrollment.save();
     }
 
+    // Update or create watch history record
+    const now = new Date();
+    await WatchHistoryModel.findOneAndUpdate(
+      {
+        user_id: userObjectId,
+        lesson_id: lessonObjectId,
+      },
+      {
+        user_id: userObjectId,
+        lesson_id: lessonObjectId,
+        course_id: courseObjectId,
+        watch_progress: 100,
+        completed_at: now,
+        last_watched_at: now,
+      },
+      { upsert: true, new: true }
+    );
+
     return res.json({
       message: "Lesson marked as completed",
       completed_lessons: enrollment.completed_lessons,
@@ -312,6 +332,96 @@ export const getEnrollmentsByCoursesForTeacher = async (req: Request, res: Respo
     return res.json(filteredEnrollments);
   } catch (error: any) {
     console.error("getEnrollmentsByCoursesForTeacher error:", error?.message || error);
+    return res.status(500).json({ message: error?.message || "Server error" });
+  }
+};
+
+// Get daily learning stats (watch history and quiz attempts grouped by date)
+export const getDailyLearningStats = async (req: Request, res: Response) => {
+  try {
+    const uid = getUserIdFromToken(req);
+    if (!uid) return res.status(401).json({ message: "Unauthenticated" });
+
+    const userObjectId = new mongoose.Types.ObjectId(uid);
+
+    // Get date range from query params (default: from 2025-11-21)
+    const startDateStr = req.query.startDate as string || "2025-11-21";
+    const endDateStr = req.query.endDate as string;
+    
+    const startDate = new Date(startDateStr);
+    startDate.setHours(0, 0, 0, 0);
+    
+    const endDate = endDateStr ? new Date(endDateStr) : new Date();
+    endDate.setHours(23, 59, 59, 999);
+
+    // Build query for watch history - use last_watched_at
+    const watchHistoryQuery: any = {
+      user_id: userObjectId,
+      last_watched_at: { 
+        $ne: null,
+        $gte: startDate,
+        $lte: endDate
+      }
+    };
+
+    // Get watch history where last_watched_at is not null and within date range
+    const watchHistories = await WatchHistoryModel.find(watchHistoryQuery)
+      .select("last_watched_at")
+      .lean();
+
+    // Build query for quiz attempts - use submitted_at
+    const quizAttemptQuery: any = {
+      user_id: userObjectId,
+      completed: true,
+      submitted_at: {
+        $ne: null,
+        $gte: startDate,
+        $lte: endDate
+      }
+    };
+
+    // Get quiz attempts where completed is true and submitted_at is not null and within date range
+    const quizAttempts = await QuizAttemptModel.find(quizAttemptQuery)
+      .select("submitted_at")
+      .lean();
+
+    // Group by date
+    const statsByDate: Record<string, { lessons: number; quizzes: number }> = {};
+
+    // Process watch histories - use last_watched_at
+    watchHistories.forEach((history: any) => {
+      if (history.last_watched_at) {
+        const date = new Date(history.last_watched_at).toISOString().split('T')[0]; // YYYY-MM-DD
+        if (!statsByDate[date]) {
+          statsByDate[date] = { lessons: 0, quizzes: 0 };
+        }
+        statsByDate[date].lessons += 1;
+      }
+    });
+
+    // Process quiz attempts - use submitted_at
+    quizAttempts.forEach((attempt: any) => {
+      if (attempt.submitted_at) {
+        const date = new Date(attempt.submitted_at).toISOString().split('T')[0]; // YYYY-MM-DD
+        if (!statsByDate[date]) {
+          statsByDate[date] = { lessons: 0, quizzes: 0 };
+        }
+        statsByDate[date].quizzes += 1;
+      }
+    });
+
+    // Convert to array format and sort by date
+    const dailyStats = Object.entries(statsByDate)
+      .map(([date, stats]) => ({
+        date,
+        lessons: stats.lessons,
+        quizzes: stats.quizzes
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    return res.json(dailyStats);
+  } catch (error: any) {
+    console.error("getDailyLearningStats error:", error?.message || error);
     return res.status(500).json({ message: error?.message || "Server error" });
   }
 };

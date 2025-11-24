@@ -47,7 +47,7 @@ const quizApi = {
         return axios.post(`/quizzes/${quizId}/start`, {}, attemptId ? { params: { attemptId } } : undefined);
     },
     reset(quizId: string): Promise<{ message: string }> {
-        return axios.post(`/quizzes/${quizId}/reset`);
+        return axios.post(`/quizzes/${quizId}/reset`, {});
     },
     autoSave(quizId: string, payload: any) {
         return axios.post(`/quizzes/${quizId}/autosave`, payload);

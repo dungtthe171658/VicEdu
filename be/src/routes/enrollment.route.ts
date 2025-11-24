@@ -6,7 +6,8 @@ import {
   getEnrollmentByCourse, 
   completeLesson,
   getAllEnrollmentsForAdmin,
-  getEnrollmentsByCoursesForTeacher
+  getEnrollmentsByCoursesForTeacher,
+  getDailyLearningStats
 } from "../controllers/enrollment.controller";
 
 const router = Router();
@@ -15,6 +16,7 @@ router.get("/my", authenticateToken, getMyEnrollments);
 router.get("/my-mini", authenticateToken, getMyEnrollMini);
 router.get("/course/:courseId", authenticateToken, getEnrollmentByCourse);
 router.post("/complete-lesson", authenticateToken, completeLesson);
+router.get("/daily-stats", authenticateToken, getDailyLearningStats);
 
 // Admin routes
 router.get("/admin/all", authenticateToken, checkRole(["admin"]), getAllEnrollmentsForAdmin);
