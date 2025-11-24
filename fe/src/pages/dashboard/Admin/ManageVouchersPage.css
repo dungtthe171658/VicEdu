@@ -1,0 +1,137 @@
+.voucher-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 16px 18px 18px;
+    background-color: #ffffff;
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.04);
+}
+
+.voucher-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.voucher-card__header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.voucher-card__badge {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background-color: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+
+.voucher-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.voucher-form__column {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.voucher-form__row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.form-group label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+}
+
+.form-group input,
+.form-group select {
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
+}
+
+.form-group small {
+    font-size: 11px;
+    color: #6b7280;
+}
+
+.required {
+    color: #ef4444;
+    margin-left: 2px;
+}
+
+.hint {
+    font-size: 11px;
+    font-weight: 400;
+    color: #6b7280;
+}
+
+.voucher-form__error {
+    margin-top: 4px;
+    color: #dc2626;
+    font-size: 13px;
+}
+
+.voucher-form__actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+}
+
+.btn-secondary {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid #9ca3af;
+    background-color: #f3f4f6;
+    font-size: 14px;
+    cursor: pointer;
+    color: #374151;
+}
+
+.btn-secondary:hover {
+    background-color: #e5e7eb;
+}
+
+/* Responsive: form 2 cột -> 1 cột trên màn nhỏ */
+@media (min-width: 900px) {
+    .voucher-form {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .voucher-form__column {
+        flex: 1;
+    }
+}
+
+@media (max-width: 899px) {
+    .voucher-form__row {
+        grid-template-columns: 1fr;
+    }
+}

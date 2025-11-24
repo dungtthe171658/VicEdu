@@ -8,6 +8,8 @@ import EnrollmentModel from "../models/enrollment.model";
 import BookHistoryModel from "../models/bookHistory.model";
 import type { Webhook } from "@payos/node";
 import { PayOS } from "@payos/node";
+import { applyVoucher } from "../utils/voucher";
+import Voucher from "../models/voucher.model";
 
 /* ==============================
    0) ENV & SDK
@@ -92,11 +94,13 @@ export const createPaymentLink = async (req: Request, res: Response) => {
       fullName,
       items,
       email: emailFromClient,
+      voucherCode, 
     } = req.body as {
       location: string;
       phone: string;
       fullName?: string;
       email?: string;
+      voucherCode?: string;
       items: {
         productId: string;
         productType?: "Course" | "Book";
@@ -106,37 +110,112 @@ export const createPaymentLink = async (req: Request, res: Response) => {
       }[];
     };
 
-    const emailFromToken = (req as any)?.user?.email as
-      | string
-      | undefined;
+    const emailFromToken = (req as any)?.user?.email as string | undefined;
 
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: "Thiếu items" });
     }
 
-    const totalAmount = items.reduce(
+    // ===== 1. TÍNH TẠM TÍNH (subtotal) =====
+    const subtotal = items.reduce(
       (sum, it) =>
-        sum +
-        Number(it.productPrice || 0) * Number(it.quantity || 1),
+        sum + Number(it.productPrice || 0) * Number(it.quantity || 1),
       0
     );
+
+    if (!Number.isFinite(subtotal) || subtotal <= 0) {
+      return res.status(400).json({ message: "Tổng tiền không hợp lệ" });
+    }
+
+    let totalAmount = subtotal; // số tiền cuối cùng sẽ thanh toán
+    let discountAmount = 0;
+    let appliedVoucherCode: string | null = null;
+
+    // ÁP DỤNG VOUCHER
+    if (voucherCode && voucherCode.trim()) {
+      const codeUpper = voucherCode.trim().toUpperCase();
+
+      const voucher = await Voucher.findOne({ code: codeUpper });
+
+      if (!voucher || !voucher.isActive) {
+        return res
+          .status(400)
+          .json({ message: "Voucher không tồn tại hoặc đã bị khóa" });
+      }
+
+      const now = new Date();
+
+      if (voucher.startAt && now < voucher.startAt) {
+        return res
+          .status(400)
+          .json({ message: "Voucher chưa đến thời gian sử dụng" });
+      }
+
+      if (voucher.endAt && now > voucher.endAt) {
+        return res
+          .status(400)
+          .json({ message: "Voucher đã hết hạn" });
+      }
+
+      if (
+        voucher.totalUsageLimit !== null &&
+        typeof voucher.totalUsageLimit === "number" &&
+        voucher.usedCount >= voucher.totalUsageLimit
+      ) {
+        return res
+          .status(400)
+          .json({ message: "Voucher đã dùng hết lượt" });
+      }
+
+      // map items sang format cho applyVoucher
+      const itemsForVoucher = items.map((it) => ({
+        id: it.productId,
+        type:
+          (it.productType === "Book" ? "book" : "course") as "book" | "course",
+        price: Number(it.productPrice || 0),
+        quantity: Number(it.quantity || 1),
+      }));
+
+      const result = applyVoucher(
+        {
+          code: voucher.code,
+          type: voucher.type,
+          value: voucher.value,
+          applyTo: voucher.applyTo,
+          minOrderAmount: voucher.minOrderAmount,
+          maxDiscountAmount: voucher.maxDiscountAmount,
+        },
+        itemsForVoucher
+      );
+
+      if (!result.ok || result.discount == null || result.finalTotal == null) {
+        return res
+          .status(400)
+          .json({ message: result.message || "Không áp dụng được voucher" });
+      }
+
+      discountAmount = result.discount;
+      totalAmount = result.finalTotal;
+      appliedVoucherCode = voucher.code;
+    }
+
+    // đảm bảo totalAmount hợp lệ sau khi trừ voucher
     if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
       return res
         .status(400)
-        .json({ message: "Tổng tiền không hợp lệ" });
+        .json({ message: "Tổng tiền sau giảm không hợp lệ" });
     }
 
     const order_code = Date.now();
     const userObjectId = toObjectId(uid);
     if (!userObjectId) {
-      return res
-        .status(400)
-        .json({ message: "userId không hợp lệ" });
+      return res.status(400).json({ message: "userId không hợp lệ" });
     }
 
+    // ===== 3. TẠO ORDER (lưu cả subtotal & voucher info) =====
     const order = await OrderModel.create({
       user_id: userObjectId,
-      total_amount: totalAmount,
+      total_amount: totalAmount, // số tiền sẽ thanh toán sau giảm
       payment_method: "payos",
       status: "failed",
       order_code,
@@ -145,15 +224,17 @@ export const createPaymentLink = async (req: Request, res: Response) => {
         phone,
         fullName,
         email: emailFromToken || emailFromClient,
+        voucherCode ,
+        original_total: subtotal,       // tạm tính trước giảm
+        discount_amount: discountAmount, // số tiền giảm
+        voucher_code: appliedVoucherCode, // mã đã áp (nếu có)
       },
     });
 
     const orderItems = items.map((it) => {
       const pid = toObjectId(it.productId);
       if (!pid) {
-        throw new Error(
-          `productId không hợp lệ: ${it.productId}`
-        );
+        throw new Error(`productId không hợp lệ: ${it.productId}`);
       }
 
       return {
@@ -199,23 +280,18 @@ export const createPaymentLink = async (req: Request, res: Response) => {
 
     const ts = Date.now();
     const sig = sign(order_code, ts);
-    const description = buildPayOSDescription(
-      `DH#${order_code}`,
-      25
-    );
+    const description = buildPayOSDescription(`DH#${order_code}`, 25);
 
     const payment = await payos.paymentRequests.create({
       orderCode: order_code,
-      amount: Number(totalAmount),
+      amount: Number(totalAmount), // số tiền đã trừ voucher
       description,
       returnUrl: `${API_URL}/api/payments/payos/return?orderId=${order._id}&orderCode=${order_code}&ts=${ts}&sig=${sig}`,
       cancelUrl: `${API_URL}/api/payments/payos/cancel?orderId=${order._id}&orderCode=${order_code}&ts=${ts}&sig=${sig}`,
     });
 
     if (!payment?.checkoutUrl) {
-      throw new Error(
-        "Không nhận được checkoutUrl từ PayOS"
-      );
+      throw new Error("Không nhận được checkoutUrl từ PayOS");
     }
 
     return res.json({ checkoutUrl: payment.checkoutUrl });

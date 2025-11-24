@@ -58,6 +58,7 @@ import ProtectedRoute from "./ProtectedRoute";
 import About from "../pages/user/about.tsx";
 import QuizPage from "@/pages/quiz/QuizPage.tsx";
 import {QuizzManage} from "@/pages/dashboard/Admin/QuizzManage.tsx";
+import ManageVouchersPage from "@/pages/dashboard/Admin/ManageVouchersPage.tsx";
 
 const AppRoutes: React.FC = () => {
     return (
@@ -108,6 +109,7 @@ const AppRoutes: React.FC = () => {
                 <Route index element={<OverviewPage/>}/>
 
                 {/* 🧑‍💼 Admin routes */}
+
                 <Route
                     path="manage-users"
                     element={
@@ -220,6 +222,14 @@ const AppRoutes: React.FC = () => {
                     element={
                         <ProtectedRoute allowedRoles={["admin"]}>
                             <ManageSaleOffPage/>
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="manage-vouchers"
+                    element={
+                        <ProtectedRoute allowedRoles={["admin"]}>
+                            <ManageVouchersPage/>
                         </ProtectedRoute>
                     }
                 />

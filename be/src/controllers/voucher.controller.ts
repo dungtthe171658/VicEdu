@@ -154,3 +154,46 @@ export const listVouchers = async (
     });
   }
 };
+// controllers/voucher.controller.ts
+export const updateVoucher = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const payload = req.body; // code, type, value, isActive, ...
+
+    const updated = await Voucher.findByIdAndUpdate(id, payload, {
+      new: true,
+    });
+
+    if (!updated) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Không tìm thấy voucher" });
+    }
+
+    return res.json({ success: true, data: updated });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Lỗi server khi cập nhật voucher" });
+  }
+};
+
+export const deleteVoucher = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const deleted = await Voucher.findByIdAndDelete(id);
+    if (!deleted) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Không tìm thấy voucher" });
+    }
+    return res.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Lỗi server khi xóa voucher" });
+  }
+};
