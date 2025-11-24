@@ -60,7 +60,7 @@ const MuiSidebar: React.FC<SidebarProps> = ({
     { label: 'Đánh giá', path: 'manage-reviews', icon: ReviewsIcon },
     { label: 'Yêu cầu chỉnh sửa', path: 'pending-edits', icon: ArticleIcon },
     { label: 'Quản lý tiến độ học tập', path: 'manage-tracksprocess', icon: ArticleIcon },
-    { label: 'Chế độ khuyến mãi', path: 'manage-saleoff', icon: ShoppingCartIcon },
+    // { label: 'Chế độ khuyến mãi', path: 'manage-saleoff', icon: ShoppingCartIcon },
 
   ] as const;
 
