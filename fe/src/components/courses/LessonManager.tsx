@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import lessonApi, { type LessonPayload } from "../../api/lessonApi";
 import type { Lesson } from "../../types/lesson";
 import { supabase } from "../../lib/supabase";
@@ -12,6 +12,7 @@ type Props = {
 
 export default function LessonManager({ courseId }: Props) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -311,7 +312,11 @@ export default function LessonManager({ courseId }: Props) {
                         {/* <button onClick={() => openPlayback(ls._id)} style={{ fontSize: 12 }}>Play (auth)</button> */}
                         {/* <button onClick={() => navigate(`/dashboard/manage-courses/${courseId}/lessons/${ls._id}`)} style={{ fontSize: 12 }}>Xem chi tiết</button> */}
                         <button onClick={() => viewDetail(ls._id)} style={{ fontSize: 12 }}>Xem chi tiết</button>
-                        <button onClick={() => navigate(`/dashboard/manage-courses/${courseId}/lessons/${ls._id}/quizzes`)} style={{ fontSize: 12 }}>Quizz</button>
+                        <button onClick={() => {
+                          const isTeacherContext = location.pathname.startsWith('/teacher');
+                          const basePath = isTeacherContext ? '/teacher' : '/dashboard';
+                          navigate(`${basePath}/manage-courses/${courseId}/lessons/${ls._id}/quizzes`);
+                        }} style={{ fontSize: 12 }}>Quizz</button>
                       </div>
                     </>
                   )}
