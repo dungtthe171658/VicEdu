@@ -1,0 +1,450 @@
+Mục tiêu: mô tả cơ chế Cloudinary và Supabase trong VicEdu ở cả FE và BE, và vai trò của các biến môi trường (.env) liên quan.
+
+=====================================================================
+1. SUPABASE
+=====================================================================
+
+1.1. FE: khởi tạo client Supabase
+---------------------------------
+
+File chính: fe/src/lib/supabase.ts
+
+- FE dùng thư viện "@supabase/supabase-js".
+- URL và anon key được lấy từ biến môi trường Vite:
+  - VITE_SUPABASE_URL
+  - VITE_SUPABASE_ANON_KEY
+- Nếu cả hai cùng tồn tại, FE tạo 1 Supabase client:
+  - supabase = createClient(VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)
+- Nếu thiếu, FE không crash mà chỉ log lỗi: "Supabase client not initialized..." và export supabase = null.
+
+Lưu ý:
+- Các biến bắt buộc để Supabase FE chạy:
+  - VITE_SUPABASE_URL=https://<project>.supabase.co
+  - VITE_SUPABASE_ANON_KEY=<JWT role=anon>
+- Đây là key PUBLIC, có thể để ở FE (nhưng vẫn nên giới hạn quyền bằng RLS trong Supabase).
+
+
+1.2. FE: upload video bài học bằng Supabase Storage (luồng chuẩn)
+-----------------------------------------------------------------
+
+File chính: fe/src/components/courses/LessonManager.tsx
+
+Trường hợp TẠO / SỬA bài học (teacher/admin):
+
+1) FE kiểm tra đã cấu hình Supabase hay chưa:
+   - Nếu supabase == null => báo lỗi:
+     "Thiếu cấu hình Supabase (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)..."
+
+2) FE gọi BE để xin "signed upload URL":
+   - API: POST /uploads/supabase/signed-upload
+   - Thông qua axios với baseURL = VITE_API_URL || "http://localhost:8888/api"
+   - Payload:
+     {
+       courseId,
+       filename: file.name,
+       contentType: file.type || "video/mp4"
+     }
+
+3) BE trả về:
+   - { path, token, expiresIn, bucket }
+   - Đây là kết quả từ Supabase Storage (tạo bởi service role key ở BE).
+
+4) FE dùng Supabase client (anon key) để upload:
+   - supabase.storage
+       .from(bucket || "videos")
+       .uploadToSignedUrl(path, token, file)
+
+   Ý nghĩa:
+   - uploadToSignedUrl dùng token do BE tạo, nên dù FE dùng anon key vẫn có thể upload một cách an toàn, vượt qua RLS theo phạm vi/path mà BE cho phép.
+
+5) FE lấy public URL (nếu bucket public):
+   - const { data: pub } = supabase.storage.from(bucket).getPublicUrl(path)
+   - publicUrl = pub.publicUrl
+
+6) FE tạo lesson qua lessonApi.create:
+   - Body gửi lên BE:
+     {
+       title,
+       description,
+       video_url: publicUrl,
+       storage_provider: "supabase",
+       storage_bucket: bucket || "videos",
+       storage_path: path
+     }
+
+7) BE lưu các field trên vào MongoDB (model Lesson).
+
+Kết quả:
+- File video được lưu trên Supabase Storage.
+- BE biết đầy đủ metadata để sau này tạo signed URL phát lại, hoặc xử lý subtitle, v.v.
+
+
+1.3. FE: upload video trực tiếp (không signed URL)
+--------------------------------------------------
+
+File chính: fe/src/pages/dashboard/Admin/LessonManageDetail.tsx
+
+- Khi admin sửa bài học và chọn file video:
+  - FE dùng supabase.storage.from("videos").upload(path, file, { upsert: true })
+  - Sau đó gọi getPublicUrl(path) để lấy video_url và gửi vào lessonApi.update.
+
+Điểm khác:
+- Luồng này không dùng signed upload từ BE.
+- Yêu cầu bucket "videos" được cấu hình cho phép anon insert (hoặc RLS phù hợp).
+- Vẫn dùng VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY trên FE.
+
+
+1.4. BE: Supabase admin client và các biến .env
+----------------------------------------------
+
+Các biến môi trường ở be/.env:
+- SUPABASE_URL=https://zgodeoqsufngxwjbvfsc.supabase.co
+- SUPABASE_SERVICE_ROLE_KEY=<JWT role=service_role>  (RẤT NHẠY CẢM, KHÔNG ĐƯỢC ĐƯA RA FE)
+- SUPABASE_VIDEO_BUCKET=videos (tên bucket mặc định)
+
+File khởi tạo:
+- be/src/lib/supabase.ts
+  - Đọc SUPABASE_URL và SUPABASE_SERVICE_ROLE_KEY
+  - Nếu thiếu: log cảnh báo, không crash server.
+  - Nếu đủ: supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
+Ý nghĩa:
+- supabaseAdmin có quyền service_role => bỏ qua RLS, dùng cho:
+  - Tạo signed upload URL cho FE.
+  - Tạo signed URL để phát lại video cho user khi đã enroll.
+  - Lấy media để generate subtitle (Gemini).
+
+
+1.5. BE: tạo signed upload URL cho FE
+-------------------------------------
+
+File: be/src/controllers/supabaseUpload.controller.ts  
+Route: be/src/routes/upload.route.ts
+
+- Route: POST /api/uploads/supabase/signed-upload
+  - Middleware: authenticateToken + checkRole(["admin", "teacher"])
+  - Chỉ admin/teacher mới được tạo token upload.
+
+Luồng:
+1) Nhận body { courseId, filename, contentType, path? }.
+2) Xác định bucket:
+   - bucket = SUPABASE_VIDEO_BUCKET || "videos"
+3) Tạo path an toàn:
+   - safeName = sanitizeFilename(filename)  // loại bỏ ký tự nguy hiểm
+   - keyPath = path || `lessons/{courseId || "misc"}/{timestamp}_{safeName}`
+4) Gọi Supabase:
+   - supabaseAdmin.storage.from(bucket).createSignedUploadUrl(keyPath, 60*5)
+   - Trả về token upload có hạn 5 phút.
+5) Trả response cho FE: { path: keyPath, token, expiresIn: 300, bucket }
+
+Vai trò biến .env:
+- SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY: để supabaseAdmin tạo signed upload.
+- SUPABASE_VIDEO_BUCKET: cấu hình tên bucket video mặc định.
+
+
+1.6. BE: tạo signed playback URL cho học viên
+--------------------------------------------
+
+File: be/src/controllers/lesson.controller.ts  
+Hàm: getLessonPlayback (GET /api/lessons/:lessonId/playback)
+
+Luồng:
+1) Xác thực user và kiểm tra đã enroll vào course chứa lesson đó chưa.
+2) Tìm lesson trong MongoDB.
+3) Ưu tiên:
+   - Nếu lesson.playback_url tồn tại -> dùng luôn.
+   - Nếu không, fallback lesson.video_url.
+4) Nếu vẫn không có và lesson.storage_provider === "supabase" và có storage_path:
+   - Dùng supabaseAdmin.storage.from(bucket).createSignedUrl(storage_path, 60*30)
+   - Nhận signedUrl => dùng làm rawPlayback.
+5) Hàm signCloudFrontUrlOrReturnRaw(rawPlayback, ttl) sẽ:
+   - Nếu có CLOUDFRONT_KEY_PAIR_ID + CLOUDFRONT_PRIVATE_KEY_B64 trong .env:
+     -> ký URL kiểu CloudFront (phức tạp hơn, tuỳ config AWS).
+   - Nếu không có => trả luôn rawPlayback.
+6) Response: { playbackUrl, expiresIn }
+
+Ý nghĩa:
+- Video có thể để ở bucket private, BE chỉ tạo URL tạm cho user đã enroll.
+- SUPABASE_SERVICE_ROLE_KEY là chìa khóa để tạo signedUrl này (KHÔNG được đưa ra FE).
+
+
+1.7. BE: dùng Supabase để lấy media cho AI subtitle
+---------------------------------------------------
+
+File: be/src/controllers/subtitle.controller.ts  
+Hàm: autoGenerateFromAudio
+
+Luồng tóm tắt:
+1) Tìm lesson, đọc playback_url hoặc video_url.
+2) Nếu không có và storage_provider === "supabase":
+   - Dùng supabaseAdmin.storage.createSignedUrl(...) để lấy signedUrl tạm.
+3) Dùng fetch để tải media (video) về buffer.
+4) Gửi buffer vào GeminiService để:
+   - transcribe audio -> text
+   - translate text
+5) Trả về text EN/VI.
+
+Vẫn dựa trên:
+- SUPABASE_URL
+- SUPABASE_SERVICE_ROLE_KEY
+
+
+=====================================================================
+2. CLOUDINARY
+=====================================================================
+
+2.1. BE: cấu hình Cloudinary bằng .env
+--------------------------------------
+
+Biến môi trường trong be/.env:
+- CLOUDINARY_CLOUD_NAME=...
+- CLOUDINARY_API_KEY=...
+- CLOUDINARY_API_SECRET=...
+
+File cấu hình:
+- be/src/utils/cloudinary.ts
+  - import { v2 as cloudinary } from "cloudinary";
+  - cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
+      api_key: process.env.CLOUDINARY_API_KEY!,
+      api_secret: process.env.CLOUDINARY_API_SECRET!,
+    });
+  - export default cloudinary;
+
+Ý nghĩa:
+- Tất cả SDK Cloudinary ở BE sẽ dùng đúng account / key / secret này.
+- API_SECRET chỉ tồn tại ở server, không gửi ra FE.
+
+
+2.2. BE: tạo chữ ký upload Cloudinary cho FE
+-------------------------------------------
+
+File: be/src/controllers/upload.controller.ts  
+Route: /api/uploads/cloudinary-signature  (xem be/src/routes/upload.route.ts)
+
+Luồng:
+1) Nhận query từ FE:
+   - folder (ví dụ: "vicedu/images/users")
+   - upload_preset (ví dụ: "vicedu_default")
+2) Tạo timestamp = Math.floor(Date.now()/1000).
+3) Tạo chuỗi cần ký:
+   - paramsToSign = `folder=${folder}&timestamp=${timestamp}&upload_preset=${upload_preset}${CLOUDINARY_API_SECRET}`
+4) signature = SHA1(paramsToSign) (dùng crypto.createHash("sha1")).
+5) Trả về cho FE:
+   {
+     timestamp,
+     signature,
+     apiKey: CLOUDINARY_API_KEY,
+     cloudName: CLOUDINARY_CLOUD_NAME,
+     folder,
+     upload_preset
+   }
+
+Vai trò biến .env:
+- CLOUDINARY_API_SECRET: dùng để ký, KHÔNG gửi ra FE.
+- CLOUDINARY_API_KEY, CLOUDINARY_CLOUD_NAME: được gửi về FE để FE gọi trực tiếp API Cloudinary.
+
+
+2.3. FE: upload lên Cloudinary bằng chữ ký từ BE
+------------------------------------------------
+
+Ví dụ: fe/src/components/common/ImageUploader.tsx
+
+Luồng:
+1) FE gọi BE để xin chữ ký:
+   - axios.get('/api/uploads/cloudinary-signature', {
+       params: { folder, upload_preset: 'vicedu_default' }
+     });
+   - Nhận về: { apiKey, cloudName, timestamp, signature, folder, upload_preset }
+
+2) FE chuẩn bị FormData:
+   - file
+   - api_key = apiKey
+   - timestamp
+   - upload_preset
+   - folder
+   - signature
+
+3) FE gọi Cloudinary trực tiếp:
+   - POST https://api.cloudinary.com/v1_1/{cloudName}/image/upload
+   - body = FormData ở trên.
+
+4) Cloudinary trả về JSON:
+   - trong đó có secure_url, public_id, ...
+   - FE gọi onUploaded(secure_url, public_id) => lưu vào DB thông qua API riêng (user, book, course...).
+
+Các chỗ khác dùng cùng cơ chế:
+- fe/src/components/books/BookForm.tsx
+- fe/src/pages/books/BookManagementPage.tsx
+- fe/src/components/courses/CourseForm.tsx
+- fe/src/components/courses/CourseFormTeacher.tsx
+- fe/src/pages/my-account/ProfilePage.tsx
+
+Tất cả đều:
+- Gọi /uploads/cloudinary-signature trên BE.
+- Gửi file trực tiếp tới Cloudinary với chữ ký + api_key + timestamp.
+
+
+2.4. FE: Cloudinary Upload Widget
+---------------------------------
+
+File: fe/src/components/common/CloudinaryWidgetButton.tsx
+
+- Dùng widget chính thức của Cloudinary (window.cloudinary.createUploadWidget).
+- Cần:
+  - cloudName: import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
+  - uploadPreset: 'vicedu_default'
+  - folder: 'vicedu/images'
+- Khi upload thành công:
+  - callback nhận result.info.secure_url, result.info.public_id
+  - Gọi onDone(url, publicId) để FE lưu lại.
+
+Biến môi trường FE dùng ở đây:
+- VITE_CLOUDINARY_CLOUD_NAME (chỉ là cloud name, không phải secret).
+
+
+2.5. BE: generate URL tải PDF từ Cloudinary
+-------------------------------------------
+
+File: be/src/controllers/book.controller.ts (phần cuối, getBookPdfUrl)
+
+Luồng tóm tắt:
+1) Lấy Book từ MongoDB, đọc field pdf_url (Cloudinary URL kiểu raw/upload).
+2) Phân tích pdf_url:
+   - Cắt phần sau "/upload/" => path.
+   - Bỏ prefix version "v12345/" nếu có.
+   - Tách phần mở rộng (.pdf) -> ext, và publicIdNoExt.
+3) Dùng SDK Cloudinary:
+   - inlineUrl = cloudinary.url(publicIdNoExt, {
+       resource_type: "raw",
+       type: "upload",
+       format: ext,
+       flags: "inline",
+       secure: true,
+       sign_url: true,
+     });
+
+   - downloadUrl = cloudinary.utils.private_download_url(
+       publicIdNoExt,
+       ext,
+       { resource_type: "raw", type: "upload", attachment: true }
+     );
+
+4) Trả về cho FE:
+   - url (tuỳ theo query disposition=inline|attachment)
+   - inline
+   - download
+   - raw (url gốc)
+
+Lúc này Cloudinary API_KEY / API_SECRET ở .env đã được dùng nội bộ trong SDK để ký URL.
+
+
+=====================================================================
+3. CÁC BIẾN .ENV LIÊN QUAN VÀ CÁCH HOẠT ĐỘNG
+=====================================================================
+
+3.1. Supabase
+-------------
+
+FE (fe/.env):
+- VITE_SUPABASE_URL
+  - URL project Supabase.
+  - Ví dụ: https://<project>.supabase.co
+  - Dùng để kết nối client Supabase ở FE.
+
+- VITE_SUPABASE_ANON_KEY
+  - JWT với role "anon" của Supabase.
+  - Cho phép FE truy cập các bảng/bucket theo luật RLS bạn cấu hình.
+  - Không quá nhạy cảm như service_role nhưng vẫn không nên public bừa bãi ngoài ứng dụng.
+
+BE (be/.env):
+- SUPABASE_URL
+  - Cùng giá trị với VITE_SUPABASE_URL, nhưng dùng ở server.
+
+- SUPABASE_SERVICE_ROLE_KEY
+  - JWT với role "service_role".
+  - Quyền rất cao, bỏ qua hầu hết RLS.
+  - CHỈ dùng ở server, không bao giờ đưa ra FE hoặc file public.
+  - Dùng trong:
+    - be/src/lib/supabase.ts (supabaseAdmin)
+    - createSignedUploadUrl
+    - getLessonPlayback / autoGenerateFromAudio (tạo signedUrl).
+
+- SUPABASE_VIDEO_BUCKET
+  - Tên bucket lưu video (ví dụ "videos").
+  - BE dùng để tạo signed URL, FE dùng để upload thông qua signed URL.
+
+
+3.2. Cloudinary
+----------------
+
+BE (be/.env):
+- CLOUDINARY_CLOUD_NAME
+  - Tên cloud trong Cloudinary (subdomain sau res.cloudinary.com).
+
+- CLOUDINARY_API_KEY
+  - Public API key cho account Cloudinary (dù vậy vẫn nên để ở server).
+  - Được BE trả về cho FE khi tạo chữ ký để FE upload.
+
+- CLOUDINARY_API_SECRET
+  - Secret key cho account Cloudinary.
+  - Dùng để:
+    - config SDK cloudinary ở server.
+    - tạo signature upload trong getCloudinarySignature.
+  - KHÔNG BAO GIỜ được đưa ra FE.
+
+FE (fe/.env, cần tự thêm nếu chưa có):
+- VITE_CLOUDINARY_CLOUD_NAME
+  - Cloud name, dùng trong CloudinaryWidgetButton.
+  - Không cần API_SECRET.
+
+
+3.3. API base URL giữa FE và BE
+-------------------------------
+
+FE:
+- VITE_API_URL
+  - Base URL cho axios FE -> BE.
+  - Nếu không set, mặc định "http://localhost:8888/api".
+  - Ví dụ trong fe/src/api/axios.ts:
+    - baseURL: import.meta.env.VITE_API_URL || "http://localhost:8888/api"
+
+BE:
+- SERVER_PORT
+  - Port Express (8888).
+- FE_URL
+  - Dùng cho CORS, ... (http://localhost:5173).
+
+
+3.4. Nguyên tắc bảo mật chung
+-----------------------------
+
+- Mọi KEY có từ "SERVICE_ROLE", "SECRET", "PRIVATE" tuyệt đối chỉ nằm ở BE:
+  - SUPABASE_SERVICE_ROLE_KEY
+  - CLOUDINARY_API_SECRET
+  - JWT_SECRET, APP_PASSWORD, v.v.
+
+- Các KEY "public" có thể dùng ở FE (dù vẫn nên cẩn thận):
+  - VITE_SUPABASE_URL
+  - VITE_SUPABASE_ANON_KEY
+  - VITE_CLOUDINARY_CLOUD_NAME
+  - CLOUDINARY_API_KEY (thường chỉ cần khi BE trả ra cho FE, không commit vào FE).
+
+- Tuyệt đối không commit file .env thật lên git; chỉ commit .env.example nếu cần.
+
+
+=====================================================================
+4. TÓM TẮT NGẮN GỌN
+=====================================================================
+
+- Supabase:
+  - FE dùng VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY để tạo client.
+  - BE dùng SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY để tạo supabaseAdmin.
+  - FE xin signed upload URL từ BE -> uploadToSignedUrl -> gửi metadata về BE -> BE phát video và xử lý subtitle bằng signed URL.
+
+- Cloudinary:
+  - BE cấu hình SDK bằng CLOUDINARY_CLOUD_NAME + CLOUDINARY_API_KEY + CLOUDINARY_API_SECRET.
+  - BE tạo chữ ký upload (signature) dựa trên CLOUDINARY_API_SECRET.
+  - FE xin chữ ký từ BE, sau đó upload trực tiếp lên Cloudinary bằng api_key + signature + timestamp.
+  - BE dùng SDK Cloudinary để tạo URL xem/tải PDF (Book) có ký chữ ký an toàn.
+

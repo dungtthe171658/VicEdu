@@ -5,6 +5,7 @@ import crypto from "crypto";
 import OrderModel from "../models/order.model";
 import OrderItemModel from "../models/order_item.model";
 import EnrollmentModel from "../models/enrollment.model";
+import BookHistoryModel from "../models/bookHistory.model";
 import type { Webhook } from "@payos/node";
 import { PayOS } from "@payos/node";
 
@@ -319,6 +320,40 @@ export const payosReturnHandler = async (
         }
       );
     }
+
+    // Xử lý Book items: tạo bookHistory records
+    const bookItems = await OrderItemModel.find({
+      order_id: order._id,
+      product_type: "Book",
+    }).lean();
+
+    if (bookItems.length) {
+      await Promise.all(
+        bookItems.map((it) =>
+          BookHistoryModel.updateOne(
+            {
+              user_id: order.user_id as mongoose.Types.ObjectId,
+              book_id: it.product_id as mongoose.Types.ObjectId,
+            },
+            {
+              $set: {
+                order_id: order._id as mongoose.Types.ObjectId,
+                price_at_purchase: Number(it.price_at_purchase || 0),
+                purchased_at: new Date(),
+                status: "active",
+              },
+              $setOnInsert: {
+                user_id: order.user_id as mongoose.Types.ObjectId,
+                book_id: it.product_id as mongoose.Types.ObjectId,
+              },
+            },
+            { upsert: true }
+          ).catch((e: any) => {
+            if (e?.code !== 11000) throw e;
+          })
+        )
+      );
+    }
   } catch (e: any) {
     console.error("payosReturnHandler fatal:", e?.message || e);
   }
@@ -443,6 +478,40 @@ export const payosWebhook = async (req: Request, res: Response) => {
           )
         )
       );
+
+      // Xử lý Book items: tạo bookHistory records
+      const bookItems = await OrderItemModel.find({
+        order_id: orderId,
+        product_type: "Book",
+      }).lean();
+
+      if (bookItems.length) {
+        await Promise.all(
+          bookItems.map((it) =>
+            BookHistoryModel.updateOne(
+              {
+                user_id: order.user_id as mongoose.Types.ObjectId,
+                book_id: it.product_id as mongoose.Types.ObjectId,
+              },
+              {
+                $set: {
+                  order_id: orderId,
+                  price_at_purchase: Number(it.price_at_purchase || 0),
+                  purchased_at: order.paid_at,
+                  status: "active",
+                },
+                $setOnInsert: {
+                  user_id: order.user_id as mongoose.Types.ObjectId,
+                  book_id: it.product_id as mongoose.Types.ObjectId,
+                },
+              },
+              { upsert: true }
+            ).catch((e: any) => {
+              if (e?.code !== 11000) throw e;
+            })
+          )
+        );
+      }
     }
 
     return res.json({ ok: true });
@@ -603,6 +672,40 @@ export const activateOrderCourses = async (
         )
       )
     );
+
+    // Xử lý Book items: tạo bookHistory records
+    const bookItems = await OrderItemModel.find({
+      order_id: order._id,
+      product_type: "Book",
+    }).lean();
+
+    if (bookItems.length) {
+      await Promise.all(
+        bookItems.map((it) =>
+          BookHistoryModel.updateOne(
+            {
+              user_id: order.user_id as mongoose.Types.ObjectId,
+              book_id: it.product_id as mongoose.Types.ObjectId,
+            },
+            {
+              $set: {
+                order_id: order._id as mongoose.Types.ObjectId,
+                price_at_purchase: Number(it.price_at_purchase || 0),
+                purchased_at: new Date(),
+                status: "active",
+              },
+              $setOnInsert: {
+                user_id: order.user_id as mongoose.Types.ObjectId,
+                book_id: it.product_id as mongoose.Types.ObjectId,
+              },
+            },
+            { upsert: true }
+          ).catch((e: any) => {
+            if (e?.code !== 11000) throw e;
+          })
+        )
+      );
+    }
 
     await OrderModel.updateOne(
       { _id: order._id },

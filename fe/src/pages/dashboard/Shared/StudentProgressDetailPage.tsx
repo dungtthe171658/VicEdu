@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import enrollmentApi from "../../../api/enrollmentApi";
 import userApi from "../../../api/userApi";
 import quizApi from "../../../api/quizApi";
+import bookApi from "../../../api/bookApi";
 import {
   FaBook,
   FaChartBar,
@@ -103,8 +104,16 @@ export default function StudentProgressDetailPage() {
         totalProgress = enrollmentsWithProgress.reduce((sum, p) => sum + p, 0);
         const averagePoints = coursesCount > 0 ? Math.round(totalProgress / coursesCount) : 0;
 
-        // Note: Books data might not be available for other users
-        // For now, we'll set it to 0 or fetch if there's an API
+        // Fetch purchased books count from bookHistory
+        let totalBooksRead = 0;
+        try {
+          const booksRes = await bookApi.getPurchasedBookCountByUserId(studentId);
+          const booksData = booksRes?.data as any;
+          totalBooksRead = booksData?.count || 0;
+        } catch (error) {
+          console.error("Error fetching books count:", error);
+        }
+
         const booksByLevel = {
           starter: 0,
           level1: 0,
@@ -146,7 +155,7 @@ export default function StudentProgressDetailPage() {
         setStats({
           totalCourses: coursesCount,
           averagePoints,
-          totalBooksRead: 0, // Books data not available for other users
+          totalBooksRead,
           booksByLevel,
           quizStats,
         });
@@ -270,16 +279,16 @@ export default function StudentProgressDetailPage() {
               </div>
             </div>
 
-            {/* Quiz Count Card */}
+            {/* Books Purchased Card */}
             <div className="bg-blue-50 rounded-xl p-6 shadow-sm">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-lg bg-blue-500 flex items-center justify-center">
-                  <FaCheckCircle className="text-white" size={24} />
+                  <FaBook className="text-white" size={24} />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Quiz đã hoàn thành</p>
+                  <p className="text-sm text-gray-600">Sách đã mua</p>
                   <p className="text-2xl font-bold text-gray-800">
-                    {stats.quizStats.totalQuizzes}
+                    {stats.totalBooksRead}
                   </p>
                 </div>
               </div>

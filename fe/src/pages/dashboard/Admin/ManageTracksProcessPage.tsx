@@ -389,7 +389,7 @@ const ManageTracksProcessPage: React.FC = () => {
                           </Box>
                           <Box>
                             <Typography variant="caption" color="text.secondary">
-                              Sách
+                              Sách đã mua
                             </Typography>
                             <Typography variant="body2" fontWeight="bold">
                               {item.totalBooks || 0} sách
@@ -532,7 +532,7 @@ const ManageTracksProcessPage: React.FC = () => {
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
-                    Sách đọc TB
+                    Sách đã mua TB
                   </Typography>
                   <Typography variant="h6" fontWeight="bold">
                     {schoolStats.averageBooksRead} sách

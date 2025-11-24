@@ -58,12 +58,14 @@ interface QuizAttemptHistory {
     _id: string;
     title: string;
     lesson_id?: {
+      _id?: string;
       title: string;
       course_id?: {
+        _id?: string;
         title: string;
         slug: string;
-      };
-    };
+      } | string;
+    } | string;
   };
 }
 
@@ -72,12 +74,6 @@ interface CourseWithProgress {
   title: string;
   progress: number;
 }
-
-const COLORS = {
-  starter: "#FF6B9D", // Pink
-  level1: "#10B981", // Green
-  level2: "#8B5CF6", // Purple
-};
 
 export default function MyTrackProcessLearning() {
   const { user } = useAuth();
@@ -105,6 +101,8 @@ export default function MyTrackProcessLearning() {
   const [dailyStats, setDailyStats] = useState<Array<{ date: string; lessons: number; quizzes: number }>>([]);
   const [startDate, setStartDate] = useState<string>("2025-11-21");
   const [endDate, setEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedCourseId, setSelectedCourseId] = useState<string>("");
+  const [selectedLessonId, setSelectedLessonId] = useState<string>("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -169,12 +167,13 @@ export default function MyTrackProcessLearning() {
           .sort((a, b) => b.progress - a.progress); // Sort by progress descending
         setCoursesWithProgress(validCourses);
 
-        // Fetch purchased books
-        const booksRes = await bookApi.getPurchasedBooks();
-        const books = Array.isArray(booksRes?.data)
-          ? booksRes.data
-          : Array.isArray(booksRes?.data?.data)
-          ? booksRes.data.data
+        // Fetch purchased books from bookHistory (same as MyBooksPage.tsx)
+        const booksRes = await bookApi.getMyBooksFromHistory();
+        const payload = booksRes?.data as any;
+        const books = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+          ? payload.data
           : [];
 
         // Calculate books by level
@@ -253,12 +252,6 @@ export default function MyTrackProcessLearning() {
     fetchDailyStats();
   }, [startDate, endDate]);
 
-  const booksData = [
-    { name: "Starter", value: stats.booksByLevel.starter, color: COLORS.starter },
-    { name: "Level 1", value: stats.booksByLevel.level1, color: COLORS.level1 },
-    { name: "Level 2", value: stats.booksByLevel.level2, color: COLORS.level2 },
-  ].filter((item) => item.value > 0);
-
   const quizData = [
     { name: "Success", value: stats.quizStats.successRate, color: "#8B5CF6" },
     { name: "Remaining", value: 100 - stats.quizStats.successRate, color: "#E5E7EB" },
@@ -308,6 +301,96 @@ export default function MyTrackProcessLearning() {
     if (progress < 60) return "Đang học";
     if (progress < 100) return "Gần hoàn thành";
     return "Đã hoàn thành";
+  };
+
+  // Extract unique courses from quiz history (only from purchased courses)
+  const getAvailableCourses = () => {
+    const enrolledCourseIds = new Set(coursesWithProgress.map(c => c._id));
+    const courseMap = new Map<string, { id: string; title: string }>();
+    
+    quizHistory.forEach(attempt => {
+      if (!attempt.quiz?.lesson_id) return;
+      
+      const lessonId = attempt.quiz.lesson_id;
+      const courseIdObj = typeof lessonId === 'object' ? lessonId.course_id : null;
+      const courseId = (typeof courseIdObj === 'object' && courseIdObj?._id) 
+                      || (typeof courseIdObj === 'string' ? courseIdObj : null)
+                      || (typeof courseIdObj === 'object' && courseIdObj ? String(courseIdObj) : null);
+      const courseTitle = (typeof courseIdObj === 'object' && courseIdObj?.title) || "";
+      
+      if (courseId && courseTitle && enrolledCourseIds.has(courseId)) {
+        if (!courseMap.has(courseId)) {
+          courseMap.set(courseId, { id: courseId, title: courseTitle });
+        }
+      }
+    });
+    
+    return Array.from(courseMap.values());
+  };
+
+  // Extract unique lessons from quiz history (filtered by selected course)
+  const getAvailableLessons = () => {
+    if (!selectedCourseId) return [];
+    
+    const lessonMap = new Map<string, { id: string; title: string }>();
+    
+    quizHistory.forEach(attempt => {
+      if (!attempt.quiz?.lesson_id) return;
+      
+      const lessonId = attempt.quiz.lesson_id;
+      const lessonIdStr = (typeof lessonId === 'object' && lessonId._id) 
+                        || (typeof lessonId === 'string' ? lessonId : null);
+      const lessonTitle = (typeof lessonId === 'object' && lessonId.title) || "";
+      
+      const courseIdObj = typeof lessonId === 'object' ? lessonId.course_id : null;
+      const courseId = (typeof courseIdObj === 'object' && courseIdObj?._id) 
+                      || (typeof courseIdObj === 'string' ? courseIdObj : null);
+      
+      if (courseId === selectedCourseId && lessonIdStr && lessonTitle) {
+        if (!lessonMap.has(lessonIdStr)) {
+          lessonMap.set(lessonIdStr, { id: lessonIdStr, title: lessonTitle });
+        }
+      }
+    });
+    
+    return Array.from(lessonMap.values());
+  };
+
+  // Filter quiz history based on selected course and lesson
+  const filteredQuizHistory = quizHistory.filter(attempt => {
+    if (!attempt.quiz?.lesson_id) return false;
+    
+    const lessonId = attempt.quiz.lesson_id;
+    const lessonIdStr = (typeof lessonId === 'object' && lessonId._id) 
+                      || (typeof lessonId === 'string' ? lessonId : null);
+    
+    const courseIdObj = typeof lessonId === 'object' ? lessonId.course_id : null;
+    const courseId = (typeof courseIdObj === 'object' && courseIdObj?._id) 
+                    || (typeof courseIdObj === 'string' ? courseIdObj : null);
+    
+    // Only show quizzes from purchased courses
+    const enrolledCourseIds = new Set(coursesWithProgress.map(c => c._id));
+    if (courseId && !enrolledCourseIds.has(courseId)) {
+      return false;
+    }
+    
+    // Filter by selected course
+    if (selectedCourseId && courseId !== selectedCourseId) {
+      return false;
+    }
+    
+    // Filter by selected lesson
+    if (selectedLessonId && lessonIdStr !== selectedLessonId) {
+      return false;
+    }
+    
+    return true;
+  });
+
+  // Reset lesson filter when course changes
+  const handleCourseChange = (courseId: string) => {
+    setSelectedCourseId(courseId);
+    setSelectedLessonId(""); // Reset lesson filter
   };
 
   // Delete attempt
@@ -394,7 +477,7 @@ export default function MyTrackProcessLearning() {
             </div>
             <div className="text-center p-3 bg-gray-50 rounded-lg">
               <p className="text-2xl font-bold text-gray-800">{stats.totalBooksRead}</p>
-              <p className="text-sm text-gray-600">Sách đã đọc</p>
+              <p className="text-sm text-gray-600">Sách đã mua</p>
             </div>
           </div>
 
@@ -458,7 +541,20 @@ export default function MyTrackProcessLearning() {
               </div>
             </div>
 
-      
+            {/* Books Purchased Card */}
+            <div className="bg-blue-50 rounded-xl p-6 shadow-sm">
+              <div className="flex items-center gap-6">
+                <div className="w-12 h-12 rounded-lg bg-blue-500 flex items-center justify-center">
+                  <FaBook className="text-white" size={24} />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Sách đã mua</p>
+                  <p className="text-2xl font-bold text-gray-800">
+                    {stats.totalBooksRead}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Courses Progress Bar Chart */}
@@ -509,7 +605,7 @@ export default function MyTrackProcessLearning() {
                       textAnchor="end"
                       height={120}
                       interval={0}
-                      tick={{ fontSize: 11, fill: "#6B7280" }}
+                      tick={{ fontSize: 11, fill: "#000000" }}
                       stroke="#9CA3AF"
                     />
                     <YAxis 
@@ -754,24 +850,83 @@ export default function MyTrackProcessLearning() {
 
             {/* Quiz History */}
             <div className="bg-white rounded-xl p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-800">Lịch sử chơi Quiz</h3>
                 <span className="text-sm text-gray-500">
-                  {quizHistory.length} {quizHistory.length === 1 ? "Quiz" : "Quiz"}
+                  {filteredQuizHistory.length} / {quizHistory.length} {quizHistory.length === 1 ? "Quiz" : "Quiz"}
                 </span>
+              </div>
+
+              {/* Filter Section */}
+              <div className="mb-4 flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <label htmlFor="courseFilter" className="text-sm font-medium text-gray-700">
+                    Khóa học:
+                  </label>
+                  <select
+                    id="courseFilter"
+                    value={selectedCourseId}
+                    onChange={(e) => handleCourseChange(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent min-w-[200px]"
+                  >
+                    <option value="">Tất cả khóa học</option>
+                    {getAvailableCourses().map((course) => (
+                      <option key={course.id} value={course.id}>
+                        {course.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {selectedCourseId && (
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="lessonFilter" className="text-sm font-medium text-gray-700">
+                      Bài học:
+                    </label>
+                    <select
+                      id="lessonFilter"
+                      value={selectedLessonId}
+                      onChange={(e) => setSelectedLessonId(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent min-w-[200px]"
+                    >
+                      <option value="">Tất cả bài học</option>
+                      {getAvailableLessons().map((lesson) => (
+                        <option key={lesson.id} value={lesson.id}>
+                          {lesson.title}
+                        </option>
+                      ))}
+                    </select>
                   </div>
+                )}
+                {(selectedCourseId || selectedLessonId) && (
+                  <button
+                    onClick={() => {
+                      setSelectedCourseId("");
+                      setSelectedLessonId("");
+                    }}
+                    className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                  >
+                    Xóa bộ lọc
+                  </button>
+                )}
+              </div>
               
-              {quizHistory.length === 0 ? (
+              {filteredQuizHistory.length === 0 ? (
                 <div className="text-center py-12">
                   <FaCheckCircle className="mx-auto text-gray-300 mb-4" size={48} />
-                  <p className="text-gray-500">Chưa có lịch sử làm quiz</p>
+                  <p className="text-gray-500">
+                    {quizHistory.length === 0 
+                      ? "Chưa có lịch sử làm quiz" 
+                      : "Không có quiz nào khớp với bộ lọc"}
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-4 max-h-[600px] overflow-y-auto">
-                  {quizHistory.map((attempt) => {
+                  {filteredQuizHistory.map((attempt) => {
                     const quizTitle = attempt.quiz?.title || "Quiz không xác định";
-                    const lessonTitle = attempt.quiz?.lesson_id?.title || "";
-                    const courseTitle = attempt.quiz?.lesson_id?.course_id?.title || "";
+                    const lessonId = attempt.quiz?.lesson_id;
+                    const lessonTitle = (typeof lessonId === 'object' && lessonId?.title) || "";
+                    const courseIdObj = (typeof lessonId === 'object' && lessonId?.course_id) || null;
+                    const courseTitle = (typeof courseIdObj === 'object' && courseIdObj?.title) || "";
                     const score = attempt.total > 0 ? Math.round((attempt.correct / attempt.total) * 100) : 0;
                     const isCompleted = attempt.completed;
                     
