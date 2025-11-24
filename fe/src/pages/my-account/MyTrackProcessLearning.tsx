@@ -102,6 +102,9 @@ export default function MyTrackProcessLearning() {
   });
   const [quizHistory, setQuizHistory] = useState<QuizAttemptHistory[]>([]);
   const [coursesWithProgress, setCoursesWithProgress] = useState<CourseWithProgress[]>([]);
+  const [dailyStats, setDailyStats] = useState<Array<{ date: string; lessons: number; quizzes: number }>>([]);
+  const [startDate, setStartDate] = useState<string>("2025-11-21");
+  const [endDate, setEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -232,6 +235,23 @@ export default function MyTrackProcessLearning() {
 
     fetchData();
   }, []);
+
+  // Separate useEffect for daily stats to optimize re-fetching when date range changes
+  useEffect(() => {
+    const fetchDailyStats = async () => {
+      try {
+        const dailyData = await enrollmentApi.getDailyLearningStats(startDate, endDate);
+        const statsArray = Array.isArray(dailyData) ? dailyData : [];
+        console.log("Daily stats data:", statsArray);
+        setDailyStats(statsArray);
+      } catch (error) {
+        console.error("Failed to fetch daily stats:", error);
+        setDailyStats([]);
+      }
+    };
+
+    fetchDailyStats();
+  }, [startDate, endDate]);
 
   const booksData = [
     { name: "Starter", value: stats.booksByLevel.starter, color: COLORS.starter },
@@ -412,7 +432,7 @@ export default function MyTrackProcessLearning() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
             {/* Courses Card */}
             <div className="bg-green-50 rounded-xl p-6 shadow-sm">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-6">
                 <div className="w-12 h-12 rounded-lg bg-green-500 flex items-center justify-center">
                   <FaBookOpen className="text-white" size={24} />
                 </div>
@@ -425,7 +445,7 @@ export default function MyTrackProcessLearning() {
 
             {/* Quiz Success Rate Card */}
             <div className="bg-purple-50 rounded-xl p-6 shadow-sm">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-6">
                 <div className="w-12 h-12 rounded-lg bg-purple-500 flex items-center justify-center">
                   <FaCheckCircle className="text-white" size={24} />
                 </div>
@@ -438,52 +458,7 @@ export default function MyTrackProcessLearning() {
               </div>
             </div>
 
-            {/* Average Books Read Card */}
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-              <div>
-                <p className="text-sm text-gray-600 mb-4">Sách đã đọc trung bình</p>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex gap-2 text-xs">
-                    <span className="flex items-center gap-1">
-                      <span className="w-3 h-3 rounded bg-pink-400"></span>
-                      Starter
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="w-3 h-3 rounded bg-green-500"></span>
-                      Level 1
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="w-3 h-3 rounded bg-purple-500"></span>
-                      Level 2
-                    </span>
-                  </div>
-                </div>
-                <div className="relative w-full h-32">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={booksData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={40}
-                        outerRadius={60}
-                        dataKey="value"
-                      >
-                        {booksData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-gray-800">{stats.totalBooksRead}</p>
-                      <p className="text-xs text-gray-600">sách</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+      
           </div>
 
           {/* Courses Progress Bar Chart */}
@@ -582,6 +557,156 @@ export default function MyTrackProcessLearning() {
               </div>
             </div>
           )}
+
+          {/* Daily Learning Stats Chart */}
+          <div className="bg-white rounded-xl p-6 shadow-sm mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">
+                Thống kê học tập theo ngày
+              </h3>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded bg-blue-500"></div>
+                    <span className="text-gray-600">Bài học hoàn thành</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded bg-purple-500"></div>
+                    <span className="text-gray-600">Quiz đã làm</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Date Range Selector */}
+            <div className="mb-4 flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-2">
+                <label htmlFor="startDate" className="text-sm font-medium text-gray-700">
+                  Từ ngày:
+                </label>
+                <input
+                  id="startDate"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label htmlFor="endDate" className="text-sm font-medium text-gray-700">
+                  Đến ngày:
+                </label>
+                <input
+                  id="endDate"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  max={new Date().toISOString().split('T')[0]}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <button
+                onClick={() => {
+                  setStartDate("2025-11-21");
+                  setEndDate(new Date().toISOString().split('T')[0]);
+                }}
+                className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+              >
+                Đặt lại
+              </button>
+            </div>
+            {dailyStats.length > 0 ? (
+              <div className="w-full" style={{ minHeight: '384px', height: '384px' }}>
+                <ResponsiveContainer width="100%" height={384}>
+                  <BarChart
+                    data={dailyStats.map((stat) => ({
+                      date: new Date(stat.date).toLocaleDateString("vi-VN", {
+                        day: "2-digit",
+                        month: "2-digit",
+                      }),
+                      fullDate: stat.date,
+                      "Bài học": stat.lessons,
+                      "Quiz": stat.quizzes,
+                    }))}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                    barCategoryGap="20%"
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis 
+                      dataKey="date" 
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                      interval={0}
+                      tick={{ fontSize: 11, fill: "#6B7280" }}
+                      stroke="#9CA3AF"
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12, fill: "#6B7280" }}
+                      stroke="#9CA3AF"
+                      label={{ 
+                        value: 'Số lần', 
+                        angle: -90, 
+                        position: 'insideLeft',
+                        style: { textAnchor: 'middle', fill: '#374151', fontSize: 14, fontWeight: 600 }
+                      }}
+                    />
+                    <Tooltip 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload as any;
+                          return (
+                            <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+                              <p className="font-semibold text-gray-800 mb-2">
+                                {new Date(data.fullDate).toLocaleDateString("vi-VN", {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                })}
+                              </p>
+                              <p className="text-sm text-gray-600 mb-1">
+                                <span className="font-medium">Bài học: </span>
+                                <span className="font-bold text-blue-600">
+                                  {data["Bài học"]}
+                                </span>
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                <span className="font-medium">Quiz: </span>
+                                <span className="font-bold text-purple-600">
+                                  {data["Quiz"]}
+                                </span>
+                              </p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Bar 
+                      dataKey="Bài học" 
+                      fill="#3B82F6"
+                      radius={[6, 6, 0, 0]}
+                      animationDuration={1000}
+                    />
+                    <Bar 
+                      dataKey="Quiz" 
+                      fill="#8B5CF6"
+                      radius={[6, 6, 0, 0]}
+                      animationDuration={1000}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <FaChartBar className="mx-auto text-gray-300 mb-4" size={48} />
+                <p className="text-gray-500 mb-2">Chưa có dữ liệu học tập theo ngày</p>
+                <p className="text-sm text-gray-400">
+                  Dữ liệu sẽ được hiển thị sau khi bạn hoàn thành bài học hoặc làm quiz
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* Quiz Success Rate and Reading Time */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

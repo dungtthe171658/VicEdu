@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { FaFacebookF, FaYoutube, FaTiktok } from "react-icons/fa";
 import "./Layout.css";
 
 const UserFooter = () => {
@@ -20,13 +21,13 @@ const UserFooter = () => {
 
           <div className="footer-social">
             <a href="https://facebook.com" target="_blank" rel="noopener noreferrer">
-              <i className="fab fa-facebook-f"></i>
+              <FaFacebookF />
             </a>
             <a href="https://youtube.com" target="_blank" rel="noopener noreferrer">
-              <i className="fab fa-youtube"></i>
+              <FaYoutube />
             </a>
             <a href="https://tiktok.com" target="_blank" rel="noopener noreferrer">
-              <i className="fab fa-tiktok"></i>
+              <FaTiktok />
             </a>
           </div>
         </div>

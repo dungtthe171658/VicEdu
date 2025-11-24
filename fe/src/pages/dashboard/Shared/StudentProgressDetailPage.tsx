@@ -37,28 +37,6 @@ interface LearningStats {
   };
 }
 
-interface QuizAttemptHistory {
-  _id: string;
-  quiz_id: string;
-  completed: boolean;
-  correct: number;
-  total: number;
-  score: number;
-  spent_seconds: number;
-  violations: number;
-  created_at?: string;
-  quiz?: {
-    _id: string;
-    title: string;
-    lesson_id?: {
-      title: string;
-      course_id?: {
-        title: string;
-        slug: string;
-      };
-    };
-  };
-}
 
 export default function StudentProgressDetailPage() {
   const { studentId } = useParams<{ studentId: string }>();
@@ -82,7 +60,6 @@ export default function StudentProgressDetailPage() {
       averageScore: 0,
     },
   });
-  const [quizHistory, setQuizHistory] = useState<QuizAttemptHistory[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -138,9 +115,6 @@ export default function StudentProgressDetailPage() {
         const quizAttempts = await quizApi.getAttemptsByUserForAdmin(studentId);
         const attempts = Array.isArray(quizAttempts) ? quizAttempts : [];
 
-        // Store quiz history
-        setQuizHistory(attempts as QuizAttemptHistory[]);
-
         // Calculate quiz statistics from real data
         const completedAttempts = attempts.filter((a: any) => a.completed);
         const totalQuizzes = completedAttempts.length;
@@ -190,34 +164,6 @@ export default function StudentProgressDetailPage() {
     { name: "Success", value: stats.quizStats.successRate, color: "#8B5CF6" },
     { name: "Remaining", value: 100 - stats.quizStats.successRate, color: "#E5E7EB" },
   ];
-
-  // Format date for display
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  // Format time spent
-  const formatTime = (seconds: number) => {
-    if (seconds < 60) return `${seconds}s`;
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${minutes}m ${secs}s`;
-  };
-
-  // Get score color based on percentage
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return "text-green-600 bg-green-50";
-    if (score >= 60) return "text-yellow-600 bg-yellow-50";
-    return "text-red-600 bg-red-50";
-  };
 
   if (loading) {
     return (
@@ -340,8 +286,8 @@ export default function StudentProgressDetailPage() {
             </div>
           </div>
 
-          {/* Quiz Success Rate and Reading Time */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Quiz Success Rate */}
+          <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
             {/* Quiz Success Rate */}
             <div className="bg-white rounded-xl p-6 shadow-sm">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Tỷ lệ thành công Quiz</h3>
@@ -383,110 +329,6 @@ export default function StudentProgressDetailPage() {
                 </div>
               </div>
                     </div>
-
-            {/* Quiz History */}
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-800">Lịch sử chơi Quiz</h3>
-                <span className="text-sm text-gray-500">
-                  {quizHistory.length} {quizHistory.length === 1 ? "lần làm" : "lần làm"}
-                </span>
-                  </div>
-              
-              {quizHistory.length === 0 ? (
-                <div className="text-center py-12">
-                  <FaCheckCircle className="mx-auto text-gray-300 mb-4" size={48} />
-                  <p className="text-gray-500">Chưa có lịch sử làm quiz</p>
-                </div>
-              ) : (
-                <div className="space-y-4 max-h-[600px] overflow-y-auto">
-                  {quizHistory.map((attempt) => {
-                    const quizTitle = attempt.quiz?.title || "Quiz không xác định";
-                    const lessonTitle = attempt.quiz?.lesson_id?.title || "";
-                    const courseTitle = attempt.quiz?.lesson_id?.course_id?.title || "";
-                    const score = attempt.total > 0 ? Math.round((attempt.correct / attempt.total) * 100) : 0;
-                    const isCompleted = attempt.completed;
-                    
-                    return (
-                      <div
-                        key={attempt._id}
-                        className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-gray-800 mb-1">{quizTitle}</h4>
-                            {courseTitle && (
-                              <p className="text-sm text-gray-600 mb-1">
-                                {courseTitle}
-                                {lessonTitle && ` • ${lessonTitle}`}
-                              </p>
-                            )}
-                            <p className="text-xs text-gray-500">
-                              {formatDate(attempt.created_at)}
-                            </p>
-                          </div>
-                          <div className={`px-3 py-1 rounded-full text-sm font-semibold ${getScoreColor(score)}`}>
-                            {isCompleted ? `${score}%` : "Chưa hoàn thành"}
-                    </div>
-                  </div>
-                        
-                        {isCompleted && (
-                          <>
-                            <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-100">
-                              <div className="text-center">
-                                <p className="text-xs text-gray-500 mb-1">Điểm số</p>
-                                <p className="text-lg font-bold text-gray-800">
-                                  {attempt.correct}/{attempt.total}
-                                </p>
-                </div>
-                <div className="text-center">
-                                <p className="text-xs text-gray-500 mb-1">Thời gian</p>
-                                <p className="text-lg font-bold text-gray-800">
-                                  {formatTime(attempt.spent_seconds)}
-                                </p>
-                    </div>
-                              <div className="text-center">
-                                <p className="text-xs text-gray-500 mb-1">Vi phạm</p>
-                                <p className="text-lg font-bold text-gray-800">
-                                  {attempt.violations || 0}
-                                </p>
-                </div>
-              </div>
-                            <div className="mt-4 pt-4 border-t border-gray-100">
-                              <button
-                                onClick={() => navigate(`/quiz/${attempt.quiz_id}`)}
-                                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
-                              >
-                                <FaCheckCircle size={16} />
-                                Chơi lại Quiz
-                              </button>
-            </div>
-                          </>
-                        )}
-                        
-                        {!isCompleted && (
-                          <div className="mt-4 pt-4 border-t border-gray-100">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2 text-sm text-yellow-600">
-                                <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
-                                <span>Đang làm dở</span>
-                              </div>
-                    <button
-                                onClick={() => navigate(`/quiz/${attempt.quiz_id}`)}
-                                className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center gap-2 text-sm"
-                              >
-                                <FaCheckCircle size={14} />
-                                Tiếp tục
-                    </button>
-                </div>
-              </div>
-                        )}
-              </div>
-                    );
-                  })}
-              </div>
-              )}
-            </div>
           </div>
         </main>
       </div>

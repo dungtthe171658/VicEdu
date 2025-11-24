@@ -64,6 +64,15 @@ const enrollmentApi = {
     axios.get(`${BASE_URL}/enrollments/teacher/by-courses`, {
       params: { courseIds: courseIds.join(",") },
     }),
+
+  // Get daily learning stats (watch history and quiz attempts grouped by date)
+  getDailyLearningStats: (startDate?: string, endDate?: string): Promise<Array<{ date: string; lessons: number; quizzes: number }>> =>
+    axios.get(`${BASE_URL}/enrollments/daily-stats`, {
+      params: {
+        ...(startDate && { startDate }),
+        ...(endDate && { endDate }),
+      },
+    }),
 };
 
 export default enrollmentApi;

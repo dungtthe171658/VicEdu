@@ -38,6 +38,8 @@ const QuizPage: React.FC = () => {
     const lastViolationRef = useRef(0);
     const initialDurationRef = useRef(0);
     const spentSecondsRef = useRef(0);
+    const isResettingRef = useRef(false); // Flag để tránh set lại attemptId khi đang reset
+    const shouldAutoStartRef = useRef(false); // Flag để tự động start sau khi reset
 
     useEffect(() => {
         hasStartedRef.current = hasStarted;
@@ -59,13 +61,16 @@ const QuizPage: React.FC = () => {
             .then((data) => {
                 setMeta(data);
                 // Lưu attemptId từ meta nếu có (để dùng khi chơi lại)
-                if (data.attempt_id && !attemptId) {
+                // Nhưng không set lại nếu đang trong quá trình reset (chơi mới)
+                if (data.attempt_id && !attemptId && !isResettingRef.current) {
                     setAttemptId(data.attempt_id);
                 }
                 initialDurationRef.current = data.duration_seconds || 300;
                 setTimeLeft(initialDurationRef.current);
-
-                if (data.completed) {
+                
+                // Nếu đang trong quá trình reset (chơi mới), không set lại result từ data.completed
+                // Vì chúng ta muốn hiển thị màn hình start quiz, không phải màn hình kết quả
+                if (data.completed && !isResettingRef.current) {
                     setResult({
                         correct: data.progress?.correct || 0,
                         total: data.progress?.total || 0,
@@ -74,6 +79,20 @@ const QuizPage: React.FC = () => {
                     setViolations(data.progress?.violations || 0);
                     setHasStarted(false);
                     return;
+                }
+                
+                // Tự động start nếu đang trong quá trình chơi mới
+                if (shouldAutoStartRef.current && !data.completed) {
+                    shouldAutoStartRef.current = false;
+                    // Đợi một chút để state được cập nhật
+                    setTimeout(() => {
+                        handleStart();
+                    }, 100);
+                }
+                
+                // Reset flag sau khi đã xử lý xong tất cả
+                if (isResettingRef.current) {
+                    isResettingRef.current = false;
                 }
 
                 if (data.in_progress && data.progress) {
@@ -120,41 +139,26 @@ const QuizPage: React.FC = () => {
 
     const handleNewGame = async () => {
         if (!quizId) return;
-        try {
-            setLoading(true);
-            setError("");
-            
-            // Reset quiz attempt trên server (đánh dấu attempt chưa completed là completed để lưu lịch sử)
-            await quizApi.reset(quizId);
-            
-            // Reset tất cả state về ban đầu
-            setQuiz(null);
-            setAnswers([]);
-            setCurrentIndex(0);
-            setResult(null);
-            setHasStarted(false);
-            setViolations(0);
-            setTimeLeft(null);
-            spentSecondsRef.current = 0;
-            lastViolationRef.current = 0;
-            setAttemptId(null);
-            
-            // Reload quiz meta - sau khi reset, sẽ không có attempt chưa completed nữa
-            // nên sẽ hiển thị màn hình bắt đầu
-            const data = await quizApi.get(quizId);
-            setMeta({
-                ...data,
-                completed: false, // Force hiển thị màn hình bắt đầu
-                in_progress: false,
-                progress: null
-            });
-            initialDurationRef.current = data.duration_seconds || 300;
-            setTimeLeft(initialDurationRef.current);
-        } catch {
-            setError("Không thể tạo quiz mới");
-        } finally {
-            setLoading(false);
-        }
+        
+        // Đánh dấu đang trong quá trình reset để tránh useEffect set lại attemptId
+        isResettingRef.current = true;
+        // Đánh dấu cần tự động start sau khi load meta xong
+        shouldAutoStartRef.current = true;
+        
+        // Reset tất cả state về ban đầu
+        setQuiz(null);
+        setAnswers([]);
+        setCurrentIndex(0);
+        setResult(null);
+        setHasStarted(false);
+        setViolations(0);
+        setTimeLeft(null);
+        spentSecondsRef.current = 0;
+        lastViolationRef.current = 0;
+        
+        // Clear attemptId - điều này sẽ trigger useEffect tự động reload
+        // Sau khi meta load xong, sẽ tự động gọi handleStart
+        setAttemptId(null);
     };
 
     const addViolation = useCallback(() => {

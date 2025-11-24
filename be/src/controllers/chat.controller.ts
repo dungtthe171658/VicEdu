@@ -51,8 +51,8 @@ export class ChatController {
         systemDataExtra = await geminiService.getTeacherSystemData(userId);
       }
 
-      // Nếu là học viên (user/customer), tự động lấy dữ liệu học tập để AI có thể đưa ra gợi ý
-      if (user.role === "user" || !user.role || user.role === "customer") {
+      // Nếu là học viên (customer), tự động lấy dữ liệu học tập để AI có thể đưa ra gợi ý
+      if (!user.role || user.role === "customer") {
         try {
           const learningData = await geminiService.getStudentLearningData(userId);
           systemDataExtra.learningData = learningData;
