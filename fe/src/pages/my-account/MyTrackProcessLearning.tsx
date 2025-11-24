@@ -4,6 +4,7 @@ import { useAuth } from "../../hooks/useAuth";
 import enrollmentApi from "../../api/enrollmentApi";
 import bookApi from "../../api/bookApi";
 import quizApi from "../../api/quizApi";
+import axios from "../../api/axios";
 import {
   FaBook,
   FaChartBar,
@@ -17,6 +18,12 @@ import {
   Pie,
   Cell,
   ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
 } from "recharts";
 
 interface LearningStats {
@@ -60,6 +67,12 @@ interface QuizAttemptHistory {
   };
 }
 
+interface CourseWithProgress {
+  _id: string;
+  title: string;
+  progress: number;
+}
+
 const COLORS = {
   starter: "#FF6B9D", // Pink
   level1: "#10B981", // Green
@@ -88,6 +101,7 @@ export default function MyTrackProcessLearning() {
     },
   });
   const [quizHistory, setQuizHistory] = useState<QuizAttemptHistory[]>([]);
+  const [coursesWithProgress, setCoursesWithProgress] = useState<CourseWithProgress[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -117,6 +131,40 @@ export default function MyTrackProcessLearning() {
         );
         totalProgress = enrollmentsWithProgress.reduce((sum, p) => sum + p, 0);
         const averagePoints = coursesCount > 0 ? Math.round(totalProgress / coursesCount) : 0;
+
+        // Fetch courses with progress for bar chart (include all courses, even not started)
+        const coursesData = await Promise.all(
+          (Array.isArray(enrollments) ? enrollments : []).map(async (enrollment: any): Promise<CourseWithProgress | null> => {
+            try {
+              const courseId = typeof enrollment.course_id === 'object' 
+                ? enrollment.course_id?._id || enrollment.course_id 
+                : enrollment.course_id;
+              if (courseId) {
+                const enrollmentDetail = await enrollmentApi.getEnrollmentByCourse(courseId);
+                const progress = enrollmentDetail.progress || 0;
+                
+                try {
+                  const courseRes = await axios.get(`/courses/id/${courseId}`);
+                  const courseData = (courseRes as any).data || courseRes;
+                  return {
+                    _id: courseId,
+                    title: courseData.title || "Khóa học không xác định",
+                    progress: progress,
+                  };
+                } catch {
+                  return null;
+                }
+              }
+              return null;
+            } catch {
+              return null;
+            }
+          })
+        );
+        const validCourses = coursesData
+          .filter((c): c is CourseWithProgress => c !== null)
+          .sort((a, b) => b.progress - a.progress); // Sort by progress descending
+        setCoursesWithProgress(validCourses);
 
         // Fetch purchased books
         const booksRes = await bookApi.getPurchasedBooks();
@@ -222,6 +270,24 @@ export default function MyTrackProcessLearning() {
     if (score >= 80) return "text-green-600 bg-green-50";
     if (score >= 60) return "text-yellow-600 bg-yellow-50";
     return "text-red-600 bg-red-50";
+  };
+
+  // Get bar color based on progress
+  const getBarColor = (progress: number) => {
+    if (progress === 0) return "#9CA3AF"; // Gray for not started
+    if (progress < 30) return "#EF4444"; // Red for low progress
+    if (progress < 60) return "#F59E0B"; // Orange for medium progress
+    if (progress < 100) return "#10B981"; // Green for good progress
+    return "#059669"; // Dark green for completed
+  };
+
+  // Get progress status text
+  const getProgressStatus = (progress: number) => {
+    if (progress === 0) return "Chưa bắt đầu";
+    if (progress < 30) return "Mới bắt đầu";
+    if (progress < 60) return "Đang học";
+    if (progress < 100) return "Gần hoàn thành";
+    return "Đã hoàn thành";
   };
 
   // Delete attempt
@@ -419,6 +485,103 @@ export default function MyTrackProcessLearning() {
               </div>
             </div>
           </div>
+
+          {/* Courses Progress Bar Chart */}
+          {coursesWithProgress.length > 0 && (
+            <div className="bg-white rounded-xl p-6 shadow-sm mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-800">
+                  Tiến độ các khóa học
+                </h3>
+                <div className="flex items-center gap-4 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded bg-gray-400"></div>
+                    <span className="text-gray-600">Chưa bắt đầu</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded bg-red-500"></div>
+                    <span className="text-gray-600">0-30%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded bg-amber-500"></div>
+                    <span className="text-gray-600">30-60%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded bg-green-500"></div>
+                    <span className="text-gray-600">60-100%</span>
+                  </div>
+                </div>
+              </div>
+              <div className="w-full h-96">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={coursesWithProgress.map((course) => ({
+                      name: course.title.length > 25 
+                        ? course.title.substring(0, 25) + "..." 
+                        : course.title,
+                      fullName: course.title,
+                      "Tiến độ (%)": course.progress,
+                      color: getBarColor(course.progress),
+                      status: getProgressStatus(course.progress),
+                    }))}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 80 }}
+                    barCategoryGap="20%"
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis 
+                      dataKey="name" 
+                      angle={-45}
+                      textAnchor="end"
+                      height={120}
+                      interval={0}
+                      tick={{ fontSize: 11, fill: "#6B7280" }}
+                      stroke="#9CA3AF"
+                    />
+                    <YAxis 
+                      domain={[0, 100]}
+                      tick={{ fontSize: 12, fill: "#6B7280" }}
+                      stroke="#9CA3AF"
+                      label={{ 
+                        value: 'Tiến độ (%)', 
+                        angle: -90, 
+                        position: 'insideLeft',
+                        style: { textAnchor: 'middle', fill: '#374151', fontSize: 14, fontWeight: 600 }
+                      }}
+                    />
+                    <Tooltip 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload as any;
+                          return (
+                            <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+                              <p className="font-semibold text-gray-800 mb-1">{data.fullName}</p>
+                              <p className="text-sm text-gray-600 mb-1">
+                                <span className="font-medium">Tiến độ: </span>
+                                <span className="font-bold" style={{ color: data.color }}>
+                                  {data["Tiến độ (%)"]}%
+                                </span>
+                              </p>
+                              <p className="text-xs text-gray-500">{data.status}</p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Bar 
+                      dataKey="Tiến độ (%)" 
+                      radius={[6, 6, 0, 0]}
+                      animationDuration={1000}
+                    >
+                      {coursesWithProgress.map((course, index) => (
+                        <Cell key={`cell-${index}`} fill={getBarColor(course.progress)} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
 
           {/* Quiz Success Rate and Reading Time */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

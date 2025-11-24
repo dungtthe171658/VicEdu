@@ -20,4 +20,10 @@ router.delete("/clear", chatController.clearChatHistory.bind(chatController));
 // Lấy tất cả session chat (chỉ admin)
 router.get("/sessions", chatController.getAllSessions.bind(chatController));
 
+// Tạo kế hoạch học tập
+router.get("/study-plan", chatController.generateStudyPlan.bind(chatController));
+
+// Lấy dữ liệu học tập của học viên
+router.get("/learning-data", chatController.getLearningData.bind(chatController));
+
 export default router;
