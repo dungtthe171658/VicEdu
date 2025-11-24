@@ -42,8 +42,8 @@ const VoucherSchema = new Schema<IVoucher>(
   }
 );
 
-VoucherSchema.index({ code: 1 });
-VoucherSchema.index({ isActive: 1, startAt: 1, endAt: 1 });
+// VoucherSchema.index({ code: 1 });
+// VoucherSchema.index({ isActive: 1, startAt: 1, endAt: 1 });
 
 const Voucher = mongoose.model<IVoucher>("Voucher", VoucherSchema);
 

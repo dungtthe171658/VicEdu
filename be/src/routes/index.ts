@@ -16,6 +16,7 @@ import subtitleRoutes from "./subtitle.route";
 import commentRoutes from "./comment.route";
 import quizRoutes from "./quiz.route";
 import cartRoutes from "./cart.route";
+import voucherRoutes from "./voucher.routes";
 
 const router = express.Router();
 
@@ -35,6 +36,7 @@ router.use("/subtitles", subtitleRoutes);
 router.use("/comments", commentRoutes);
 router.use("/quizzes", quizRoutes);
 router.use("/cart", cartRoutes);
+router.use("/vouchers", voucherRoutes);
 
 export default router;
 
