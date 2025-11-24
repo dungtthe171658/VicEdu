@@ -154,13 +154,11 @@ export const listVouchers = async (
     });
   }
 };
-// controllers/voucher.controller.ts
 export const updateVoucher = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const payload = req.body; // code, type, value, isActive, ...
-
+    const payload = req.body;
     const updated = await Voucher.findByIdAndUpdate(id, payload, {
       new: true,
     });
